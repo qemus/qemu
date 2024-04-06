@@ -22,7 +22,7 @@ It uses high-performance QEMU options (like KVM acceleration, kernel-mode networ
 
 ## Usage
 
-Via `docker-compose.yml`
+Via `compose.yml`
 
 ```yaml
 version: "3"
