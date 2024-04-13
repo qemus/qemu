@@ -251,9 +251,8 @@ getInfo() {
 
   if [ -z "$MAC" ]; then
     local file="$STORAGE/$PROCESS.mac"
-    if [ -f "$file" ]; then
-      MAC=$(<"$file")
-    else
+    [ -f "$file" ] && MAC=$(<"$file")
+    if [ -z "$MAC" ]; then
       # Generate MAC address based on Docker container ID in hostname
       MAC=$(echo "$HOST" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
       echo "${MAC^^}" > "$file"
