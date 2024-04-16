@@ -37,7 +37,7 @@ info "$MSG" && html "$MSG"
 fKill "progress.sh"
 
 (( rc != 0 )) && error "Failed to download $BOOT , reason: $rc" && exit 60
-[ ! -f "$TMP" ] && error "Failed to download $BOOT" && exit 61
+[ ! -s "$TMP" ] && error "Failed to download $BOOT" && exit 61
 
 html "Download finished successfully..."
 
