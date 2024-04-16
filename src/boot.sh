@@ -43,13 +43,13 @@ if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy"
   OVMF="/usr/share/OVMF"
   DEST="$STORAGE/${BOOT_MODE,,}"
 
-  if [ ! -f "$DEST.rom" ]; then
-    [ ! -f "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
+  if [ ! -s "$DEST.rom" ]; then
+    [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
     cp "$OVMF/$ROM" "$DEST.rom"
   fi
 
-  if [ ! -f "$DEST.vars" ]; then
-    [ ! -f "$OVMF/$VARS" ] && error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
+  if [ ! -s "$DEST.vars" ]; then
+    [ ! -s "$OVMF/$VARS" ] && error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
     cp "$OVMF/$VARS" "$DEST.vars"
   fi
 
