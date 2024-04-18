@@ -17,9 +17,7 @@ case "${BOOT_MODE,,}" in
     ROM="OVMF_CODE_4M.secboot.fd"
     VARS="OVMF_VARS_4M.secboot.fd"
     ;;
-  windows)
-  windows_plain)
-  windows_secure)
+  windows | windows_plain | windows_secure)
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
     ;;
