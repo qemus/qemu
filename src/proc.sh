@@ -39,7 +39,21 @@ fi
 if [[ "$KVM" != [Nn]* ]]; then
 
   CPU_FEATURES="kvm=on,l3-cache=on"
-  HV_FEATURES="+hypervisor,+invtsc,hv_passthrough"
+
+  if ! grep -q -e tsc_scaling /proc/cpuinfo; then
+    # Prevent EDX.invtsc error on older CPU's
+    HV_FEATURES="+hypervisor,hv_passthrough"
+  else
+    HV_FEATURES="+hypervisor,+invtsc,hv_passthrough"
+  fi
+
+  if grep -q -e vmx /proc/cpuinfo; then
+    if ! grep -q -e shadow_vmcs /proc/cpuinfo; then
+      # Prevent eVMCS version range error on Atom CPU's
+      HV_FEATURES="$HV_FEATURES,-hv-evmcs"
+    fi
+  fi
+
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
 
   if [ -z "$CPU_MODEL" ]; then
