@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # Docker environment variables
-: "${TPM:="Y"}"         # Enable TPM
+: "${TPM:="N"}"         # Disable TPM
 : "${BOOT_MODE:="legacy"}"  # Boot mode
 
 SECURE=""
@@ -17,7 +17,12 @@ case "${BOOT_MODE,,}" in
     ROM="OVMF_CODE_4M.secboot.fd"
     VARS="OVMF_VARS_4M.secboot.fd"
     ;;
-  windows | windows_plain | windows_secure)
+  windows | windows_plain)
+    ROM="OVMF_CODE_4M.ms.fd"
+    VARS="OVMF_VARS_4M.ms.fd"
+    ;;
+  windows_secure)
+    TPM="Y"
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
     ;;
@@ -51,47 +56,42 @@ if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy"
   if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
     SECURE=",smm=on"
     BOOT_OPTS="$BOOT_OPTS -global driver=cfi.pflash01,property=secure,value=on"
+    [[ "${BOOT_MODE,,}" == "windows_secure" ]] && BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
   fi
 
   BOOT_OPTS="$BOOT_OPTS -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
   BOOT_OPTS="$BOOT_OPTS -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
 
-  if [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
+fi
 
-    BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
+if [[ "$TPM" == [Yy1]* ]]; then
 
-    if [[ "$TPM" == [Yy1]* ]]; then
+  rm -rf /run/shm/tpm
+  rm -f /var/run/tpm.pid
+  mkdir -p /run/shm/tpm
+  chmod 755 /run/shm/tpm
 
-      rm -rf /run/shm/tpm
-      rm -f /var/run/tpm.pid
-      mkdir -p /run/shm/tpm
-      chmod 755 /run/shm/tpm
+  if ! swtpm socket -t -d --tpmstate dir=/run/shm/tpm --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; then
+    error "Failed to start TPM emulator, reason: $?" && exit 19
+  fi
 
-      if ! swtpm socket -t -d --tpmstate dir=/run/shm/tpm --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; then
-        error "Failed to start TPM emulator, reason: $?" && exit 19
-      fi
+  for (( i = 1; i < 20; i++ )); do
 
-      for (( i = 1; i < 20; i++ )); do
+    [ -S "/run/swtpm-sock" ] && break
 
-        [ -S "/run/swtpm-sock" ] && break
-
-        if (( i % 10 == 0 )); then
-          echo "Waiting for TPM socket to become available..."
-        fi
-
-        sleep 0.1
-
-      done
-
-      if [ ! -S "/run/swtpm-sock" ]; then
-        TPM="N"
-        error "TPM socket not found? Disabling TPM support..."
-      else
-        BOOT_OPTS="$BOOT_OPTS -chardev socket,id=chrtpm,path=/run/swtpm-sock"
-        BOOT_OPTS="$BOOT_OPTS -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
-      fi
-
+    if (( i % 10 == 0 )); then
+      echo "Waiting for TPM socket to become available..."
     fi
+
+    sleep 0.1
+
+  done
+
+  if [ ! -S "/run/swtpm-sock" ]; then
+    error "TPM socket not found? Disabling TPM support..."
+  else
+    BOOT_OPTS="$BOOT_OPTS -chardev socket,id=chrtpm,path=/run/swtpm-sock"
+    BOOT_OPTS="$BOOT_OPTS -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
   fi
 
 fi
