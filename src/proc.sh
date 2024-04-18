@@ -52,7 +52,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     HV_FEATURES="+hypervisor,hv_passthrough"
     flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
 
-    if ! grep -qw "vmx" <<< "$flags"; then
+    if grep -qw "svm" <<< "$flags"; then
 
       # AMD processor
 
