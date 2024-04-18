@@ -50,7 +50,6 @@ if [[ "$KVM" != [Nn]* ]]; then
   if [[ "$HV" != [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
     HV_FEATURES="+hypervisor,hv_passthrough"
-    flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
 
     if grep -qw "svm" <<< "$flags"; then
 
