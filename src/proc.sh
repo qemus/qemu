@@ -52,21 +52,39 @@ if [[ "$KVM" != [Nn]* ]]; then
     HV_FEATURES="+hypervisor,hv_passthrough"
     flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
 
-    if grep -qw "tsc_scale" <<< "$flags"; then
-      HV_FEATURES="$HV_FEATURES,+invtsc"
-    fi
+    if ! grep -qw "vmx" <<< "$flags"; then
 
-    if grep -qw "vmx" <<< "$flags"; then
+      # AMD processor
+
+      if grep -qw "tsc_scale" <<< "$flags"; then
+        HV_FEATURES="$HV_FEATURES,+invtsc"
+      else
+        HV_FEATURES="$HV_FEATURES,-hv-reenlightenment"
+      fi
+  
+      if ! grep -qw "avic" <<< "$flags"; then
+        HV_FEATURES="$HV_FEATURES,-hv-avic"
+      fi
+    
+    else
+
+      # Intel processor
 
       vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 
       if grep -qw "tsc_scaling" <<< "$vmx"; then
         HV_FEATURES="$HV_FEATURES,+invtsc"
+      else
+        HV_FEATURES="$HV_FEATURES,-hv-reenlightenment"
       fi
 
       if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
         # Prevent eVMCS version range error on Atom CPU's
         HV_FEATURES="$HV_FEATURES,-hv-evmcs"
+      fi
+
+      if ! grep -qw "apicv" <<< "$vmx"; then
+        HV_FEATURES="$HV_FEATURES,-hv-apicv"
       fi
 
     fi
