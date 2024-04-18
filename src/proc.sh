@@ -92,11 +92,10 @@ if [[ "$KVM" != [Nn]* ]]; then
 
 else
 
+  KVM_OPTS=""
   CPU_FEATURES="l3-cache=on"
 
-  if [[ "$ARCH" != "amd64" ]]; then
-    KVM_OPTS=""
-  else
+  if [[ "$ARCH" == "amd64" ]]; then
     KVM_OPTS=" -accel tcg,thread=multi"
   fi
 
