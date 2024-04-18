@@ -78,13 +78,13 @@ if [[ "$KVM" != [Nn]* ]]; then
         HV_FEATURES="$HV_FEATURES,-hv-reenlightenment"
       fi
 
-      if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
-        # Prevent eVMCS version range error on Atom CPU's
-        HV_FEATURES="$HV_FEATURES,-hv-evmcs"
-      fi
-
       if ! grep -qw "apicv" <<< "$vmx"; then
-        HV_FEATURES="$HV_FEATURES,-hv-apicv"
+        HV_FEATURES="$HV_FEATURES,-hv-apicv,-hv-evmcs"
+      else
+        if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
+          # Prevent eVMCS version range error on Atom CPU's
+          HV_FEATURES="$HV_FEATURES,-hv-evmcs"
+        fi      
       fi
 
     fi
