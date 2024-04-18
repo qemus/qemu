@@ -61,11 +61,11 @@ if [[ "$KVM" != [Nn]* ]]; then
       else
         HV_FEATURES="$HV_FEATURES,-hv-reenlightenment"
       fi
-  
+
       if ! grep -qw "avic" <<< "$flags"; then
         HV_FEATURES="$HV_FEATURES,-hv-avic"
       fi
-    
+
     else
 
       # Intel processor
