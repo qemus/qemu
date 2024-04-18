@@ -80,7 +80,7 @@ if [[ "$KVM" != [Nn]* ]]; then
         if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
           # Prevent eVMCS version range error on Atom CPU's
           HV_FEATURES="$HV_FEATURES,-hv-evmcs"
-        fi      
+        fi
       fi
 
     fi
