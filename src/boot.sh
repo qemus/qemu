@@ -18,13 +18,10 @@ case "${BOOT_MODE,,}" in
     VARS="OVMF_VARS_4M.secboot.fd"
     ;;
   windows)
+  windows_plain)
+  windows_secure)
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
-    ;;
-  windows_plain)
-    TPM="N"
-    ROM="OVMF_CODE_4M.fd"
-    VARS="OVMF_VARS_4M.fd"
     ;;
   windows_legacy)
     USB="usb-ehci,id=ehci"
@@ -53,7 +50,7 @@ if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy"
     cp "$OVMF/$VARS" "$DEST.vars"
   fi
 
-  if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows" ]]; then
+  if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
     SECURE=",smm=on"
     BOOT_OPTS="$BOOT_OPTS -global driver=cfi.pflash01,property=secure,value=on"
   fi
@@ -61,7 +58,7 @@ if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy"
   BOOT_OPTS="$BOOT_OPTS -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
   BOOT_OPTS="$BOOT_OPTS -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
 
-  if [[ "${BOOT_MODE,,}" == "windows" ]]; then
+  if [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
 
     BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
 
