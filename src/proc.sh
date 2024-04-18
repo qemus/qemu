@@ -59,16 +59,16 @@ if [[ "$KVM" != [Nn]* ]]; then
     if grep -qw "vmx" <<< "$flags"; then
 
       vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
-  
+
       if grep -qw "tsc_scaling" <<< "$vmx"; then
         HV_FEATURES="$HV_FEATURES,+invtsc"
       fi
-  
+
       if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
         # Prevent eVMCS version range error on Atom CPU's
         HV_FEATURES="$HV_FEATURES,-hv-evmcs"
       fi
-  
+
     fi
 
     [ -n "$CPU_FEATURES" ] && CPU_FEATURES="$CPU_FEATURES,"
