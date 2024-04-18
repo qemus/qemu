@@ -111,6 +111,10 @@ else
 
   CPU_FEATURES="$CPU_FEATURES,+ssse3,+sse4.1,+sse4.2"
 
+  if [[ "$HV" != [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+    CPU_FEATURES="$CPU_FEATURES,+hypervisor"
+  fi
+
 fi
 
 if [ -z "$CPU_FLAGS" ]; then
