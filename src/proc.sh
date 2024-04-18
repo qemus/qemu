@@ -58,8 +58,6 @@ if [[ "$KVM" != [Nn]* ]]; then
 
       if grep -qw "tsc_scale" <<< "$flags"; then
         HV_FEATURES="$HV_FEATURES,+invtsc"
-      else
-        HV_FEATURES="$HV_FEATURES,-hv-reenlightenment"
       fi
 
       if ! grep -qw "avic" <<< "$flags"; then
@@ -74,8 +72,6 @@ if [[ "$KVM" != [Nn]* ]]; then
 
       if grep -qw "tsc_scaling" <<< "$vmx"; then
         HV_FEATURES="$HV_FEATURES,+invtsc"
-      else
-        HV_FEATURES="$HV_FEATURES,-hv-reenlightenment"
       fi
 
       if ! grep -qw "apicv" <<< "$vmx"; then
