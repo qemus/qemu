@@ -5,16 +5,19 @@ set -Eeuo pipefail
 : "${TPM:="N"}"         # Disable TPM
 : "${BOOT_MODE:="legacy"}"  # Boot mode
 
+BOOT_DESC=""
 BOOT_OPTS=""
 SECURE=",smm=off"
 
 case "${BOOT_MODE,,}" in
   uefi)
+    BOOT_DESC=" (UEFI)"
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
   secure)
     SECURE=",smm=on"
+    BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.secboot.fd"
     VARS="OVMF_VARS_4M.secboot.fd"
     ;;
@@ -25,14 +28,16 @@ case "${BOOT_MODE,,}" in
   windows_secure)
     TPM="Y"
     SECURE=",smm=on"
+    BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
     ;;
   windows_legacy)
+    BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
     ;;
   legacy)
-    BOOT_OPTS=""
+    BOOT_MODE="legacy"
     ;;
   *)
     info "Unknown boot mode '${BOOT_MODE}', defaulting to 'legacy'"
