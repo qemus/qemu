@@ -14,15 +14,18 @@ case "${BOOT_MODE,,}" in
     VARS="OVMF_VARS_4M.fd"
     ;;
   secure)
+    SECURE=",smm=on"
     ROM="OVMF_CODE_4M.secboot.fd"
     VARS="OVMF_VARS_4M.secboot.fd"
     ;;
   windows | windows_plain)
+    BOOT_MODE="windows"
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
   windows_secure)
     TPM="Y"
+    SECURE=",smm=on"
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
     ;;
@@ -54,7 +57,6 @@ if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy"
   fi
 
   if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
-    SECURE=",smm=on"
     BOOT_OPTS="$BOOT_OPTS -global driver=cfi.pflash01,property=secure,value=on"
     [[ "${BOOT_MODE,,}" == "windows_secure" ]] && BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
   fi
