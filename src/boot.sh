@@ -37,7 +37,7 @@ case "${BOOT_MODE,,}" in
     USB="usb-ehci,id=ehci"
     ;;
   legacy)
-    BOOT_MODE="legacy"
+    BOOT_OPTS=""
     ;;
   *)
     info "Unknown boot mode '${BOOT_MODE}', defaulting to 'legacy'"
