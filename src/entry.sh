@@ -17,7 +17,7 @@ cd /run
 
 trap - ERR
 
-info "Booting image using $VERS..."
+info "Booting image on $CPU using $VERS with kernel $(uname -r)..."
 
 [[ "$DEBUG" == [Yy1]* ]] && set -x
 exec qemu-system-x86_64 ${ARGS:+ $ARGS}
