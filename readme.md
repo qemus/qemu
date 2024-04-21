@@ -98,7 +98,14 @@ docker run -it --rm --name qemu -e "BOOT=http://example.com/image.iso" -p 8006:8
 
 * ### How do I boot a local image?
 
-  To skip the download, rename your image to `boot.iso` and place it in an empty `/storage` folder.
+  You can use a local file directly, and skip the download, by binding it in your compose file in this way:
+  
+  ```yaml
+  volumes:
+    - /home/user/example.iso:/storage/boot.iso
+  ```
+
+  Replace the example path `/home/user/example.iso` with the filename of the desired ISO file.
 
 * ### How do I boot with UEFI?
 
