@@ -11,8 +11,6 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 [ "$(id -u)" -ne "0" ] && error "Script must be executed with root privileges." && exit 12
 
 echo "❯ Starting $APP for Docker v$(</run/version)..."
-echo "❯ For support visit $SUPPORT"
-echo
 
 # Docker environment variables
 
@@ -45,6 +43,7 @@ MINOR=$(uname -r | cut -d '.' -f2)
 ARCH=$(dpkg --print-architecture)
 VERS=$(qemu-system-x86_64 --version | head -n 1 | cut -d '(' -f 1 | awk '{ print $NF }')
 CPU=$(lscpu | grep 'Model name' | cut -f 2 -d ":" | awk '{$1=$1}1' | sed 's# @.*##g' | sed s/"(R)"//g | sed 's/[^[:alnum:] ]\+/ /g' | sed 's/  */ /g')
+RAM="$(free -g | grep Mem: | awk '{print $2}')  ($(free -g | grep Mem: | awk '{print $4}')) GB"
 
 # Check system
 
@@ -59,6 +58,15 @@ fi
 if [ ! -d "$STORAGE" ]; then
   error "Storage folder ($STORAGE) not found!" && exit 13
 fi
+
+# Print system info
+SPACE=$(df --output=avail -B 1 "$STORAGE" | tail -n 1)
+SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
+DSK="$SPACE GB ($(stat -f -c %T "$STORAGE"))"
+
+echo "❯ CPU: ${CPU} / RAM: ${RAM} / DISK: ${DSK} / QEMU: ${VERS} / KERNEL: $(uname -r)..."
+echo "❯ For support visit $SUPPORT"
+echo
 
 # Helper functions
 
