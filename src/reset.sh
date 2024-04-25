@@ -65,7 +65,7 @@ FS="${FS/ext2\/ext3/ext4}";
 SPACE=$(df --output=avail -B 1 "$STORAGE" | tail -n 1)
 SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
 
-echo "❯ CPU: ${CPU} | RAM: ${RAM} | DISK: $SPACE_GB GB (${FS^^}) | HOST: $(uname -r)..."
+echo "❯ CPU: ${CPU} | RAM: ${RAM} | DISK: $SPACE_GB GB (${FS}) | HOST: $(uname -r)..."
 echo
 
 # Helper functions
