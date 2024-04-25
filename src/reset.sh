@@ -11,6 +11,7 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 [ "$(id -u)" -ne "0" ] && error "Script must be executed with root privileges." && exit 12
 
 echo "❯ Starting $APP for Docker v$(</run/version)..."
+echo "❯ For support visit $SUPPORT"
 
 # Docker environment variables
 
@@ -66,7 +67,6 @@ SPACE=$(df --output=avail -B 1 "$STORAGE" | tail -n 1)
 SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
 
 echo "❯ CPU: ${CPU}  RAM: ${RAM}  DISK: $SPACE_GB GB (${FS^^})  QEMU: ${VERS}  HOST: $(uname -r)..."
-echo "❯ For support visit $SUPPORT"
 echo
 
 # Helper functions
