@@ -60,11 +60,12 @@ if [ ! -d "$STORAGE" ]; then
 fi
 
 # Print system info
+FS=$(stat -f -c %T "$STORAGE")
+FS="${FS/ext2\/ext3/ext4}";
 SPACE=$(df --output=avail -B 1 "$STORAGE" | tail -n 1)
 SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
-DSK="$SPACE GB ($(stat -f -c %T "$STORAGE"))"
 
-echo "❯ CPU: ${CPU} / RAM: ${RAM} / DISK: ${DSK} / QEMU: ${VERS} / KERNEL: $(uname -r)..."
+echo "❯ CPU: ${CPU} - RAM: ${RAM} - DISK: $SPACE_GB GB (${FS^^}) - QEMU: ${VERS} - HOST: $(uname -r)..."
 echo "❯ For support visit $SUPPORT"
 echo
 
