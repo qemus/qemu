@@ -93,6 +93,16 @@ isCow() {
   return 1
 }
 
+supportsDirect() {
+  local FS=$1
+
+  if [[ "${FS,,}" == "ecryptfs" ]] || [[ "${FS,,}" == "tmpfs" ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
 createDisk() {
   local DISK_FILE=$1
   local DISK_SPACE=$2
@@ -335,6 +345,10 @@ checkFS () {
     info "Warning: the filesystem of $DIR is FUSE, this extra layer will negatively affect performance!"
   fi
 
+  if ! supportsDirect "$FS"; then
+    info "Warning: the filesystem of $DIR is $FS, which does not support O_DIRECT mode, adjusting settings..."
+  fi
+
   if isCow "$FS"; then
     if [ -f "$DISK_FILE" ]; then
       FA=$(lsattr "$DISK_FILE")
@@ -354,6 +368,8 @@ createDevice () {
   local DISK_INDEX=$3
   local DISK_ADDRESS=$4
   local DISK_FMT=$5
+  local DISK_IO=$6
+  local DISK_CACHE=$7
 
   local result="-drive file=$DISK_FILE,if=none,id=drive-$DISK_ID,format=$DISK_FMT,cache=$DISK_CACHE,aio=$DISK_IO,discard=$DISK_DISCARD,detect-zeroes=on"
 
@@ -374,14 +390,16 @@ createDevice () {
 }
 
 addDisk () {
-  local DISK_ID=$1
-  local DISK_BASE=$2
-  local DISK_EXT=$3
-  local DISK_DESC=$4
-  local DISK_SPACE=$5
-  local DISK_INDEX=$6
-  local DISK_ADDRESS=$7
-  local DISK_FMT=$8
+  local DISK_BASE=$1
+  local DISK_EXT=$2
+  local DISK_DESC=$3
+  local DISK_SPACE=$4
+  local DISK_INDEX=$5
+  local DISK_ADDRESS=$6
+  local DISK_FMT=$7
+  local DISK_IO=$8
+  local DISK_CACHE=$9
+  local DISK_ID="userdata$DISK_INDEX"
   local DISK_FILE="$DISK_BASE.$DISK_EXT"
   local DIR DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE OPTS
 
@@ -398,6 +416,11 @@ addDisk () {
 
   FS=$(stat -f -c %T "$DIR")
   checkFS "$FS" "$DISK_FILE" "$DISK_DESC" || exit $?
+
+  if ! supportsDirect "$FS"; then
+    DISK_IO="threads"
+    DISK_CACHE="writeback"
+  fi
 
   if ! [ -s "$DISK_FILE" ] ; then
 
@@ -427,7 +450,7 @@ addDisk () {
 
   fi
 
-  OPTS=$(createDevice "$DISK_ID" "$DISK_FILE" "$DISK_INDEX" "$DISK_ADDRESS" "$DISK_FMT")
+  OPTS=$(createDevice "$DISK_ID" "$DISK_FILE" "$DISK_INDEX" "$DISK_ADDRESS" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE")
   DISK_OPTS="$DISK_OPTS $OPTS"
 
   return 0
@@ -435,17 +458,17 @@ addDisk () {
 
 addDevice () {
 
-  local DISK_ID=$1
-  local DISK_DEV=$2
-  local DISK_DESC=$3
-  local DISK_INDEX=$4
-  local DISK_ADDRESS=$5
+  local DISK_DEV=$1
+  local DISK_DESC=$2
+  local DISK_INDEX=$3
+  local DISK_ADDRESS=$4
+  local DISK_ID="userdata$DISK_INDEX"
 
   [ -z "$DISK_DEV" ] && return 0
   [ ! -b "$DISK_DEV" ] && error "Device $DISK_DEV cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
 
   local OPTS
-  OPTS=$(createDevice "$DISK_ID" "$DISK_DEV" "$DISK_INDEX" "$DISK_ADDRESS" "raw")
+  OPTS=$(createDevice "$DISK_ID" "$DISK_DEV" "$DISK_INDEX" "$DISK_ADDRESS" "raw" "$DISK_IO" "$DISK_CACHE")
   DISK_OPTS="$DISK_OPTS $OPTS"
 
   return 0
@@ -490,27 +513,27 @@ fi
 : "${DEVICE4:=""}"
 
 if [ -n "$DEVICE" ]; then
-  addDevice "userdata" "$DEVICE" "device" "3" "0xa" || exit $?
+  addDevice "$DEVICE" "device" "3" "0xa" || exit $?
 else
-  addDisk "userdata" "$DISK1_FILE" "$DISK_EXT" "disk" "$DISK_SIZE" "3" "0xa" "$DISK_FMT" || exit $?
+  addDisk "$DISK1_FILE" "$DISK_EXT" "disk" "$DISK_SIZE" "3" "0xa" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 if [ -n "$DEVICE2" ]; then
-  addDevice "userdata2" "$DEVICE2" "device2" "4" "0xb" || exit $?
+  addDevice "$DEVICE2" "device2" "4" "0xb" || exit $?
 else
-  addDisk "userdata2" "$DISK2_FILE" "$DISK_EXT" "disk2" "$DISK2_SIZE" "4" "0xb" "$DISK_FMT" || exit $?
+  addDisk "$DISK2_FILE" "$DISK_EXT" "disk2" "$DISK2_SIZE" "4" "0xb" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 if [ -n "$DEVICE3" ]; then
-  addDevice "userdata3" "$DEVICE3" "device3" "5" "0xc" || exit $?
+  addDevice "$DEVICE3" "device3" "5" "0xc" || exit $?
 else
-  addDisk "userdata3" "$DISK3_FILE" "$DISK_EXT" "disk3" "$DISK3_SIZE" "5" "0xc" "$DISK_FMT" || exit $?
+  addDisk "$DISK3_FILE" "$DISK_EXT" "disk3" "$DISK3_SIZE" "5" "0xc" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 if [ -n "$DEVICE4" ]; then
-  addDevice "userdata4" "$DEVICE4" "device4" "6" "0xd" || exit $?
+  addDevice "$DEVICE4" "device4" "6" "0xd" || exit $?
 else
-  addDisk "userdata4" "$DISK4_FILE" "$DISK_EXT" "disk4" "$DISK4_SIZE" "6" "0xd" "$DISK_FMT" || exit $?
+  addDisk "$DISK4_FILE" "$DISK_EXT" "disk4" "$DISK4_SIZE" "6" "0xd" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 html "Initialized disks successfully..."
