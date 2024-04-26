@@ -42,7 +42,7 @@ HOST=$(hostname -s)
 KERNEL=$(uname -r | cut -b 1)
 MINOR=$(uname -r | cut -d '.' -f2)
 ARCH=$(dpkg --print-architecture)
-RAM="$(free -g | grep Mem: | awk '{print $4}')/$(free -g | grep Mem: | awk '{print $2}') GB"
+RAM="$(free -g | grep Mem: | awk '{print $7}')/$(free -g | grep Mem: | awk '{print $2}') GB"
 CPU=$(lscpu | grep 'Model name' | cut -f 2 -d ":" | awk '{$1=$1}1' | sed 's# @.*##g' | sed s/"(R)"//g | sed 's/[^[:alnum:] ]\+/ /g' | sed 's/  */ /g')
 
 # Check system
