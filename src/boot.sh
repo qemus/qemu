@@ -11,7 +11,7 @@ SECURE=",smm=off"
 
 case "${BOOT_MODE,,}" in
   uefi)
-    BOOT_DESC=" (UEFI)"
+    BOOT_DESC=" with UEFI"
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
@@ -24,6 +24,7 @@ case "${BOOT_MODE,,}" in
   windows | windows_plain)
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
+    BOOT_OPTS="-global ICH9-LPC.disable_s3=1 -global ICH9-LPC.disable_s4=1"
     ;;
   windows_secure)
     TPM="Y"
@@ -31,10 +32,12 @@ case "${BOOT_MODE,,}" in
     BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
+    BOOT_OPTS="-global ICH9-LPC.disable_s3=1 -global ICH9-LPC.disable_s4=1"
     ;;
   windows_legacy)
     BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
+    BOOT_OPTS="-global ICH9-LPC.disable_s3=1 -global ICH9-LPC.disable_s4=1"
     ;;
   legacy)
     BOOT_OPTS=""
@@ -62,7 +65,6 @@ if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy"
 
   if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
     BOOT_OPTS="$BOOT_OPTS -global driver=cfi.pflash01,property=secure,value=on"
-    [[ "${BOOT_MODE,,}" == "windows_secure" ]] && BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
   fi
 
   BOOT_OPTS="$BOOT_OPTS -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
@@ -86,7 +88,7 @@ if [[ "$TPM" == [Yy1]* ]]; then
     [ -S "/run/swtpm-sock" ] && break
 
     if (( i % 10 == 0 )); then
-      echo "Waiting for TPM socket to become available..."
+      echo "Waiting for TPM emulator to become available..."
     fi
 
     sleep 0.1
@@ -94,7 +96,7 @@ if [[ "$TPM" == [Yy1]* ]]; then
   done
 
   if [ ! -S "/run/swtpm-sock" ]; then
-    error "TPM socket not found? Disabling TPM support..."
+    error "TPM socket not found? Disabling TPM module..."
   else
     BOOT_OPTS="$BOOT_OPTS -chardev socket,id=chrtpm,path=/run/swtpm-sock"
     BOOT_OPTS="$BOOT_OPTS -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
