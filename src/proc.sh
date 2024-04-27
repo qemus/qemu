@@ -63,6 +63,8 @@ if [[ "$KVM" != [Nn]* ]]; then
         HV_FEATURES="$HV_FEATURES,-hv-avic"
       fi
 
+      HV_FEATURES="$HV_FEATURES,-hv-evmcs"
+
     else
 
       # Intel processor
