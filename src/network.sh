@@ -116,7 +116,7 @@ getPorts() {
     [ -z "$list" ] && list="$vnc" || list="$list,$vnc"
   fi
 
-  [ -z "$list" ] && return 0
+  [ -z "$list" ] && echo "" && return 0
 
   if [[ "$list" != *","* ]]; then
     echo " ! --dport $list"
