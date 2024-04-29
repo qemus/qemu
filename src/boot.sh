@@ -108,10 +108,10 @@ if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
   if [ -e /sys/module/kvm/parameters/ignore_msrs ]; then
     ignore_msrs=$(cat /sys/module/kvm/parameters/ignore_msrs)
     if [ "${ignore_msrs}" == "N" ]; then
-      error "ignore_msrs=${ignore_msrs}"
-      echo 1 | sudo tee /sys/module/kvm/parameters/ignore_msrs
-      ignore_msrs=$(cat /sys/module/kvm/parameters/ignore_msrs)
-      error "ignore_msrs=${ignore_msrs}"
+      if echo 1 | tee /sys/module/kvm/parameters/ignore_msrs > /dev/null 2>&1; then
+        ignore_msrs=$(cat /sys/module/kvm/parameters/ignore_msrs)
+        error "ignore_msrs=${ignore_msrs}"
+      fi
     fi
   fi
 fi
