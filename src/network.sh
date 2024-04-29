@@ -37,7 +37,7 @@ configureDHCP() {
 
   if (( rc != 0 )); then
     error "Cannot create macvtap interface. Please make sure the network type is 'macvlan' and not 'ipvlan',"
-    error "that your kernel is recent (>5), and that the NET_ADMIN capability has been added to the container." && exit 16
+    error "that your kernel is recent (>4), and that the NET_ADMIN capability has been added to the container." && exit 16
   fi
 
   while ! ip link set "$VM_NET_TAP" up; do
