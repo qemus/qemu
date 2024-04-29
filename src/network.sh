@@ -176,8 +176,6 @@ configureNAT() {
 
   ip link set dev "$VM_NET_TAP" master dockerbridge
 
-  modprobe ip_tables iptable_nat || true
-
   # Add internet connection to the VM
   update-alternatives --set iptables /usr/sbin/iptables-legacy > /dev/null
   update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy > /dev/null
