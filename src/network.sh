@@ -36,8 +36,8 @@ configureDHCP() {
   { ip link add link "$VM_NET_DEV" name "$VM_NET_TAP" address "$VM_NET_MAC" type macvtap mode bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
-    error "Cannot create macvtap interface. Please make sure the network type is 'macvlan' and not 'ipvlan',"
-    error "that your kernel is recent (>4), and that the NET_ADMIN capability has been added to the container." && exit 16
+    error "Cannot create macvtap interface. Please make sure that the network type is 'macvlan' and not 'ipvlan',"
+    error "that your kernel is recent (>4) and supports it, and that the container has the NET_ADMIN capability set." && exit 16
   fi
 
   while ! ip link set "$VM_NET_TAP" up; do
