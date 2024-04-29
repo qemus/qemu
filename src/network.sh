@@ -149,8 +149,8 @@ configureNAT() {
     fi
   fi
 
-  local tun="The 'tun' kernel module is not loaded. Try this command: sudo modprobe tun"
   local tables="The 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
+  local tuntap="The 'tun' kernel module is not available. Try this command: 'sudo modprobe tun' or run the container with 'privileged: true'."
 
   # Create a bridge with a static IP for the VM guest
 
@@ -171,7 +171,7 @@ configureNAT() {
 
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
-    error "$tun" && exit 31
+    error "$tuntap" && exit 31
   fi
 
   while ! ip link set "$VM_NET_TAP" up promisc on; do
