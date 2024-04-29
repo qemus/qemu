@@ -157,9 +157,9 @@ configureNAT() {
 
   local tun="The 'tun' kernel module is not loaded. Try this command: sudo modprobe tun"
   local nat="The 'iptable_nat' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
-  local tables="The 'iptables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
+  local tables="The 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
-  ! grep -wq "iptables" /proc/modules && error "$tables" && exit 30
+  ! grep -wq "ip_tables" /proc/modules && error "$tables" && exit 30
   ! grep -wq "iptable_nat" /proc/modules && error "$nat" && exit 34
 
   # Create a bridge with a static IP for the VM guest
