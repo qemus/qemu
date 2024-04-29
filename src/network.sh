@@ -150,11 +150,7 @@ configureNAT() {
   fi
 
   local tun="The 'tun' kernel module is not loaded. Try this command: sudo modprobe tun"
-  local nat="The 'iptable_nat' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
   local tables="The 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
-
-  ! grep -wq "ip_tables" /proc/modules && error "$tables" && exit 30
-  ! grep -wq "iptable_nat" /proc/modules && error "$nat" && exit 34
 
   # Create a bridge with a static IP for the VM guest
 
@@ -310,7 +306,7 @@ fi
 if [[ "$DHCP" == [Yy1]* ]]; then
 
   if [[ "$GATEWAY" == "172."* ]]; then
-    warn "your gateway IP starts with 172.* which could be a sign that you are not on a macvlan network!"
+    warn "your gateway IP starts with 172.* which could be a sign that you are not on a macvlan network (required for DHCP)!"
   fi
 
   # Configuration for DHCP IP
