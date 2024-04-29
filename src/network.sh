@@ -32,18 +32,12 @@ configureDHCP() {
     fi
   fi
 
-  local vtap="The 'macvtap' kernel module is not loaded. Try this command: sudo modprobe macvtap"
-  local vhost="The 'vhost_net' kernel module is not loaded. Try this command: sudo modprobe vhost_net"
-
-  ! grep -wq "macvtap" /proc/modules && error "$vtap" && exit 32
-  ! grep -wq "vhost_net" /proc/modules && error "$vhost" && exit 33
-
   # Create a macvtap network for the VM guest
   { ip link add link "$VM_NET_DEV" name "$VM_NET_TAP" address "$VM_NET_MAC" type macvtap mode bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
     error "Cannot create macvtap interface. Please make sure the network type is 'macvlan' and not 'ipvlan',"
-    error "and that the NET_ADMIN capability has been added to the container: --cap-add NET_ADMIN" && exit 16
+    error "that your kernel is recent (>5), and that the NET_ADMIN capability has been added to the container." && exit 16
   fi
 
   while ! ip link set "$VM_NET_TAP" up; do
@@ -315,8 +309,8 @@ fi
 
 if [[ "$DHCP" == [Yy1]* ]]; then
 
-  if [[ "$GATEWAY" == "172."* ]] && [[ "$DEBUG" != [Yy1]* ]]; then
-    error "You can only enable DHCP while the container is on a macvlan network!" && exit 26
+  if [[ "$GATEWAY" == "172."* ]]; then
+    warn "Your gateway IP starts with 172.* which could be a sign that you are not on a macvlan network!"
   fi
 
   # Configuration for DHCP IP
