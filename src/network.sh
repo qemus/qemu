@@ -32,6 +32,12 @@ configureDHCP() {
     fi
   fi
 
+  local vtap="The 'macvtap' kernel module is not loaded. Try this command: sudo modprobe macvtap"
+  local vhost="The 'vhost_net' kernel module is not loaded. Try this command: sudo modprobe vhost_net"
+
+  ! grep -wq "macvtap" /proc/modules && error "$vtap" && exit 32
+  ! grep -wq "vhost_net" /proc/modules && error "$vhost" && exit 33
+
   # Create a macvtap network for the VM guest
   { ip link add link "$VM_NET_DEV" name "$VM_NET_TAP" address "$VM_NET_MAC" type macvtap mode bridge ; rc=$?; } || :
 
@@ -149,6 +155,12 @@ configureNAT() {
     fi
   fi
 
+  local tun="The 'tun' kernel module is not loaded. Try this command: sudo modprobe tun"
+  local tables="The 'iptables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
+
+  ! grep -wq "iptables" /proc/modules && error "$tables" && exit 30
+  ! grep -wq "iptable_nat" /proc/modules && error "$tables" && exit 30
+
   # Create a bridge with a static IP for the VM guest
 
   VM_NET_IP='20.20.20.21'
@@ -167,7 +179,9 @@ configureNAT() {
   done
 
   # QEMU Works with taps, set tap to the bridge created
-  ip tuntap add dev "$VM_NET_TAP" mode tap
+  if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
+    error "$tun" && exit 31
+  fi
 
   while ! ip link set "$VM_NET_TAP" up promisc on; do
     info "Waiting for TAP to become available..."
@@ -183,7 +197,7 @@ configureNAT() {
   exclude=$(getPorts "$HOST_PORTS")
 
   if ! iptables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
-    error "The 'iptables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat" && exit 30
+    error "$tables" && exit 30
   fi
 
   # shellcheck disable=SC2086
@@ -192,7 +206,7 @@ configureNAT() {
 
   if (( KERNEL > 4 )); then
     # Hack for guest VMs complaining about "bad udp checksums in 5 packets"
-    iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill || true
+    iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
   fi
 
   NET_OPTS="-netdev tap,ifname=$VM_NET_TAP,script=no,downscript=no,id=hostnet0"
