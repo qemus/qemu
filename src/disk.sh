@@ -512,6 +512,11 @@ fi
 : "${DEVICE3:=""}"
 : "${DEVICE4:=""}"
 
+[ -z "$DEVICE" ] && [ -b "/dev/disk1" ] && DEVICE="/dev/disk1"
+[ -z "$DEVICE2" ] && [ -b "/dev/disk2" ] && DEVICE2="/dev/disk2"
+[ -z "$DEVICE3" ] && [ -b "/dev/disk3" ] && DEVICE3="/dev/disk3"
+[ -z "$DEVICE4" ] && [ -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
+
 if [ -n "$DEVICE" ]; then
   addDevice "$DEVICE" "device" "3" "0xa" || exit $?
 else
