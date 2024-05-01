@@ -200,15 +200,12 @@ docker run -it --rm --name qemu -e "BOOT=http://example.com/image.iso" -p 8006:8
   It is possible to pass-through disk devices directly by adding them to your compose file in this way:
 
   ```yaml
-  environment:
-    DEVICE: "/dev/sda"
-    DEVICE2: "/dev/sdb"
   devices:
-    - /dev/sda
-    - /dev/sdb
+    - /dev/sdb:/dev/disk1
+    - /dev/sdc:/dev/disk2
   ```
 
-  Use `DEVICE` if you want it to become your main drive, and use `DEVICE2` and higher to add them as secondary drives.
+  Use `/dev/disk1` if you want it to become your main drive, and use `/dev/disk2` and higher to add them as secondary drives.
 
 * ### How do I pass-through a USB device?
 
