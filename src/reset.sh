@@ -81,12 +81,12 @@ echo
 # Check memory
 
 if (( RAM_WANTED > RAM_AVAIL )); then
-  error "You configured RAM_SIZE to $WANTED_GB GB, but your system has only $AVAIL_GB GB available right now."
+  error "You configured RAM_SIZE to $WANTED_GB GB, but your system has only $AVAIL_GB GB of memory available right now."
   exit 15
 fi
 
 if (( (RAM_WANTED + 1950000000) > RAM_AVAIL )); then
-  warn "you configured RAM_SIZE to $WANTED_GB GB, but that is much too close to the $AVAIL_GB GB you have available."
+  warn "you configured RAM_SIZE to $WANTED_GB GB, but that is much too close to the $AVAIL_GB GB of memory you have available."
 fi
 
 # Helper functions
