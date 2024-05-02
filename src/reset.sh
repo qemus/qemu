@@ -60,13 +60,13 @@ if [ ! -d "$STORAGE" ]; then
 fi
 
 # Read memory
-RAM_AVAIL=$(free | grep -m 1 Mem: | awk '{print $7}')
-RAM_TOTAL=$(free | grep -m 1 Mem: | awk '{print $2}')
+RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
+RAM_TOTAL=$(free -b | grep -m 1 Mem: | awk '{print $2}')
 RAM_SIZE=$(echo "${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 RAM_WANTED=$(numfmt --from=iec "$RAM_SIZE")
 AVAIL_GB=$(( (RAM_AVAIL + 1073741823)/1073741824 ))
 TOTAL_GB=$(( (RAM_TOTAL + 1073741823)/1073741824 ))
-WANTED_GB=$(( (RAM_TOTAL + 1073741823)/1073741824 ))
+WANTED_GB=$(( (RAM_WANTED + 1073741823)/1073741824 ))
 
 # Print system info
 SYS="${SYS/-generic/}"
