@@ -32,4 +32,19 @@ else
   fi
 fi
 
+# Check memory
+RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
+RAM_TOTAL=$(free -b | grep -m 1 Mem: | awk '{print $2}')
+AVAIL_GB=$(( (RAM_AVAIL + 1073741823)/1073741824 ))
+TOTAL_GB=$(( (RAM_TOTAL + 1073741823)/1073741824 ))
+
+if (( RAM_WANTED > RAM_AVAIL )); then
+  error "Your configured RAM_SIZE of $WANTED_GB GB is higher than the $AVAIL_GB GB of memory available."
+  exit 15
+fi
+
+if (( (RAM_WANTED + 1950000000) > RAM_AVAIL )); then
+  warn "your configured RAM_SIZE of $WANTED_GB GB is much too close to the $AVAIL_GB GB of memory available."
+fi
+
 return 0
