@@ -32,7 +32,7 @@ MSG="Downloading $BASE..."
 info "$MSG" && html "$MSG"
 
 /run/progress.sh "$TMP" "" "Downloading $BASE ([P])..." &
-{ wget "$BOOT" -O "$TMP" -q --no-check-certificate --show-progress "$PROGRESS"; rc=$?; } || :
+{ wget "$BOOT" -O "$TMP" -q --timeout=10 --show-progress "$PROGRESS"; rc=$?; } || :
 
 fKill "progress.sh"
 
