@@ -90,7 +90,7 @@ docker run -it --rm --name qemu -e "BOOT=http://example.com/image.iso" -p 8006:8
   
   ```yaml
   volumes:
-    - /home/user/example.iso:/storage/boot.iso
+    - /home/user/example.iso:/boot.iso
   ```
 
   Replace the example path `/home/user/example.iso` with the filename of the desired ISO file.
