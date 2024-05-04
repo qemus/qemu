@@ -201,11 +201,11 @@ docker run -it --rm --name qemu -e "BOOT=http://example.com/image.iso" -p 8006:8
 
   ```yaml
   devices:
-    - /dev/sdb:/dev/disk1
-    - /dev/sdc:/dev/disk2
+    - /dev/sdb:/disk1
+    - /dev/sdc:/disk2
   ```
 
-  Use `/dev/disk1` if you want it to become your main drive, and use `/dev/disk2` and higher to add them as secondary drives.
+  Use `/disk1` if you want it to become your main drive, and use `/disk2` and higher to add them as secondary drives.
 
 * ### How do I pass-through a USB device?
 
