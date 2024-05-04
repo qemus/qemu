@@ -10,7 +10,7 @@ set -Eeuo pipefail
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
 : "${DISK_ROTATION:="1"}"         # Rotation rate, set to 1 for SSD storage and increase for HDD
 
-[ ! -f "$BOOT" ] && BOOT="/dev/null"
+[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
 
 DISK_OPTS="-object iothread,id=io2"
 DISK_OPTS="$DISK_OPTS -drive id=cdrom0,media=cdrom,if=none,format=raw,readonly=on,file=$BOOT"
@@ -23,7 +23,7 @@ else
 fi
 
 DRIVERS="$STORAGE/drivers.iso"
-[ ! -f "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
+[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [[ "${MACHINE,,}" != "pc-q35-2"* ]]; then
   DISK_OPTS="$DISK_OPTS -drive id=cdrom1,media=cdrom,if=none,format=raw,readonly=on,file=$DRIVERS"
