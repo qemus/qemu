@@ -8,13 +8,13 @@ else
   progress="--progress=dot:giga"
 fi
 
-file="/boot.iso" && [ -f "$file" && -s "$file" ] && BOOT="$file" && return 0
-file="/boot.img" && [ -f "$file" && -s "$file" ] && BOOT="$file" && return 0
+file="/boot.iso" && [ -f "$file" ] && [ -s "$file" ] && BOOT="$file" && return 0
+file="/boot.img" && [ -f "$file" ] && [ -s "$file" ] && BOOT="$file" && return 0
 
 file=$(find "$STORAGE" -maxdepth 1 -type f -iname boot.iso -printf "%f\n" | head -n 1)
 [ -z "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname boot.img -printf "%f\n" | head -n 1)
 [ -n "$file" ] && file="$STORAGE/$file" 
-[ -f "$file" && -s "$file" ] && BOOT="$file" && return 0
+[ -f "$file" ] && [ -s "$file" ] && BOOT="$file" && return 0
 
 if [ -z "$BOOT" ]; then
   error "No boot disk specified, set BOOT= to the URL of an ISO file." && exit 64
@@ -22,13 +22,13 @@ fi
 
 base=$(basename "$BOOT")
 [ -n "$base" ] && file="$STORAGE/$base" 
-[ -f "$file" && -s "$file" ] && BOOT="$file" && return 0
+[ -f "$file" ] && [ -s "$file" ] && BOOT="$file" && return 0
 
 base=$(basename "${BOOT%%\?*}")
 : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
 base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
 [ -n "$base" ] && file="$STORAGE/$base" 
-[ -f "$file" && -s "$file" ] && BOOT="$file" && return 0
+[ -f "$file" ] && [ -s "$file" ] && BOOT="$file" && return 0
 
 TMP="$STORAGE/${base%.*}.tmp"
 rm -f "$TMP"
