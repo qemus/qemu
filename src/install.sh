@@ -31,7 +31,7 @@ rm -f "$TMP"
 MSG="Downloading $BASE..."
 info "$MSG" && html "$MSG"
 
-/run/progress.sh "$TMP" "Downloading $BASE ([P])..." &
+/run/progress.sh "$TMP" "" "Downloading $BASE ([P])..." &
 { wget "$BOOT" -O "$TMP" -q --no-check-certificate --show-progress "$PROGRESS"; rc=$?; } || :
 
 fKill "progress.sh"
