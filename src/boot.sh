@@ -9,6 +9,20 @@ BOOT_DESC=""
 BOOT_OPTS=""
 SECURE=",smm=off"
 
+if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+
+  BOOT_OPTS="-rtc base=localtime"
+  BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
+  BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s4=1"
+
+  if [ -e /sys/module/kvm/parameters/ignore_msrs ]; then
+    if [ "$(cat /sys/module/kvm/parameters/ignore_msrs)" == "N" ]; then
+      echo 1 | tee /sys/module/kvm/parameters/ignore_msrs > /dev/null 2>&1 || true
+    fi
+  fi
+
+fi
+
 case "${BOOT_MODE,,}" in
   uefi)
     BOOT_DESC=" with UEFI"
@@ -24,7 +38,6 @@ case "${BOOT_MODE,,}" in
   windows | windows_plain)
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
-    BOOT_OPTS="-global ICH9-LPC.disable_s3=1 -global ICH9-LPC.disable_s4=1"
     ;;
   windows_secure)
     TPM="Y"
@@ -32,12 +45,10 @@ case "${BOOT_MODE,,}" in
     BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
-    BOOT_OPTS="-global ICH9-LPC.disable_s3=1 -global ICH9-LPC.disable_s4=1"
     ;;
   windows_legacy)
     BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
-    BOOT_OPTS="-global ICH9-LPC.disable_s3=1 -global ICH9-LPC.disable_s4=1"
     ;;
   legacy)
     BOOT_OPTS=""
@@ -102,14 +113,6 @@ if [[ "$TPM" == [Yy1]* ]]; then
     BOOT_OPTS="$BOOT_OPTS -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
   fi
 
-fi
-
-if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-  if [ -e /sys/module/kvm/parameters/ignore_msrs ]; then
-    if [ "$(cat /sys/module/kvm/parameters/ignore_msrs)" == "N" ]; then
-      echo 1 | tee /sys/module/kvm/parameters/ignore_msrs > /dev/null 2>&1 || true
-    fi
-  fi
 fi
 
 return 0
