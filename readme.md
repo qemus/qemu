@@ -195,6 +195,19 @@ docker run -it --rm --name qemu -e "BOOT=http://example.com/image.iso" -p 8006:8
 
   Please note that in this mode, the container and the VM will each have their own separate IPs. The container will keep the macvlan IP, and the VM will use the DHCP IP.
 
+* ### How do I add multiple disks?
+
+  To create additional disks, modify your compose file like this:
+  
+  ```yaml
+  environment:
+    DISK2_SIZE: "32G"
+    DISK3_SIZE: "64G"
+  volumes:
+    - /home/example:/storage2
+    - /mnt/data/example:/storage3
+  ```
+
 * ### How do I pass-through a disk?
 
   It is possible to pass-through disk devices directly by adding them to your compose file in this way:
