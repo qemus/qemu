@@ -244,6 +244,23 @@ closeNetwork() {
   return 0
 }
 
+checkOS() {
+
+  local name
+  local os=""
+  name=$(uname -a)
+
+  [[ "${name,,}" == *"darwin"* ]] && os="MacOS"
+  [[ "${name,,}" == *"microsoft"* ]] && os="Windows"
+
+  if [ -n "$os" ]; then
+    error "You are using Docker Desktop for $os which does not support macvlan, please revert to bridge networking!"
+    return 1
+  fi
+
+  return 0
+}
+
 getInfo() {
 
   if [ -z "$VM_NET_DEV" ]; then
@@ -305,6 +322,8 @@ fi
 
 if [[ "$DHCP" == [Yy1]* ]]; then
 
+  ! checkOS && exit 19
+
   if [[ "$GATEWAY" == "172."* ]]; then
     warn "your gateway IP starts with 172.* which is often a sign that you are not on a macvlan network (required for DHCP)!"
   fi
@@ -313,6 +332,10 @@ if [[ "$DHCP" == [Yy1]* ]]; then
   configureDHCP
 
 else
+
+  if [[ "$GATEWAY" != "172."* ]]; then
+    ! checkOS && exit 19
+  fi
 
   # Configuration for static IP
   configureNAT
