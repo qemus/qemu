@@ -34,7 +34,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     if [[ "$OSTYPE" =~ ^darwin ]]; then
       warn "you are using MacOS which has no KVM support, this will cause a major loss of performance."
     else
-      if [[ $(grep -i Microsoft /proc/version) ]]; then
+      if grep -qi Microsoft /proc/version; then
         warn "you are using Windows 10 which has no KVM support, this will cause a major loss of performance."
       else
         error "KVM acceleration not available $KVM_ERR, this will cause a major loss of performance."
