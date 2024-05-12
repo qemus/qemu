@@ -1,10 +1,12 @@
 FROM debian:trixie-slim
 
+ARG VERSION_ARG "0.0"
 ARG DEBCONF_NOWARNINGS "yes"
 ARG DEBIAN_FRONTEND "noninteractive"
 ARG DEBCONF_NONINTERACTIVE_SEEN "true"
 
-RUN apt-get update && \
+RUN echo "$VERSION_ARG" > /run/version && \
+    apt-get update && \
     apt-get --no-install-recommends -y install \
         tini \
         wget \
@@ -32,11 +34,9 @@ RUN apt-get update && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-COPY ./src /run/
-COPY ./web /var/www/
-
-RUN chmod +x /run/*.sh
-RUN mv /var/www/nginx.conf /etc/nginx/sites-enabled/web.conf
+COPY --chmod=755 ./src /run/
+COPY --chmod=644 ./web /var/www/
+COPY --chmod=744 ./web/nginx.conf /etc/nginx/sites-enabled/web.conf
 
 VOLUME /storage
 EXPOSE 22 5900 8006
@@ -45,8 +45,5 @@ ENV CPU_CORES "1"
 ENV RAM_SIZE "1G"
 ENV DISK_SIZE "16G"
 ENV BOOT "http://example.com/image.iso"
-
-ARG VERSION_ARG "0.0"
-RUN echo "$VERSION_ARG" > /run/version
 
 ENTRYPOINT ["/usr/bin/tini", "-s", "/run/entry.sh"]
