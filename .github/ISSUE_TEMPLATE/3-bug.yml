@@ -5,8 +5,8 @@ labels: ["bug"]
 body:
   - type: checkboxes
     attributes:
-      label: Is there an existing bug report for this?
-      description: Please search to see if a report already exists for the bug you encountered.
+      label: Is there no existing bug report for this?
+      description: Please search to see if the bug was not already reported before.
       options:
       - label: I have searched the existing bug reports
         required: true
