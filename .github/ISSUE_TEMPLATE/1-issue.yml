@@ -3,8 +3,8 @@ description: When you're experiencing problems using the container
 body:
   - type: checkboxes
     attributes:
-      label: Is there an existing issue for this?
-      description: Please search to see if a solution already exists for your issue.
+      label: Is there no existing issue for this?
+      description: Please search to see if no solution was already provided before.
       options:
       - label: I have searched the existing issues
         required: true
