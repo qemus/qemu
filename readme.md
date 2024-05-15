@@ -25,7 +25,6 @@ It uses high-performance QEMU options (like KVM acceleration, kernel-mode networ
 Via Docker Compose:
 
 ```yaml
-version: "3"
 services:
   qemu:
     container_name: qemu
