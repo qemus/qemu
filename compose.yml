@@ -1,4 +1,3 @@
-version: "3"
 services:
   qemu:
     container_name: qemu
