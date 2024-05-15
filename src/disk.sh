@@ -22,7 +22,8 @@ else
   DISK_OPTS="$DISK_OPTS -device ide-cd,drive=cdrom0,bootindex=$BOOT_INDEX"
 fi
 
-DRIVERS="$STORAGE/drivers.iso"
+DRIVERS="/drivers.iso"
+[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [[ "${MACHINE,,}" != "pc-q35-2"* ]]; then
@@ -511,6 +512,7 @@ fi
 : "${DEVICE3:=""}"
 : "${DEVICE4:=""}"
 
+[ -z "$DEVICE" ] && [ -b "/disk" ] && DEVICE="/disk"
 [ -z "$DEVICE" ] && [ -b "/disk1" ] && DEVICE="/disk1"
 [ -z "$DEVICE2" ] && [ -b "/disk2" ] && DEVICE2="/disk2"
 [ -z "$DEVICE3" ] && [ -b "/disk3" ] && DEVICE3="/disk3"
