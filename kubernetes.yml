@@ -1,0 +1,61 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: qemu-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 16Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: qemu
+  labels:
+    name: qemu
+spec:
+  terminationGracePeriodSeconds: 120 # the Kubernetes default is 30 seconds and it may be not enough
+  containers:
+    - name: windows
+      image: qemux/qemu-docker
+      ports:
+        - containerPort: 8006
+          protocol: TCP
+      resources:
+        limits:
+          devices.kubevirt.io/kvm: 1
+      securityContext:
+        privileged: true
+      env:
+        - name: BOOT
+          value: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
+        - name: RAM_SIZE
+          value: 1G
+        - name: CPU_CORES
+          value: "1"
+        - name: DISK_SIZE
+          value: "16G"
+      volumeMounts:
+        - mountPath: /storage
+          name: storage
+  volumes:
+    - name: storage
+      persistentVolumeClaim:
+        claimName: qemu-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: qemu
+spec:
+  type: NodePort
+  selector:
+    name: qemu
+  ports:
+    - name: tcp-8006
+      protocol: TCP
+      port: 8006
+      targetPort: 8006
+      nodePort: 48006
