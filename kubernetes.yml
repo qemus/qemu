@@ -18,7 +18,7 @@ metadata:
 spec:
   terminationGracePeriodSeconds: 120 # the Kubernetes default is 30 seconds and it may be not enough
   containers:
-    - name: windows
+    - name: qemu
       image: qemux/qemu-docker
       ports:
         - containerPort: 8006
