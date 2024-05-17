@@ -41,6 +41,7 @@ info "$msg" && html "$msg"
 
 fKill "progress.sh"
 
+(( rc == 4 )) && error "Failed to download $BOOT , network failure!" && exit 60
 (( rc != 0 )) && error "Failed to download $BOOT , reason: $rc" && exit 60
 [ ! -s "$TMP" ] && error "Failed to download $BOOT" && exit 61
 
