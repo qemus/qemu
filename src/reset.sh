@@ -22,6 +22,7 @@ echo "❯ For support visit $SUPPORT"
 : "${ARGUMENTS:=""}"      # Extra QEMU parameters
 : "${CPU_CORES:="1"}"     # Amount of CPU cores
 : "${RAM_SIZE:="1G"}"     # Maximum RAM amount
+: "${RAM_CHECK:="Y"}"     # Check available RAM
 : "${DISK_SIZE:="16G"}"   # Initial data disk size
 : "${BOOT_INDEX:="10"}"   # Boot index of CD drive
 
@@ -59,11 +60,12 @@ if [ ! -d "$STORAGE" ]; then
 fi
 
 # Read memory
+RAM_SPARE=500000000
 RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
 RAM_TOTAL=$(free -b | grep -m 1 Mem: | awk '{print $2}')
 RAM_SIZE=$(echo "${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 RAM_WANTED=$(numfmt --from=iec "$RAM_SIZE")
-AVAIL_GB=$(( (RAM_AVAIL + 1073741823)/1073741824 ))
+AVAIL_GB=$(( RAM_AVAIL/1073741824 ))
 TOTAL_GB=$(( (RAM_TOTAL + 1073741823)/1073741824 ))
 WANTED_GB=$(( (RAM_WANTED + 1073741823)/1073741824 ))
 
@@ -79,9 +81,11 @@ echo
 
 # Check memory
 
-if (( (RAM_WANTED + 500000000) > RAM_AVAIL )); then
-  error "Your configured RAM_SIZE of $WANTED_GB GB is higher than the $AVAIL_GB GB of memory available, please set a lower value."
-  exit 17
+if [[ "$RAM_CHECK" != [Nn]* ]]; then
+  if (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); then
+    error "Your configured RAM_SIZE of $WANTED_GB GB is too high for the $AVAIL_GB GB of memory available, please set a lower value."
+    exit 17
+  fi
 fi
 
 # Helper functions
