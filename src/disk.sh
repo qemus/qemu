@@ -11,36 +11,6 @@ set -Eeuo pipefail
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
 : "${DISK_ROTATION:="1"}"         # Rotation rate, set to 1 for SSD storage and increase for HDD
 
-if [ -z "$DISK_TYPE" ]; then
-  DISK_TYPE="scsi"
-  [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="block"
-fi
-
-[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
-
-DISK_OPTS="-object iothread,id=io2"
-DISK_OPTS="$DISK_OPTS -drive id=cdrom0,media=cdrom,if=none,format=raw,readonly=on,file=$BOOT"
-
-if [[ "${MACHINE,,}" != "pc-q35-2"* ]]; then
-  DISK_OPTS="$DISK_OPTS -device virtio-scsi-pci,id=scsi0,iothread=io2,addr=0x5"
-  DISK_OPTS="$DISK_OPTS -device scsi-cd,bus=scsi0.0,drive=cdrom0,bootindex=$BOOT_INDEX"
-else
-  DISK_OPTS="$DISK_OPTS -device ide-cd,drive=cdrom0,bootindex=$BOOT_INDEX"
-fi
-
-DRIVERS="/drivers.iso"
-[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
-[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
-
-if [ -f "$DRIVERS" ]; then
-  DISK_OPTS="$DISK_OPTS -drive id=cdrom1,media=cdrom,if=none,format=raw,readonly=on,file=$DRIVERS"
-  if [[ "${MACHINE,,}" != "pc-q35-2"* ]]; then
-    DISK_OPTS="$DISK_OPTS -device ide-cd,drive=cdrom1"
-  else
-    DISK_OPTS="$DISK_OPTS -device ide-cd,bus=ide.1,drive=cdrom1"
-  fi
-fi
-
 fmt2ext() {
   local DISK_FMT=$1
 
@@ -382,23 +352,59 @@ createDevice () {
   local DISK_CACHE=$7
   local DISK_ID="data$DISK_INDEX"
 
-  local result="-drive file=$DISK_FILE,if=none,id=drive-$DISK_ID,format=$DISK_FMT,cache=$DISK_CACHE,aio=$DISK_IO,discard=$DISK_DISCARD,detect-zeroes=on"
+  local result="-drive file=$DISK_FILE,id=$DISK_ID,if=none,format=$DISK_FMT,cache=$DISK_CACHE,aio=$DISK_IO,discard=$DISK_DISCARD,detect-zeroes=on"
 
   case "${DISK_TYPE,,}" in
-    "block")
+    "ide" )
       result="$result \
-      -device virtio-blk-pci,scsi=off,bus=pcie.0,addr=$DISK_ADDRESS,drive=drive-$DISK_ID,id=$DISK_ID,iothread=io2,bootindex=$DISK_INDEX"
+      -device ide-hd,drive=$DISK_ID,bus=ide.2,addr=$DISK_ADDRESS,iothread=io2,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
+      echo "$result"
+      ;;
+    "blk" )
+      result="$result \
+      -device virtio-blk-pci,drive=$DISK_ID,scsi=off,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2,bootindex=$DISK_INDEX"
       echo "$result"
       ;;
     "scsi" )
       result="$result \
-      -device virtio-scsi-pci,id=hw-$DISK_ID,iothread=io2,bus=pcie.0,addr=$DISK_ADDRESS \
-      -device scsi-hd,bus=hw-$DISK_ID.0,channel=0,scsi-id=0,lun=0,drive=drive-$DISK_ID,id=$DISK_ID,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
+      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2 \
+      -device scsi-hd,drive=$DISK_ID,bus=${DISK_ID}b.0,channel=0,scsi-id=0,lun=0,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
       echo "$result"
       ;;
+  esac
+
+  return 0
+}
+
+addMedia () {
+
+  local DISK_FILE=$1
+  local DISK_TYPE=$2
+  local DISK_BUS=$3
+  local DISK_INDEX=$3
+  local DISK_ADDRESS=$4
+
+  local index=""
+  local DISK_ID="cdrom$DISK_BUS"
+  local result="-drive file=$DISK_FILE,id=$DISK_ID,if=none,format=raw,media=cdrom,readonly=on"
+
+  [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
+
+  case "${DISK_TYPE,,}" in
     "ide" )
       result="$result \
-      -device ide-hd,bus=ide.0,unit=$DISK_INDEX,addr=$DISK_ADDRESS,drive=drive-$DISK_ID,id=$DISK_ID,rotation_rate=$DISK_ROTATION,iothread=io2,bootindex=$DISK_INDEX"
+      -device ide-cd,drive=$DISK_ID,bus=ide.$DISK_BUS,addr=$DISK_ADDRESS,iothread=io2${index}"
+      echo "$result"
+      ;;
+    "blk" )
+      result="$result \
+      -device virtio-blk-pci,drive=$DISK_ID,scsi=off,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2${index}"
+      echo "$result"
+      ;;
+    "scsi" )
+      result="$result \
+      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2 \
+      -device scsi-cd,drive=$DISK_ID,bus=${DISK_ID}b.0${index}"
       echo "$result"
       ;;
   esac
@@ -493,6 +499,23 @@ addDevice () {
 
 html "Initializing disks..."
 
+if [ -z "$DISK_TYPE" ]; then
+  DISK_TYPE="scsi"
+  [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="blk"
+fi
+
+[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
+DISK_OPTS=$(addMedia "$BOOT" "$DISK_TYPE" "0" "$BOOT_INDEX" "0x5")
+
+DRIVERS="/drivers.iso"
+[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
+[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
+
+if [ -f "$DRIVERS" ]; then
+  DRIVER_OPTS=$(addMedia "$DRIVERS" "$DISK_TYPE" "1" "" "0x6")
+  DISK_OPTS="$DISK_OPTS $DRIVER_OPTS"
+fi
+
 DISK1_FILE="$STORAGE/data"
 DISK2_FILE="/storage2/data2"
 DISK3_FILE="/storage3/data3"
@@ -561,6 +584,8 @@ if [ -n "$DEVICE4" ]; then
 else
   addDisk "$DISK4_FILE" "$DISK_TYPE" "disk4" "$DISK4_SIZE" "6" "0xd" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
+
+DISK_OPTS="$DISK_OPTS -object iothread,id=io2"
 
 html "Initialized disks successfully..."
 return 0
