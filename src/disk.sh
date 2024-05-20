@@ -505,7 +505,15 @@ if [ -z "$DISK_TYPE" ]; then
   [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="blk"
 fi
 
-[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
+case "${DISK_TYPE,,}" in
+  "ide" | "blk" | "scsi" )
+    [ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
+    ;;
+  * )
+    error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80
+    ;;
+esac
+
 DISK_OPTS=$(addMedia "$BOOT" "$DISK_TYPE" "0" "$BOOT_INDEX" "0x5")
 
 DRIVERS="/drivers.iso"
