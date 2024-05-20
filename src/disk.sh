@@ -342,7 +342,6 @@ checkFS () {
 }
 
 createDevice () {
-
   local DISK_FILE=$1
   local DISK_TYPE=$2
   local DISK_INDEX=$3
@@ -357,7 +356,7 @@ createDevice () {
   case "${DISK_TYPE,,}" in
     "ide" )
       result="$result \
-      -device ide-hd,drive=$DISK_ID,bus=ide.2,addr=$DISK_ADDRESS,iothread=io2,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
+      -device ide-hd,drive=$DISK_ID,bus=ide.2,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
       echo "$result"
       ;;
     "blk" )
@@ -377,7 +376,6 @@ createDevice () {
 }
 
 addMedia () {
-
   local DISK_FILE=$1
   local DISK_TYPE=$2
   local DISK_BUS=$3
@@ -413,7 +411,6 @@ addMedia () {
 }
 
 addDisk () {
-
   local DISK_BASE=$1
   local DISK_TYPE=$2
   local DISK_DESC=$3
@@ -482,7 +479,6 @@ addDisk () {
 }
 
 addDevice () {
-
   local DISK_DEV=$1
   local DISK_TYPE=$2
   local DISK_INDEX=$3
