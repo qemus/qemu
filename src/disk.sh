@@ -393,7 +393,7 @@ addMedia () {
   case "${DISK_TYPE,,}" in
     "ide" )
       result="$result \
-      -device ide-cd,drive=$DISK_ID,bus=ide.$DISK_BUS,addr=$DISK_ADDRESS,iothread=io2${index}"
+      -device ide-cd,drive=$DISK_ID,bus=ide.$DISK_BUS,iothread=io2${index}"
       echo "$result"
       ;;
     "blk" )
