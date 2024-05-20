@@ -512,7 +512,7 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
 
 if [ -f "$DRIVERS" ]; then
-  DRIVER_OPTS=$(addMedia "$DRIVERS" "$DISK_TYPE" "1" "" "0x6")
+  DRIVER_OPTS=$(addMedia "$DRIVERS" "ide" "1" "" "0x6")
   DISK_OPTS="$DISK_OPTS $DRIVER_OPTS"
 fi
 
