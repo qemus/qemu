@@ -11,6 +11,11 @@ set -Eeuo pipefail
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
 : "${DISK_ROTATION:="1"}"         # Rotation rate, set to 1 for SSD storage and increase for HDD
 
+if [ -z "$DISK_TYPE" ]; then
+  DISK_TYPE="scsi"
+  [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="block"
+fi
+
 [ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
 
 DISK_OPTS="-object iothread,id=io2"
@@ -368,35 +373,42 @@ checkFS () {
 
 createDevice () {
 
-  local DISK_ID=$1
-  local DISK_FILE=$2
+  local DISK_FILE=$1
+  local DISK_TYPE=$2
   local DISK_INDEX=$3
   local DISK_ADDRESS=$4
   local DISK_FMT=$5
   local DISK_IO=$6
   local DISK_CACHE=$7
+  local DISK_ID="data$DISK_INDEX"
 
   local result="-drive file=$DISK_FILE,if=none,id=drive-$DISK_ID,format=$DISK_FMT,cache=$DISK_CACHE,aio=$DISK_IO,discard=$DISK_DISCARD,detect-zeroes=on"
 
-  if [[ "${MACHINE,,}" == "pc-q35-2"* ]]; then
-
-    result="$result -device virtio-blk-pci,scsi=off,bus=pcie.0,addr=$DISK_ADDRESS,drive=drive-$DISK_ID,id=$DISK_ID,iothread=io2,bootindex=$DISK_INDEX"
-
-  else
-
-    result="$result \
+  case "${DISK_TYPE,,}" in
+    "block")
+      result="$result \
+      -device virtio-blk-pci,scsi=off,bus=pcie.0,addr=$DISK_ADDRESS,drive=drive-$DISK_ID,id=$DISK_ID,iothread=io2,bootindex=$DISK_INDEX"
+      echo "$result"
+      ;;
+    "scsi" )
+      result="$result \
       -device virtio-scsi-pci,id=hw-$DISK_ID,iothread=io2,bus=pcie.0,addr=$DISK_ADDRESS \
       -device scsi-hd,bus=hw-$DISK_ID.0,channel=0,scsi-id=0,lun=0,drive=drive-$DISK_ID,id=$DISK_ID,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
+      echo "$result"
+      ;;
+    "ide" )
+      result="$result \
+      -device ide-hd,bus=ide.0,unit=$DISK_INDEX,addr=$DISK_ADDRESS,drive=drive-$DISK_ID,id=$DISK_ID,rotation_rate=$DISK_ROTATION,iothread=io2,bootindex=$DISK_INDEX"
+      echo "$result"
+      ;;
+  esac
 
-  fi
-
-  echo "$result"
   return 0
 }
 
 addDisk () {
   local DISK_BASE=$1
-  local DISK_EXT=$2
+  local DISK_TYPE=$2
   local DISK_DESC=$3
   local DISK_SPACE=$4
   local DISK_INDEX=$5
@@ -404,9 +416,10 @@ addDisk () {
   local DISK_FMT=$7
   local DISK_IO=$8
   local DISK_CACHE=$9
-  local DISK_ID="userdata$DISK_INDEX"
+  local DISK_EXT DIR DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE OPTS
+
+  DISK_EXT=$(fmt2ext "$DISK_FMT")
   local DISK_FILE="$DISK_BASE.$DISK_EXT"
-  local DIR DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE OPTS
 
   DIR=$(dirname "$DISK_FILE")
   [ ! -d "$DIR" ] && return 0
@@ -455,7 +468,7 @@ addDisk () {
 
   fi
 
-  OPTS=$(createDevice "$DISK_ID" "$DISK_FILE" "$DISK_INDEX" "$DISK_ADDRESS" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE")
+  OPTS=$(createDevice "$DISK_FILE" "$DISK_TYPE" "$DISK_INDEX" "$DISK_ADDRESS" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE")
   DISK_OPTS="$DISK_OPTS $OPTS"
 
   return 0
@@ -464,16 +477,15 @@ addDisk () {
 addDevice () {
 
   local DISK_DEV=$1
-  local DISK_DESC=$2
+  local DISK_TYPE=$2
   local DISK_INDEX=$3
   local DISK_ADDRESS=$4
-  local DISK_ID="userdata$DISK_INDEX"
 
   [ -z "$DISK_DEV" ] && return 0
   [ ! -b "$DISK_DEV" ] && error "Device $DISK_DEV cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
 
   local OPTS
-  OPTS=$(createDevice "$DISK_ID" "$DISK_DEV" "$DISK_INDEX" "$DISK_ADDRESS" "raw" "$DISK_IO" "$DISK_CACHE")
+  OPTS=$(createDevice "$DISK_DEV" "$DISK_TYPE" "$DISK_INDEX" "$DISK_ADDRESS" "raw" "$DISK_IO" "$DISK_CACHE")
   DISK_OPTS="$DISK_OPTS $OPTS"
 
   return 0
@@ -493,8 +505,6 @@ if [ -z "$DISK_FMT" ]; then
     DISK_FMT="raw"
   fi
 fi
-
-DISK_EXT=$(fmt2ext "$DISK_FMT")
 
 if [ -z "$ALLOCATE" ]; then
   ALLOCATE="N"
@@ -529,27 +539,27 @@ fi
 [ -z "$DEVICE4" ] && [ -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
 
 if [ -n "$DEVICE" ]; then
-  addDevice "$DEVICE" "device" "3" "0xa" || exit $?
+  addDevice "$DEVICE" "$DISK_TYPE" "3" "0xa" || exit $?
 else
-  addDisk "$DISK1_FILE" "$DISK_EXT" "disk" "$DISK_SIZE" "3" "0xa" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+  addDisk "$DISK1_FILE" "$DISK_TYPE" "disk" "$DISK_SIZE" "3" "0xa" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 if [ -n "$DEVICE2" ]; then
-  addDevice "$DEVICE2" "device2" "4" "0xb" || exit $?
+  addDevice "$DEVICE2" "$DISK_TYPE" "4" "0xb" || exit $?
 else
-  addDisk "$DISK2_FILE" "$DISK_EXT" "disk2" "$DISK2_SIZE" "4" "0xb" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+  addDisk "$DISK2_FILE" "$DISK_TYPE" "disk2" "$DISK2_SIZE" "4" "0xb" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 if [ -n "$DEVICE3" ]; then
-  addDevice "$DEVICE3" "device3" "5" "0xc" || exit $?
+  addDevice "$DEVICE3" "$DISK_TYPE" "5" "0xc" || exit $?
 else
-  addDisk "$DISK3_FILE" "$DISK_EXT" "disk3" "$DISK3_SIZE" "5" "0xc" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+  addDisk "$DISK3_FILE" "$DISK_TYPE" "disk3" "$DISK3_SIZE" "5" "0xc" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 if [ -n "$DEVICE4" ]; then
-  addDevice "$DEVICE4" "device4" "6" "0xd" || exit $?
+  addDevice "$DEVICE4" "$DISK_TYPE" "6" "0xd" || exit $?
 else
-  addDisk "$DISK4_FILE" "$DISK_EXT" "disk4" "$DISK4_SIZE" "6" "0xd" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+  addDisk "$DISK4_FILE" "$DISK_TYPE" "disk4" "$DISK4_SIZE" "6" "0xd" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 html "Initialized disks successfully..."
