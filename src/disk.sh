@@ -5,7 +5,7 @@ set -Eeuo pipefail
 
 : "${DISK_IO:="native"}"          # I/O Mode, can be set to 'native', 'threads' or 'io_turing'
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
-: "${DISK_TYPE:=""}"              # Device type to be used, can be set to "scsi", "blk" or "ide"
+: "${DISK_TYPE:=""}"              # Device type to be used, choose "ide", "usb", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
@@ -354,6 +354,10 @@ createDevice () {
   local result="-drive file=$DISK_FILE,id=$DISK_ID,if=none,format=$DISK_FMT,cache=$DISK_CACHE,aio=$DISK_IO,discard=$DISK_DISCARD,detect-zeroes=on"
 
   case "${DISK_TYPE,,}" in
+    "usb" )
+      result="$result \
+      -device usb-storage,drive=$DISK_ID,bootindex=$DISK_INDEX"
+      ;;
     "ide" )
       result="$result \
       -device ide-hd,drive=$DISK_ID,bus=ide.2,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
@@ -389,15 +393,19 @@ addMedia () {
   [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
 
   case "${DISK_TYPE,,}" in
+    "usb" )
+      result="$result \
+      -device usb-storage,drive=${DISK_ID}${index}"
+      ;;
     "ide" | "blk" | "virtio-blk" )
       result="$result \
-      -device ide-cd,drive=$DISK_ID,bus=ide.$DISK_BUS${index}"
+      -device ide-cd,drive=${DISK_ID},bus=ide.${DISK_BUS}${index}"
       echo "$result"
       ;;
     "scsi" | "virtio-scsi" )
       result="$result \
       -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2 \
-      -device scsi-cd,drive=$DISK_ID,bus=${DISK_ID}b.0${index}"
+      -device scsi-cd,drive=${DISK_ID},bus=${DISK_ID}b.0${index}"
       echo "$result"
       ;;
   esac
@@ -495,7 +503,7 @@ case "${DISK_TYPE,,}" in
   "" )
     DISK_TYPE="scsi"
     [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="blk" ;;
-  "ide" | "blk" | "scsi" ) ;;
+  "ide" | "usb" | "blk" | "scsi" ) ;;
   * ) error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
 esac
 
@@ -507,7 +515,7 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
 
 if [ -f "$DRIVERS" ]; then
-  DRIVER_OPTS=$(addMedia "$DRIVERS" "ide" "1" "" "0x6")
+  DRIVER_OPTS=$(addMedia "$DRIVERS" "usb" "1" "" "0x6")
   DISK_OPTS="$DISK_OPTS $DRIVER_OPTS"
 fi
 
