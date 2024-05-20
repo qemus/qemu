@@ -359,12 +359,12 @@ createDevice () {
       -device ide-hd,drive=$DISK_ID,bus=ide.2,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
       echo "$result"
       ;;
-    "blk" )
+    "blk" | "virtio-blk" )
       result="$result \
       -device virtio-blk-pci,drive=$DISK_ID,scsi=off,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2,bootindex=$DISK_INDEX"
       echo "$result"
       ;;
-    "scsi" )
+    "scsi" | "virtio-scsi" )
       result="$result \
       -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2 \
       -device scsi-hd,drive=$DISK_ID,bus=${DISK_ID}b.0,channel=0,scsi-id=0,lun=0,rotation_rate=$DISK_ROTATION,bootindex=$DISK_INDEX"
@@ -389,17 +389,12 @@ addMedia () {
   [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
 
   case "${DISK_TYPE,,}" in
-    "ide" )
+    "ide" | "blk" | "virtio-blk" )
       result="$result \
       -device ide-cd,drive=$DISK_ID,bus=ide.$DISK_BUS${index}"
       echo "$result"
       ;;
-    "blk" )
-      result="$result \
-      -device virtio-blk-pci,drive=$DISK_ID,scsi=off,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2${index}"
-      echo "$result"
-      ;;
-    "scsi" )
+    "scsi" | "virtio-scsi" )
       result="$result \
       -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2 \
       -device scsi-cd,drive=$DISK_ID,bus=${DISK_ID}b.0${index}"
@@ -496,22 +491,16 @@ addDevice () {
 
 html "Initializing disks..."
 
-[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
-
 case "${DISK_TYPE,,}" in
-  "ide" | "blk" )
-    MEDIA_TYPE="ide"
-    ;;
-  "" | "scsi" )
+  "" )
     DISK_TYPE="scsi"
-    MEDIA_TYPE="$DISK_TYPE"
-    ;;
-  * )
-    error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80
-    ;;
+    [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="blk" ;;
+  "ide" | "blk" | "scsi" ) ;;
+  * ) error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
 esac
 
-DISK_OPTS=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
+[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
+DISK_OPTS=$(addMedia "$BOOT" "$DISK_TYPE" "0" "$BOOT_INDEX" "0x5")
 
 DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
