@@ -496,20 +496,18 @@ addDevice () {
 
 html "Initializing disks..."
 
-if [ -z "$DISK_TYPE" ]; then
-  DISK_TYPE="scsi"
-  [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="blk"
-fi
-
 case "${DISK_TYPE,,}" in
+  "" )
+    DISK_TYPE="scsi"
+    ;;
   "ide" | "blk" | "scsi" )
-    [ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
     ;;
   * )
     error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80
     ;;
 esac
 
+[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
 DISK_OPTS=$(addMedia "$BOOT" "$DISK_TYPE" "0" "$BOOT_INDEX" "0x5")
 
 DRIVERS="/drivers.iso"
