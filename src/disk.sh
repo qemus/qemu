@@ -496,19 +496,22 @@ addDevice () {
 
 html "Initializing disks..."
 
+[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
+
 case "${DISK_TYPE,,}" in
-  "" )
-    DISK_TYPE="scsi"
+  "ide" | "blk" )
+    MEDIA_TYPE="ide"
     ;;
-  "ide" | "blk" | "scsi" )
+  "" | "scsi" )
+    DISK_TYPE="scsi"
+    MEDIA_TYPE="$DISK_TYPE"
     ;;
   * )
     error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80
     ;;
 esac
 
-[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
-DISK_OPTS=$(addMedia "$BOOT" "$DISK_TYPE" "0" "$BOOT_INDEX" "0x5")
+DISK_OPTS=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
 
 DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
