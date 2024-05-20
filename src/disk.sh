@@ -221,7 +221,7 @@ resizeDisk() {
   MSG="Resizing $DISK_DESC from ${GB}G to $DISK_SPACE..."
   info "$MSG" && html "$MSG"
 
-  local FAIL="Could not resize the $DISK_TYPE $DISK_FMT $DISK_DESC image from ${GB}G to $DISK_SPACE ($DISK_FILE)"
+  local FAIL="Could not resize the $DISK_STYLE $DISK_FMT $DISK_DESC image from ${GB}G to $DISK_SPACE ($DISK_FILE)"
 
   case "${DISK_FMT,,}" in
     raw)
@@ -304,7 +304,7 @@ convertDisk() {
   # shellcheck disable=SC2086
   if ! qemu-img convert -f "$SOURCE_FMT" $CONV_FLAGS -o "$DISK_PARAM" -O "$DST_FMT" -- "$SOURCE_FILE" "$TMP_FILE"; then
     rm -f "$TMP_FILE"
-    error "Failed to convert $DISK_TYPE $DISK_DESC image to $DST_FMT format in $DIR, is there enough space available?" && exit 79
+    error "Failed to convert $DISK_STYLE $DISK_DESC image to $DST_FMT format in $DIR, is there enough space available?" && exit 79
   fi
 
   if [[ "$DST_FMT" == "raw" ]]; then
