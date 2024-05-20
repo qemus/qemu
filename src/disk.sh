@@ -134,9 +134,9 @@ createDisk() {
   fi
 
   html "Creating a $DISK_DESC image..."
-  info "Creating a $DISK_SPACE $DISK_TYPE $DISK_DESC image in $DISK_FMT format..."
+  info "Creating a $DISK_SPACE $DISK_STYLE $DISK_DESC image in $DISK_FMT format..."
 
-  local FAIL="Could not create a $DISK_TYPE $DISK_FMT $DISK_DESC image of $DISK_SPACE ($DISK_FILE)"
+  local FAIL="Could not create a $DISK_STYLE $DISK_FMT $DISK_DESC image of $DISK_SPACE ($DISK_FILE)"
 
   case "${DISK_FMT,,}" in
     raw)
@@ -501,10 +501,10 @@ if [ -z "$ALLOCATE" ]; then
 fi
 
 if [[ "$ALLOCATE" == [Nn]* ]]; then
-  DISK_TYPE="growable"
+  DISK_STYLE="growable"
   DISK_ALLOC="preallocation=off"
 else
-  DISK_TYPE="preallocated"
+  DISK_STYLE="preallocated"
   DISK_ALLOC="preallocation=falloc"
 fi
 
