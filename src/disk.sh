@@ -381,8 +381,8 @@ addMedia () {
   local DISK_FILE=$1
   local DISK_TYPE=$2
   local DISK_BUS=$3
-  local DISK_INDEX=$3
-  local DISK_ADDRESS=$4
+  local DISK_INDEX=$4
+  local DISK_ADDRESS=$5
 
   local index=""
   local DISK_ID="cdrom$DISK_BUS"
