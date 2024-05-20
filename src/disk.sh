@@ -5,7 +5,7 @@ set -Eeuo pipefail
 
 : "${DISK_IO:="native"}"          # I/O Mode, can be set to 'native', 'threads' or 'io_turing'
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
-: "${DISK_TYPE:=""}"            # Device type to be used, can be set to "scsi", "blk" or "ide" 
+: "${DISK_TYPE:=""}"              # Device type to be used, can be set to "scsi", "blk" or "ide"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
