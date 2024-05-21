@@ -505,29 +505,35 @@ addDevice () {
   return 0
 }
 
+DISK_OPTS=""
 html "Initializing disks..."
 
 case "${DISK_TYPE,,}" in
-  "" )
-    DISK_TYPE="scsi"
-    [[ "${MACHINE,,}" == "pc-q35-2"* ]] && DISK_TYPE="blk" ;;
+  "" ) DISK_TYPE="scsi" ;;
   "ide" | "usb" | "blk" | "scsi" ) ;;
   * ) error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
 esac
 
-[ ! -f "$BOOT" ] || [ ! -s "$BOOT" ] && BOOT="/dev/null"
-DISK_OPTS=$(addMedia "$BOOT" "$DISK_TYPE" "0" "$BOOT_INDEX" "0x5")
+if [[ "${MACHINE,,}" == "pc-q35-2"* ]]; then
+  DISK_TYPE="blk"
+  MEDIA_TYPE="ide"
+  DRIVER_TYPE="ide"
+else
+  DRIVER_TYPE="usb"
+  MEDIA_TYPE="$DISK_TYPE"
+  [[ "${BOOT_MODE,,}" == *"legacy" ]] && DRIVER_TYPE="ide"
+fi
+
+if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
+  DISK_OPTS=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
+fi
 
 DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
 
-if [ -f "$DRIVERS" ]; then
-  if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy" ]]; then
-    DRIVER_OPTS=$(addMedia "$DRIVERS" "usb" "1" "" "0x6")
-  else
-    DRIVER_OPTS=$(addMedia "$DRIVERS" "ide" "1" "" "0x6")
-  fi
+if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
+  DRIVER_OPTS=$(addMedia "$DRIVERS" "$DRIVER_TYPE" "1" "" "0x6")
   DISK_OPTS="$DISK_OPTS $DRIVER_OPTS"
 fi
 
