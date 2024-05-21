@@ -7,6 +7,7 @@ set -Eeuo pipefail
 
 BOOT_DESC=""
 BOOT_OPTS=""
+DRIVER_TYPE="ide"
 SECURE=",smm=off"
 
 if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
