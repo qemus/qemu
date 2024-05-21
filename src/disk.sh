@@ -514,14 +514,11 @@ case "${DISK_TYPE,,}" in
   * ) error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
 esac
 
+MEDIA_TYPE="$DISK_TYPE"
+
 if [[ "${MACHINE,,}" == "pc-q35-2"* ]]; then
   DISK_TYPE="blk"
   MEDIA_TYPE="ide"
-  DRIVER_TYPE="ide"
-else
-  DRIVER_TYPE="usb"
-  MEDIA_TYPE="$DISK_TYPE"
-  [[ "${BOOT_MODE,,}" == *"legacy" ]] && DRIVER_TYPE="ide"
 fi
 
 if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
@@ -533,7 +530,7 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  DRIVER_OPTS=$(addMedia "$DRIVERS" "$DRIVER_TYPE" "1" "" "0x6")
+  DRIVER_OPTS=$(addMedia "$DRIVERS" "ide" "1" "" "0x6")
   DISK_OPTS="$DISK_OPTS $DRIVER_OPTS"
 fi
 
