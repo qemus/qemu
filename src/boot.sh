@@ -59,7 +59,7 @@ case "${BOOT_MODE,,}" in
     ;;
 esac
 
-if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy" ]]; then
+if [[ "${BOOT_MODE,,}" != *"legacy" ]]; then
 
   OVMF="/usr/share/OVMF"
   DEST="$STORAGE/${BOOT_MODE,,}"
