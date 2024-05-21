@@ -12,6 +12,7 @@ set -Eeuo pipefail
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="QEMU"}"
+: "${VM_NET_IP:="20.20.20.21"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
@@ -154,15 +155,13 @@ configureNAT() {
 
   # Create a bridge with a static IP for the VM guest
 
-  VM_NET_IP='20.20.20.21'
-
   { ip link add dev dockerbridge type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
     error "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && exit 23
   fi
 
-  ip address add ${VM_NET_IP%.*}.1/24 broadcast ${VM_NET_IP%.*}.255 dev dockerbridge
+  ip address add "${VM_NET_IP%.*}.1/24" broadcast "${VM_NET_IP%.*}.255" dev dockerbridge
 
   while ! ip link set dockerbridge up; do
     info "Waiting for IP address to become available..."
@@ -264,8 +263,13 @@ checkOS() {
 getInfo() {
 
   if [ -z "$VM_NET_DEV" ]; then
+    # Give Kubernetes priority over the default interface
+    [ -d "/sys/class/net/net0" ] && VM_NET_DEV="net0"
+    [ -d "/sys/class/net/net1" ] && VM_NET_DEV="net1"
+    [ -d "/sys/class/net/net2" ] && VM_NET_DEV="net2"
+    [ -d "/sys/class/net/net3" ] && VM_NET_DEV="net3"
     # Automaticly detect the default network interface
-    VM_NET_DEV=$(awk '$2 == 00000000 { print $1 }' /proc/net/route)
+    [ -z "$VM_NET_DEV" ] && VM_NET_DEV=$(awk '$2 == 00000000 { print $1 }' /proc/net/route)
     [ -z "$VM_NET_DEV" ] && VM_NET_DEV="eth0"
   fi
 
@@ -296,7 +300,7 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  GATEWAY=$(ip r | grep default | awk '{print $3}')
+  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}')
   IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/)
 
   return 0
