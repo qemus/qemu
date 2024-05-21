@@ -522,7 +522,11 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
 
 if [ -f "$DRIVERS" ]; then
-  DRIVER_OPTS=$(addMedia "$DRIVERS" "usb" "1" "" "0x6")
+  if [[ "${BOOT_MODE,,}" != "legacy" ]] && [[ "${BOOT_MODE,,}" != "windows_legacy" ]]; then
+    DRIVER_OPTS=$(addMedia "$DRIVERS" "usb" "1" "" "0x6")
+  else
+    DRIVER_OPTS=$(addMedia "$DRIVERS" "ide" "1" "" "0x6")
+  fi
   DISK_OPTS="$DISK_OPTS $DRIVER_OPTS"
 fi
 
