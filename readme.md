@@ -103,23 +103,14 @@ kubectl apply -f kubernetes.yml
 
   By default, the machine makes use of `virtio-scsi` disks for performance reasons, and even though most Linux kernels include drivers for them, there are other operating systems that do not.
 
-  If your ISO fails to boot because of this, you can add this to your compose file:
+  If your ISO fails to boot because of this, you can add this to your compose file to use `virtio-blk` instead:
 
   ```yaml
   environment:
     DISK_TYPE: "blk"
   ```
 
-   This will use `virtio-blk` devices instead. If it still fails to boot, you can set the value to `ide` to use IDE disks which every OS will support, at the cost of performance.
-
-* ### How do I boot with UEFI?
-
-  To enable UEFI booting, add the following line to your compose file:
-
-  ```yaml
-  environment:
-    BOOT_MODE: "uefi"
-  ```
+   If it still fails to boot, you can set the value to `ide` to emulate a IDE drive which is compatible with almost every system.
 
 * ### How do I boot ARM images?
 
@@ -127,14 +118,7 @@ kubectl apply -f kubernetes.yml
 
 * ### How do I boot Windows?
 
-  To enable Windows booting, add the following line to your compose file:
-
-  ```yaml
-  environment:
-    BOOT_MODE: "windows"
-  ```
-
-  But you might want to give [dockur/windows](https://github.com/dockur/windows) a try instead, as it includes all the drivers required during installation amongst many other features.
+  Use [dockur/windows](https://github.com/dockur/windows) instead, as it includes all the drivers required during installation, amongst many other features.
 
 * ### How do I verify if my system supports KVM?
 
