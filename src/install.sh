@@ -1,13 +1,26 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+detect () {
+  local dir=""
+  local file="$1"
+  [ ! -f "$file" ] && return 1
+  [ ! -s "$file" ] && return 1
+
+  dir=$(isoinfo -f -i "$file")
+
+  # Automaticly detect EFI-compatible ISO's
+  if echo "${dir^^}" | grep -qx "/BOOTMGR.EFI;1\|/EFI/BOOT/BOOTX64.EFI;1\|/EFI/BOOT/BOOTX86.EFI;1"; then
+    [ -z "$BOOT_MODE" ] && BOOT_MODE="uefi"
+  fi
+
+  BOOT="$file"  
+  return 0
+}
+
 file=$(find / -maxdepth 1 -type f -iname boot.iso | head -n 1)
 [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname boot.iso | head -n 1)
-
-if [ -f "$file" ] && [ -s "$file" ]; then
-  BOOT="$file"
-  return 0
-fi
+detect "$file" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   hasDisk && return 0
@@ -15,23 +28,13 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
 fi
 
 base=$(basename "$BOOT")
-file="$STORAGE/$base"
-
-if [ -f "$file" ] && [ -s "$file" ]; then
-  BOOT="$file"
-  return 0
-fi
+detect "$STORAGE/$base" && return 0
 
 base=$(basename "${BOOT%%\?*}")
 : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
 base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
-file="$STORAGE/$base"
 
-if [ -f "$file" ] && [ -s "$file" ]; then
-  BOOT="$file"
-  return 0
-fi
-
+detect "$STORAGE/$base" && return 0
 TMP="$STORAGE/${base%.*}.tmp"
 rm -f "$TMP"
 
@@ -63,5 +66,6 @@ if ((size<100000)); then
 fi
 
 mv -f "$TMP" "$file"
+! detect "$STORAGE/$base" && exit 63
 
 return 0
