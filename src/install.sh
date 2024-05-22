@@ -11,7 +11,7 @@ detect () {
 
   # Automaticly detect UEFI-compatible ISO's
   if echo "${dir^^}" | grep -qx "/BOOTMGR.EFI;1\|/EFI/BOOT/BOOTX64.EFI;1\|/EFI/BOOT/BOOTX86.EFI;1"; then
-    [ -z "$BOOT_MODE" ] && BOOT_MODE="uefi"
+    [ -z "${BOOT_MODE:-}" ] && BOOT_MODE="uefi"
   fi
 
   BOOT="$file"
