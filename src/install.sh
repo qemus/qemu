@@ -9,7 +9,7 @@ if [ -f "$file" ] && [ -s "$file" ]; then
   return 0
 fi
 
-if [ -z "$BOOT" ]; then
+if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   hasDisk && return 0
   error "No boot disk specified, set BOOT= to the URL of an ISO file." && exit 64
 fi
