@@ -16,12 +16,6 @@ if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
   BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
   BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s4=1"
 
-  if [ -e /sys/module/kvm/parameters/ignore_msrs ]; then
-    if [ "$(cat /sys/module/kvm/parameters/ignore_msrs)" == "N" ]; then
-      echo 1 | tee /sys/module/kvm/parameters/ignore_msrs > /dev/null 2>&1 || true
-    fi
-  fi
-
 fi
 
 case "${BOOT_MODE,,}" in
