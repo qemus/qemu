@@ -22,6 +22,7 @@ RUN set -eu && \
         dnsmasq \
         net-tools \
         qemu-utils \
+        genisoimage \
         ca-certificates \
         netcat-openbsd \
         qemu-system-x86 && \
