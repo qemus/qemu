@@ -15,7 +15,7 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
 fi
 
 base=$(basename "$BOOT")
-file="$STORAGE/$base" 
+file="$STORAGE/$base"
 
 if [ -f "$file" ] && [ -s "$file" ]; then
   BOOT="$file"
@@ -25,7 +25,7 @@ fi
 base=$(basename "${BOOT%%\?*}")
 : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
 base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
-file="$STORAGE/$base" 
+file="$STORAGE/$base"
 
 if [ -f "$file" ] && [ -s "$file" ]; then
   BOOT="$file"
