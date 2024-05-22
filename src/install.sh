@@ -5,7 +5,7 @@ file=$(find / -maxdepth 1 -type f -iname boot.iso | head -n 1)
 [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname boot.iso | head -n 1)
 
 if [ ! -s "$file" ] && [[ "${BOOT,,}" != "http"* ]]; then
-  local base=$(basename "$BOOT")
+  base=$(basename "$BOOT")
   file="$STORAGE/$base"
 fi
 
