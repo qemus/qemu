@@ -107,11 +107,11 @@ kubectl apply -f kubernetes.yml
 
   Use [dockur/windows](https://github.com/dockur/windows) instead, as it includes all the drivers required during installation, amongst many other features.
 
-* ### How do I boot without SCSI drivers?
+* ### How do I boot without VirtIO drivers?
 
-  By default, the machine makes use of `virtio-scsi` disks for performance reasons, and even though most Linux kernels include the necessary driver for this device, for some other operating systems that may not always be the case.
+  By default, the machine makes use of `virtio-scsi` drives for performance reasons, and even though most Linux kernels bundle the necessary driver for this device, that may not always be the case for some other operating systems.
 
-  If your ISO fails to boot because of this, you can modify your compose file to use `virtio-blk` instead:
+  If your machine fails to detect the hard drive, you can modify your compose file to use `virtio-blk` instead:
 
   ```yaml
   environment:
