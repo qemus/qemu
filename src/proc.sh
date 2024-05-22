@@ -60,6 +60,12 @@ if [[ "$KVM" != [Nn]* ]]; then
     CPU_FEATURES="$CPU_FEATURES,migratable=no"
   fi
 
+  if [ -e /sys/module/kvm/parameters/ignore_msrs ]; then
+    if [ "$(cat /sys/module/kvm/parameters/ignore_msrs)" == "N" ]; then
+      echo 1 | tee /sys/module/kvm/parameters/ignore_msrs > /dev/null 2>&1 || true
+    fi
+  fi
+
   if [[ "$HV" != [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
     HV_FEATURES="+hypervisor,hv_passthrough"
