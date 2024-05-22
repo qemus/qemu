@@ -33,8 +33,8 @@ detect "$STORAGE/$base" && return 0
 base=$(basename "${BOOT%%\?*}")
 : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
 base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
-
 detect "$STORAGE/$base" && return 0
+
 TMP="$STORAGE/${base%.*}.tmp"
 rm -f "$TMP"
 
@@ -65,7 +65,7 @@ if ((size<100000)); then
   error "Invalid ISO file: Size is smaller than 100 KB" && exit 62
 fi
 
-mv -f "$TMP" "$file"
+mv -f "$TMP" "$STORAGE/$base"
 ! detect "$STORAGE/$base" && exit 63
 
 return 0
