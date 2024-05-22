@@ -190,6 +190,17 @@ addPackage() {
   return 0
 }
 
+hasDisk() {
+
+  [ -b "/disk1" ] && return 0
+  [ -b "/dev/disk1" ] && return 0
+  [ -b "${DEVICE:-}" ] && return 0
+  [ -s "$STORAGE/data.img" ]  && return 0
+  [ -s "$STORAGE/data.qcow2" ] && return 0
+
+  return 1
+}
+
 # Start webserver
 cp -r /var/www/* /run/shm
 html "Starting $APP for Docker..."
