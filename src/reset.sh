@@ -80,6 +80,12 @@ SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
 echo "❯ CPU: ${CPU} | RAM: $AVAIL_GB/$TOTAL_GB GB | DISK: $SPACE_GB GB (${FS}) | HOST: ${SYS}..."
 echo
 
+# Check compatibilty
+
+if [[ "${FS,,}" == "btrfs" ]] && [[ "${SYS,,}" == *"-unraid"* ]]; then
+  warn "this container has issues with BTRFS on Uraid, please use another filesystem for /storage!"
+fi
+
 # Check memory
 
 if [[ "$RAM_CHECK" != [Nn]* ]]; then
