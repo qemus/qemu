@@ -3,11 +3,11 @@ set -Eeuo pipefail
 
 # Docker environment variables
 : "${TPM:="N"}"         # Disable TPM
+: "${SMM:="N"}"         # Disable SMM
 : "${BOOT_MODE:="legacy"}"  # Boot mode
 
 BOOT_DESC=""
 BOOT_OPTS=""
-SECURE=",smm=off"
 
 if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
@@ -17,6 +17,9 @@ if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
 fi
 
+SECURE="off"
+[[ "$SMM" == [Yy1]* ]] && SECURE="on"
+
 case "${BOOT_MODE,,}" in
   uefi)
     BOOT_DESC=" with UEFI"
@@ -24,7 +27,7 @@ case "${BOOT_MODE,,}" in
     VARS="OVMF_VARS_4M.fd"
     ;;
   secure)
-    SECURE=",smm=on"
+    SECURE="on"
     BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.secboot.fd"
     VARS="OVMF_VARS_4M.secboot.fd"
@@ -35,7 +38,7 @@ case "${BOOT_MODE,,}" in
     ;;
   windows_secure)
     TPM="Y"
-    SECURE=",smm=on"
+    SECURE="on"
     BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
