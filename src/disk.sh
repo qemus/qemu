@@ -529,9 +529,8 @@ if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
   DISK_OPTS=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
 fi
 
-DRIVERS="/drivers.iso"
-[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
-[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="/run/drivers.iso"
+DRIVERS="/mount.iso"
+[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/mount.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
   DRIVER_OPTS=$(addMedia "$DRIVERS" "$DRIVER_TYPE" "1" "" "0x6")
