@@ -9,8 +9,6 @@ set -Eeuo pipefail
 : "${CPU_MODEL:=""}"
 : "${DEF_MODEL:="qemu64"}"
 
-[[ "${MACHINE,,}" == "pc-q35-2"* ]] && HV="N"
-
 if [[ "${ARCH,,}" != "amd64" ]]; then
   KVM="N"
   warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, this will cause a major loss of performance."
