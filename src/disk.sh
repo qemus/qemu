@@ -515,7 +515,11 @@ case "${DISK_TYPE,,}" in
 esac
 
 if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
-  DISK_OPTS=$(addMedia "$BOOT" "$DISK_TYPE" "0" "$BOOT_INDEX" "0x5")
+  MEDIA_TYPE="$DISK_TYPE"
+  if [ -z "${BOOT_MODE:-}" ] || [[ "${BOOT_MODE:-}" == *"legacy" ]]; then
+      [[ "${MEDIA_TYPE,,}" ==  "blk" ]] && MEDIA_TYPE="ide"
+  fi
+  DISK_OPTS=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
 fi
 
 DRIVER_TYPE="ide"
