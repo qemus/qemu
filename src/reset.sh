@@ -83,7 +83,7 @@ echo
 # Check compatibilty
 
 if [[ "${FS,,}" == "btrfs" ]] && [[ "${SYS,,}" == *"-unraid"* ]]; then
-  warn "this container has issues with BTRFS on Uraid, please use another filesystem for /storage!"
+  warn "you are using BTRFS on Unraid, this might introduce issues!"
 fi
 
 # Check memory
