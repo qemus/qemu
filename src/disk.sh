@@ -517,7 +517,9 @@ esac
 if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
   MEDIA_TYPE="$DISK_TYPE"
   if [ -z "${BOOT_MODE:-}" ] || [[ "${BOOT_MODE:-}" == *"legacy" ]]; then
-      [[ "${MEDIA_TYPE,,}" ==  "blk" ]] && MEDIA_TYPE="ide"
+    if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MEDIA_TYPE,,}" ==  "blk" ]]; then
+      MEDIA_TYPE="ide"
+    fi
   fi
   DISK_OPTS=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
 fi
@@ -604,4 +606,5 @@ fi
 DISK_OPTS="$DISK_OPTS -object iothread,id=io2"
 
 html "Initialized disks successfully..."
+
 return 0
