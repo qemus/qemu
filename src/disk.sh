@@ -518,10 +518,10 @@ MEDIA_TYPE="$DISK_TYPE"
 html "Initializing disks..."
 
 case "${DISK_TYPE,,}" in
-  "" ) DISK_TYPE="scsi" ;;
   "auto" | "ide" | "usb" | "scsi" ) ;;
+  "" ) DISK_TYPE="scsi" && MEDIA_TYPE="$DISK_TYPE" ;;
   "blk" )
-    if [ -z "${BOOT_MODE:-}" ] || [[ "${BOOT_MODE:-}" == *"legacy" ]]; then  
+    if [ -z "${BOOT_MODE:-}" ] || [[ "${BOOT_MODE:-}" == *"legacy" ]]; then
       [[ "${MACHINE,,}" != "virt" ]] && MEDIA_TYPE="auto"
     fi ;;
   * ) error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
