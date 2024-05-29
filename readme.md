@@ -109,7 +109,7 @@ kubectl apply -f kubernetes.yml
 
 * ### How do I boot without VirtIO drivers?
 
-  By default, the machine makes use of `virtio-scsi` drives for performance reasons, and even though most Linux kernels bundle the necessary driver for this device, that may not always be the case for some other operating systems.
+  By default, the machine makes use of `virtio-scsi` drives for performance reasons, and even though most Linux kernels bundle the necessary driver for this device, that may not always be the case for other operating systems.
 
   If your machine fails to detect the hard drive, you can modify your compose file to use `virtio-blk` instead:
 
