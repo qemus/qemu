@@ -514,10 +514,16 @@ addDevice () {
 DISK_OPTS=""
 html "Initializing disks..."
 
+[ -z "$DISK_TYPE" ] && DISK_TYPE="scsi"
+
 case "${DISK_TYPE,,}" in
-  "blk" ) MEDIA_TYPE="auto" ;;
-  "" ) DISK_TYPE="scsi" && MEDIA_TYPE="$DISK_TYPE" ;;
-  "auto" | "ide" | "usb" | "scsi" ) MEDIA_TYPE="$DISK_TYPE" ;;
+  "ide" | "usb" | "scsi" )
+    MEDIA_TYPE="$DISK_TYPE" ;;
+  "blk" | "auto" )
+    MEDIA_TYPE="auto"
+    if [ -n "${BOOT_MODE:-}" ] && [[ "${BOOT_MODE:-}" != *"legacy" ]]; then
+      [[ "${MACHINE,,}" != "virt" ]] && MEDIA_TYPE="ide"
+    fi ;;
   * ) error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
 esac
 
@@ -529,7 +535,8 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  DRIVER_OPTS=$(addMedia "$DRIVERS" "auto" "1" "" "0x6")
+  [[ "${MACHINE,,}" == "virt" ]] && DRIVER_TYPE="auto" || DRIVER_TYPE="ide"
+  DRIVER_OPTS=$(addMedia "$DRIVERS" "$DRIVER_TYPE" "1" "" "0x6")
   DISK_OPTS="$DISK_OPTS $DRIVER_OPTS"
 fi
 
