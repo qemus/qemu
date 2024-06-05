@@ -53,10 +53,11 @@ info "$msg..." && html "$msg..."
 
 fKill "progress.sh"
 
-(( rc == 4 )) && error "Failed to download $BOOT , network failure!" && exit 60
-(( rc == 8 )) && error "Failed to download $BOOT , server issued an error response!" && exit 60
-(( rc != 0 )) && error "Failed to download $BOOT , reason: $rc" && exit 60
-[ ! -s "$TMP" ] && error "Failed to download $BOOT" && exit 61
+msg="Failed to download $BOOT"
+(( rc == 4 )) && error "$msg , network failure!" && exit 60
+(( rc == 8 )) && error "$msg , server issued an error response!" && exit 60
+(( rc != 0 )) && error "$msg , reason: $rc" && exit 60
+[ ! -s "$TMP" ] && error "$msg" && exit 61
 
 html "Download finished successfully..."
 
