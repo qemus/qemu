@@ -12,8 +12,8 @@ BOOT_OPTS=""
 if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
   BOOT_OPTS="-rtc base=localtime"
-  BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s3=1"
-  BOOT_OPTS="$BOOT_OPTS -global ICH9-LPC.disable_s4=1"
+  BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
+  BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
 
 fi
 
@@ -72,11 +72,11 @@ if [[ "${BOOT_MODE,,}" != *"legacy" ]]; then
   fi
 
   if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
-    BOOT_OPTS="$BOOT_OPTS -global driver=cfi.pflash01,property=secure,value=on"
+    BOOT_OPTS+=" -global driver=cfi.pflash01,property=secure,value=on"
   fi
 
-  BOOT_OPTS="$BOOT_OPTS -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
-  BOOT_OPTS="$BOOT_OPTS -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
+  BOOT_OPTS+=" -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
+  BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
 
 fi
 
@@ -106,8 +106,8 @@ if [[ "$TPM" == [Yy1]* ]]; then
   if [ ! -S "/run/swtpm-sock" ]; then
     error "TPM socket not found? Disabling TPM module..."
   else
-    BOOT_OPTS="$BOOT_OPTS -chardev socket,id=chrtpm,path=/run/swtpm-sock"
-    BOOT_OPTS="$BOOT_OPTS -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
+    BOOT_OPTS+=" -chardev socket,id=chrtpm,path=/run/swtpm-sock"
+    BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
   fi
 
 fi
