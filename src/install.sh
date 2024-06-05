@@ -45,10 +45,10 @@ else
   progress="--progress=dot:giga"
 fi
 
-msg="Downloading $base..."
-info "$msg" && html "$msg"
+msg="Downloading $base"
+info "$msg..." && html "$msg..."
 
-/run/progress.sh "$TMP" "" "Downloading $base ([P])..." &
+/run/progress.sh "$TMP" "" "$msg ([P])..." &
 { wget "$BOOT" -O "$TMP" -q --timeout=30 --show-progress "$progress"; rc=$?; } || :
 
 fKill "progress.sh"
