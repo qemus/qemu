@@ -94,13 +94,10 @@ configureDNS() {
   DNSMASQ_OPTS+=" --address=/host.lan/${VM_NET_IP%.*}.1"
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
-  [[ "$DEBUG" == [Yy1]* ]] && set -x
 
   if ! $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS}; then
     error "Failed to start dnsmasq, reason: $?" && exit 29
   fi
-  { set +x; } 2>/dev/null
-  [[ "$DEBUG" == [Yy1]* ]] && echo
 
   return 0
 }
