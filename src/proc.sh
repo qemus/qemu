@@ -50,7 +50,7 @@ fi
 
 if [[ "$KVM" != [Nn]* ]]; then
 
-  CPU_FEATURES="kvm=on,l3-cache=on"
+  CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
 
   if [ -z "$CPU_MODEL" ]; then
@@ -64,17 +64,33 @@ if [[ "$KVM" != [Nn]* ]]; then
     fi
   fi
 
+  if grep -qw "svm" <<< "$flags"; then
+
+    # AMD processor
+
+    if grep -qw "tsc_scale" <<< "$flags"; then
+      CPU_FEATURES="$CPU_FEATURES,+invtsc"
+    fi
+
+  else
+
+    # Intel processor
+
+    vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
+
+    if grep -qw "tsc_scaling" <<< "$vmx"; then
+      CPU_FEATURES="$CPU_FEATURES,+invtsc"
+    fi
+
+  fi
+  
   if [[ "$HV" != [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
-    HV_FEATURES="+hypervisor,hv_passthrough"
+    HV_FEATURES="hv_passthrough"
 
     if grep -qw "svm" <<< "$flags"; then
 
       # AMD processor
-
-      if grep -qw "tsc_scale" <<< "$flags"; then
-        HV_FEATURES="$HV_FEATURES,+invtsc"
-      fi
 
       if ! grep -qw "avic" <<< "$flags"; then
         HV_FEATURES="$HV_FEATURES,-hv-avic"
@@ -85,12 +101,6 @@ if [[ "$KVM" != [Nn]* ]]; then
     else
 
       # Intel processor
-
-      vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
-
-      if grep -qw "tsc_scaling" <<< "$vmx"; then
-        HV_FEATURES="$HV_FEATURES,+invtsc"
-      fi
 
       if ! grep -qw "apicv" <<< "$vmx"; then
         HV_FEATURES="$HV_FEATURES,-hv-apicv,-hv-evmcs"
@@ -111,7 +121,7 @@ if [[ "$KVM" != [Nn]* ]]; then
 else
 
   KVM_OPTS=""
-  CPU_FEATURES="l3-cache=on"
+  CPU_FEATURES="l3-cache=on,+hypervisor"
 
   if [[ "$ARCH" == "amd64" ]]; then
     KVM_OPTS=" -accel tcg,thread=multi"
@@ -127,10 +137,6 @@ else
   fi
 
   CPU_FEATURES="$CPU_FEATURES,+ssse3,+sse4.1,+sse4.2"
-
-  if [[ "$HV" != [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-    CPU_FEATURES="$CPU_FEATURES,+hypervisor"
-  fi
 
 fi
 
