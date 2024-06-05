@@ -55,7 +55,7 @@ if [[ "$KVM" != [Nn]* ]]; then
 
   if [ -z "$CPU_MODEL" ]; then
     CPU_MODEL="host"
-    CPU_FEATURES="$CPU_FEATURES,migratable=no"
+    CPU_FEATURES+=",migratable=no"
   fi
 
   if [ -e /sys/module/kvm/parameters/ignore_msrs ]; then
@@ -69,7 +69,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     # AMD processor
 
     if grep -qw "tsc_scale" <<< "$flags"; then
-      CPU_FEATURES="$CPU_FEATURES,+invtsc"
+      CPU_FEATURES+=",+invtsc"
     fi
 
   else
@@ -79,7 +79,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 
     if grep -qw "tsc_scaling" <<< "$vmx"; then
-      CPU_FEATURES="$CPU_FEATURES,+invtsc"
+      CPU_FEATURES+=",+invtsc"
     fi
 
   fi
@@ -93,28 +93,28 @@ if [[ "$KVM" != [Nn]* ]]; then
       # AMD processor
 
       if ! grep -qw "avic" <<< "$flags"; then
-        HV_FEATURES="$HV_FEATURES,-hv-avic"
+        HV_FEATURES+=",-hv-avic"
       fi
 
-      HV_FEATURES="$HV_FEATURES,-hv-evmcs"
+      HV_FEATURES+=",-hv-evmcs"
 
     else
 
       # Intel processor
 
       if ! grep -qw "apicv" <<< "$vmx"; then
-        HV_FEATURES="$HV_FEATURES,-hv-apicv,-hv-evmcs"
+        HV_FEATURES+=",-hv-apicv,-hv-evmcs"
       else
         if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
           # Prevent eVMCS version range error on Atom CPU's
-          HV_FEATURES="$HV_FEATURES,-hv-evmcs"
+          HV_FEATURES+=",-hv-evmcs"
         fi
       fi
 
     fi
 
-    [ -n "$CPU_FEATURES" ] && CPU_FEATURES="$CPU_FEATURES,"
-    CPU_FEATURES="$CPU_FEATURES${HV_FEATURES}"
+    [ -n "$CPU_FEATURES" ] && CPU_FEATURES+=","
+    CPU_FEATURES+="${HV_FEATURES}"
 
   fi
 
@@ -130,13 +130,13 @@ else
   if [ -z "$CPU_MODEL" ]; then
     if [[ "$ARCH" == "amd64" ]]; then
       CPU_MODEL="max"
-      CPU_FEATURES="$CPU_FEATURES,migratable=no"
+      CPU_FEATURES+=",migratable=no"
     else
       CPU_MODEL="$DEF_MODEL"
     fi
   fi
 
-  CPU_FEATURES="$CPU_FEATURES,+ssse3,+sse4.1,+sse4.2"
+  CPU_FEATURES+=",+ssse3,+sse4.1,+sse4.2"
 
 fi
 
