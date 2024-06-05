@@ -31,10 +31,10 @@ fi
 
 [[ "${VGA,,}" == "virtio" ]] && VGA="virtio-vga-gl"
 DISPLAY_OPTS="-display egl-headless,rendernode=/dev/dri/renderD128"
-DISPLAY_OPTS="$DISPLAY_OPTS -device $VGA"
+DISPLAY_OPTS+=" -device $VGA"
 
-[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS="$DISPLAY_OPTS -vnc :0"
-[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS="$DISPLAY_OPTS -vnc :0,websocket=5700"
+[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :0"
+[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :0,websocket=5700"
 
 [ ! -d /dev/dri ] && mkdir -m 755 /dev/dri
 
