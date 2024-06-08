@@ -107,6 +107,10 @@ kubectl apply -f kubernetes.yml
 
   Use [dockur/windows](https://github.com/dockur/windows) instead, as it includes all the drivers required during installation, amongst many other features.
 
+* ### How do I boot macOS?
+
+  Use [dockur/macos](https://github.com/dockur/macos) instead, as it uses all the right settings and automaticly downloads the installation files.
+
 * ### How do I boot without VirtIO drivers?
 
   By default, the machine makes use of `virtio-scsi` drives for performance reasons, and even though most Linux kernels bundle the necessary driver for this device, that may not always be the case for other operating systems.
@@ -118,7 +122,7 @@ kubectl apply -f kubernetes.yml
     DISK_TYPE: "blk"
   ```
 
-   If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is slow but compatible with almost every system.
+   If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is slow but requires no drivers and is compatible with almost every system.
 
 * ### How do I verify if my system supports KVM?
 
