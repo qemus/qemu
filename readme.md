@@ -10,7 +10,7 @@
 
 </div></h1>
 
-Docker container for running x86 and x64 virtual machines using QEMU.
+Docker container for running virtual machines using QEMU.
 
 It allows you to create VM's which behave just like normal containers, meaning you can manage them using all your existing tools (like Portainer) and configure them in a language (YAML) you are already familiar with.
 
