@@ -360,7 +360,7 @@ createDevice () {
 
   local index=""
   [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
-  local result="-drive file=$DISK_FILE,id=$DISK_ID,format=$DISK_FMT,cache=$DISK_CACHE,aio=$DISK_IO,discard=$DISK_DISCARD,detect-zeroes=on"
+  local result=" -drive file=$DISK_FILE,id=$DISK_ID,format=$DISK_FMT,cache=$DISK_CACHE,aio=$DISK_IO,discard=$DISK_DISCARD,detect-zeroes=on"
 
   case "${DISK_TYPE,,}" in
     "auto" )
@@ -373,7 +373,7 @@ createDevice () {
       ;;
     "ide" )
       result+=",if=none \
-      -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS,iothread=io2 \
+      -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS \
       -device ide-hd,drive=${DISK_ID},bus=ahci$DISK_INDEX.0,rotation_rate=$DISK_ROTATION${index}"
       echo "$result"
       ;;
@@ -404,7 +404,7 @@ addMedia () {
   local index=""
   local DISK_ID="cdrom$DISK_BUS"
   [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
-  local result="-drive file=$DISK_FILE,id=$DISK_ID,format=raw,cache=unsafe,readonly=on,media=cdrom"
+  local result=" -drive file=$DISK_FILE,id=$DISK_ID,format=raw,cache=unsafe,readonly=on,media=cdrom"
 
   case "${DISK_TYPE,,}" in
     "auto" )
@@ -417,7 +417,7 @@ addMedia () {
       ;;
     "ide" )
       result+=",if=none \
-      -device ich9-ahci,id=ahci${DISK_BUS},addr=$DISK_ADDRESS,iothread=io2 \
+      -device ich9-ahci,id=ahci${DISK_BUS},addr=$DISK_ADDRESS \
       -device ide-cd,drive=${DISK_ID},bus=ahci${DISK_BUS}.0${index}"
       echo "$result"
       ;;
