@@ -373,7 +373,8 @@ createDevice () {
       ;;
     "ide" )
       result+=",if=none \
-      -device ide-hd,drive=${DISK_ID},bus=ide.$DISK_INDEX,rotation_rate=$DISK_ROTATION${index}"
+      -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS,iothread=io2 \
+      -device ide-hd,drive=${DISK_ID},bus=ahci$DISK_INDEX.0,rotation_rate=$DISK_ROTATION${index}"
       echo "$result"
       ;;
     "blk" | "virtio-blk" )
@@ -416,7 +417,8 @@ addMedia () {
       ;;
     "ide" )
       result+=",if=none \
-      -device ide-cd,drive=${DISK_ID},bus=ide.${DISK_BUS}${index}"
+      -device ich9-ahci,id=ahci${DISK_BUS},addr=$DISK_ADDRESS,iothread=io2 \
+      -device ide-cd,drive=${DISK_ID},bus=ahci${DISK_BUS}.0${index}"
       echo "$result"
       ;;
     "blk" | "virtio-blk" )
@@ -529,10 +531,30 @@ html "Initializing disks..."
 
 case "${DISK_TYPE,,}" in
   "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
-  * ) error "Invalid DISK_TYPE, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
+  * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
 esac
 
-[[ "${MACHINE,,}" != "virt" ]] && MEDIA_TYPE="ide" || MEDIA_TYPE="auto"
+if [ -z "${MEDIA_TYPE:-}" ]; then
+  case "${DISK_TYPE,,}" in
+    "ide" | "usb" | "scsi" )
+      if [[ "${MACHINE,,}" == "virt" ]]; then
+        MEDIA_TYPE="auto"
+      else
+        MEDIA_TYPE="$DISK_TYPE"
+      fi ;;
+    "blk" | "auto" )
+      if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]];
+        MEDIA_TYPE="ide"
+      else
+        MEDIA_TYPE="auto"
+      fi ;;
+  esac
+fi
+
+case "${MEDIA_TYPE,,}" in
+  "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
+  * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is unrecognized!" && exit 80 ;;
+esac
 
 if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
   ADD_OPTS=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
