@@ -543,7 +543,7 @@ if [ -z "${MEDIA_TYPE:-}" ]; then
         MEDIA_TYPE="$DISK_TYPE"
       fi ;;
     "blk" | "auto" )
-      if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]];
+      if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]]; then
         MEDIA_TYPE="ide"
       else
         MEDIA_TYPE="auto"
@@ -565,7 +565,7 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]];
+  if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]]; then
     DRIVER_TYPE="ide"
   else
     DRIVER_TYPE="auto"
