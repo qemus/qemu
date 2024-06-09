@@ -565,7 +565,12 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  ADD_OPTS=$(addMedia "$DRIVERS" "$MEDIA_TYPE" "1" "" "0x6")
+  if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]];
+    DRIVER_TYPE="ide"
+  else
+    DRIVER_TYPE="auto"
+  fi
+  ADD_OPTS=$(addMedia "$DRIVERS" "$DRIVER_TYPE" "1" "" "0x6")
   DISK_OPTS+=" $ADD_OPTS"
 fi
 
