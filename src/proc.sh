@@ -51,6 +51,7 @@ fi
 if [[ "$KVM" != [Nn]* ]]; then
 
   CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
+  CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"  
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
 
   if [ -z "$CPU_MODEL" ]; then
@@ -62,6 +63,15 @@ if [[ "$KVM" != [Nn]* ]]; then
     if [ "$(cat /sys/module/kvm/parameters/ignore_msrs)" == "N" ]; then
       echo 1 | tee /sys/module/kvm/parameters/ignore_msrs > /dev/null 2>&1 || true
     fi
+  fi
+
+  if [ -f "$CLOCK" ]; then
+    CLOCK=$(<"$CLOCK")
+    if [[ "${CLOCK,,}" != "tsc" ]]; then
+      warn "unexpected clocksource: $CLOCK"
+    fi
+  else
+    warn "file \"$CLOCK\" cannot not found?"
   fi
 
   if grep -qw "svm" <<< "$flags"; then
