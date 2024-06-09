@@ -51,7 +51,7 @@ fi
 if [[ "$KVM" != [Nn]* ]]; then
 
   CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
-  CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"  
+  CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
 
   if [ -z "$CPU_MODEL" ]; then
@@ -93,7 +93,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     fi
 
   fi
-  
+
   if [[ "$HV" != [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
     HV_FEATURES="hv_passthrough"
