@@ -74,7 +74,7 @@ configureDHCP() {
     error "VHOST can not be found ($rc). $ADD_ERR --device=/dev/vhost-net" && exit 22
   fi
 
-  NET_OPTS="-netdev tap,id=hostnet0,vhost=on,vhostfd=40,fd=30"
+  NET_OPTS="-netdev tap,id=hostnet0,vhost=on,vhostfd=40,fd=30,script=no,downscript=no"
 
   return 0
 }
@@ -117,7 +117,7 @@ getUserPorts() {
   list="${list%% }"
 
   for port in $list; do
-    args+="hostfwd=tcp::$port-:$port,"
+    args+="hostfwd=tcp::$port-$VM_NET_IP:$port,"
   done
 
   echo "${args%?}"
@@ -149,7 +149,7 @@ getHostPorts() {
 
 configureUser() {
 
-  NET_OPTS="-netdev user,id=hostnet0,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,host=${VM_NET_IP%.*}.1,hostname=$VM_NET_HOST,dns=${VM_NET_IP%.*}.1"
+  NET_OPTS="-netdev user,id=hostnet0,host=${VM_NET_IP%.*}.1,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,hostname=$VM_NET_HOST"
 
   local forward
   forward=$(getUserPorts "$USER_PORTS")
