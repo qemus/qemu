@@ -7,6 +7,7 @@ set -Eeuo pipefail
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
 : "${HOST_PORTS:=""}"
+: "${USER_PORTS:=""}"
 
 : "${VM_NET_DEV:=""}"
 : "${VM_NET_TAP:="qemu"}"
@@ -73,7 +74,7 @@ configureDHCP() {
     error "VHOST can not be found ($rc). $ADD_ERR --device=/dev/vhost-net" && exit 22
   fi
 
-  NET_OPTS="-netdev tap,id=hostnet0,vhost=on,vhostfd=40,fd=30,script=no,downscript=no"
+  NET_OPTS="-netdev tap,id=hostnet0,vhost=on,vhostfd=40,fd=30"
 
   return 0
 }
@@ -102,7 +103,28 @@ configureDNS() {
   return 0
 }
 
-getPorts() {
+getUserPorts() {
+
+  local args=""
+  local list=$1
+  local ssh="22"
+  local rdp="3389"
+
+  [ -z "$list" ] && list="$ssh,$rdp" || list+=",$ssh,$rdp"
+
+  list="${list/,/ }"
+  list="${list## }"
+  list="${list%% }"
+
+  for port in $list; do
+    args+="hostfwd=tcp::$port-:$port,"
+  done
+
+  echo "${args%?}"
+  return 0
+}
+
+getHostPorts() {
 
   local list=$1
   local vnc="5900"
@@ -127,8 +149,12 @@ getPorts() {
 
 configureUser() {
 
-  NET_OPTS="-netdev user,id=hostnet0,host=$VM_NET_IP,hostname=$VM_NET_HOST,dns=${VM_NET_IP%.*}.1,script=no,downscript=no"
+  NET_OPTS="-netdev user,id=hostnet0,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,host=${VM_NET_IP%.*}.1,hostname=$VM_NET_HOST,dns=${VM_NET_IP%.*}.1"
 
+  local forward
+  forward=$(getUserPorts "$USER_PORTS")
+  [ ! -z "$forward" ] NET_OPTS+=",$forward"
+  
   configureDNS
 
   return 0
@@ -190,7 +216,7 @@ configureNAT() {
   update-alternatives --set iptables /usr/sbin/iptables-legacy > /dev/null
   update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy > /dev/null
 
-  exclude=$(getPorts "$HOST_PORTS")
+  exclude=$(getHostPorts "$HOST_PORTS")
 
   if ! iptables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
     error "$tables" && exit 30
