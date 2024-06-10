@@ -296,8 +296,7 @@ checkOS() {
   [[ "${name,,}" == *"microsoft"* ]] && os="Windows"
 
   if [ -n "$os" ]; then
-    error "You are using Docker Desktop for $os which does not support macvlan, please revert to bridge networking!"
-    return 1
+    warn "you are using Docker Desktop for $os which does not support macvlan, please revert to bridge networking!"
   fi
 
   return 0
@@ -369,19 +368,19 @@ fi
 
 if [[ "$DHCP" == [Yy1]* ]]; then
 
-  ! checkOS && [[ "$DEBUG" != [Yy1]* ]] && exit 20
+  checkOS
 
   if [[ "$IP" == "172."* ]]; then
     warn "container IP starts with 172.* which is often a sign that you are not on a macvlan network (required for DHCP)!"
   fi
 
   # Configure for macvtap interface
-  ! configureDHCP && exit 21
+  ! configureDHCP && exit 20
 
 else
 
   if [[ "$IP" != "172."* ]] && [[ "$IP" != "10.8"* ]] && [[ "$IP" != "10.9"* ]]; then
-    ! checkOS && [[ "$DEBUG" != [Yy1]* ]] && exit 22
+    checkOS
   fi
 
   if [[ "${NETWORK,,}" != "user"* ]]; then
