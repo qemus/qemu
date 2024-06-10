@@ -228,7 +228,7 @@ configureNAT() {
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
     error "Failed to setup IP tables!" && return 1
   fi
-  
+
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp  -j DNAT --to "$VM_NET_IP"; then
     error "Failed to setup IP tables!" && return 1
   fi
@@ -390,10 +390,10 @@ else
     if ! configureNAT; then
 
       warn "falling back to (slow) usermode networking!"
-  
+
       ip link set "$VM_NET_TAP" down promisc off &> null || true
       ip link delete "$VM_NET_TAP" &> null || true
-  
+
       ip link set dockerbridge down &> null || true
       ip link delete dockerbridge &> null || true
 
