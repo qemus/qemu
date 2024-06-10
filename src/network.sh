@@ -389,7 +389,8 @@ else
     # Configure for tap interface
     if ! configureNAT; then
 
-      warn "falling back to (slow) usermode networking!"
+      NETWORK="user"
+      warn "falling back to usermode networking (slow)!"
 
       ip link set "$VM_NET_TAP" down promisc off &> null || true
       ip link delete "$VM_NET_TAP" &> null || true
@@ -397,11 +398,11 @@ else
       ip link set dockerbridge down &> null || true
       ip link delete dockerbridge &> null || true
 
-      ! configureUser && exit 23
-
     fi
 
-  else
+  fi
+
+  if [[ "${NETWORK,,}" == "user"* ]]; then
 
     # Configure for usermode networking (slirp)
     ! configureUser && exit 24
