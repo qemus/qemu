@@ -532,19 +532,11 @@ case "${DISK_TYPE,,}" in
 esac
 
 if [ -z "${MEDIA_TYPE:-}" ]; then
-  case "${DISK_TYPE,,}" in
-    "ide" | "usb" | "scsi" )
-      if [[ "${MACHINE,,}" == "virt" ]]; then
-        MEDIA_TYPE="auto"
-      else
-        MEDIA_TYPE="$DISK_TYPE"
-      fi ;;
-    "blk" | "auto" )
-      if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]]; then
-        MEDIA_TYPE="ide"
-      else
-        MEDIA_TYPE="auto"
-      fi ;;
+  case "${MACHINE,,}" in
+    "virt" | "pc-q35-2"* | "pc-i440fx-2"* )
+      MEDIA_TYPE="auto" ;;
+    * )
+      [[ "${DISK_TYPE,,}" != "blk" ]] && MEDIA_TYPE="$DISK_TYPE" || MEDIA_TYPE="ide" ;;
   esac
 fi
 
@@ -561,11 +553,12 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  if [[ "${MACHINE,,}" != "virt" ]] && [[ "${MACHINE,,}" != "pc-i440fx-2"* ]]; then
-    DRIVER_TYPE="ide"
-  else
-    DRIVER_TYPE="auto"
-  fi
+  case "${MACHINE,,}" in
+    "virt" | "pc-q35-2"* | "pc-i440fx-2"* )
+      DRIVER_TYPE="auto" ;;
+    * )
+      DRIVER_TYPE="ide" ;;
+  esac
   DISK_OPTS+=$(addMedia "$DRIVERS" "$DRIVER_TYPE" "1" "" "0x6")
 fi
 
