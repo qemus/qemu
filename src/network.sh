@@ -73,7 +73,7 @@ configureDHCP() {
     error "VHOST can not be found ($rc). $ADD_ERR --device=/dev/vhost-net" && exit 22
   fi
 
-  NET_OPTS="-netdev tap,id=hostnet0,vhost=on,vhostfd=40,fd=30"
+  NET_OPTS="-netdev tap,id=hostnet0,vhost=on,vhostfd=40,fd=30,script=no,downscript=no"
 
   return 0
 }
@@ -121,6 +121,15 @@ getPorts() {
   else
     echo " -m multiport ! --dports $list"
   fi
+
+  return 0
+}
+
+configureUser() {
+
+  NET_OPTS="-netdev user,id=hostnet0,host=$VM_NET_IP,hostname=$VM_NET_HOST,dns=${VM_NET_IP%.*}.1,script=no,downscript=no"
+
+  configureDNS
 
   return 0
 }
@@ -196,12 +205,14 @@ configureNAT() {
     iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
   fi
 
-  NET_OPTS="-netdev tap,ifname=$VM_NET_TAP,script=no,downscript=no,id=hostnet0"
+  NET_OPTS="-netdev tap,id=hostnet0,ifname=$VM_NET_TAP"
 
   if [ -c /dev/vhost-net ]; then
     { exec 40>>/dev/vhost-net; rc=$?; } 2>/dev/null || :
     (( rc == 0 )) && NET_OPTS+=",vhost=on,vhostfd=40"
   fi
+
+  NET_OPTS+=",script=no,downscript=no"
 
   configureDNS
 
@@ -214,7 +225,7 @@ closeNetwork() {
   nginx -s stop 2> /dev/null
   fWait "nginx"
 
-  [[ "$NETWORK" != [Yy1]* ]] && return 0
+  [[ "$NETWORK" == [Nn]* ]] && return 0
 
   exec 30<&- || true
   exec 40<&- || true
@@ -228,6 +239,8 @@ closeNetwork() {
 
     local pid="/var/run/dnsmasq.pid"
     [ -s "$pid" ] && pKill "$(<"$pid")"
+
+    [[ "${NETWORK,,}" == "user"* ]] && return 0
 
     ip link set "$VM_NET_TAP" down promisc off || true
     ip link delete "$VM_NET_TAP" || true
@@ -307,7 +320,7 @@ getInfo() {
 #  Configure Network
 # ######################################
 
-if [[ "$NETWORK" != [Yy1]* ]]; then
+if [[ "$NETWORK" == [Nn]* ]]; then
   NET_OPTS=""
   return 0
 fi
@@ -329,7 +342,7 @@ if [[ "$DHCP" == [Yy1]* ]]; then
     warn "container IP starts with 172.* which is often a sign that you are not on a macvlan network (required for DHCP)!"
   fi
 
-  # Configuration for DHCP IP
+  # Configure for macvtap interface
   configureDHCP
 
 else
@@ -338,8 +351,13 @@ else
     ! checkOS && [[ "$DEBUG" != [Yy1]* ]] && exit 19
   fi
 
-  # Configuration for static IP
-  configureNAT
+  if [[ "${NETWORK,,}" != "user"* ]]; then
+    # Configure for tap interface
+    configureNAT  
+  else
+    # Configure for usermode networking (slirp)
+    configureUser
+  fi
 
 fi
 
