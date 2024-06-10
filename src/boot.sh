@@ -21,33 +21,33 @@ SECURE="off"
 [[ "$SMM" == [Yy1]* ]] && SECURE="on"
 
 case "${BOOT_MODE,,}" in
-  uefi)
+  "uefi" )
     BOOT_DESC=" with UEFI"
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
-  secure)
+  "secure" )
     SECURE="on"
     BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.secboot.fd"
     VARS="OVMF_VARS_4M.secboot.fd"
     ;;
-  windows | windows_plain)
+  "windows" | "windows_plain" )
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
-  windows_secure)
+  "windows_secure" )
     TPM="Y"
     SECURE="on"
     BOOT_DESC=" securely"
     ROM="OVMF_CODE_4M.ms.fd"
     VARS="OVMF_VARS_4M.ms.fd"
     ;;
-  windows_legacy)
+  "windows_legacy" )
     BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
     ;;
-  legacy)
+  "legacy" )
     BOOT_OPTS=""
     ;;
   *)
