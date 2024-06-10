@@ -54,6 +54,7 @@ info "$msg..." && html "$msg..."
 fKill "progress.sh"
 
 msg="Failed to download $BOOT"
+(( rc == 3 )) && error "$msg , cannot write file (disk full?)" && exit 60
 (( rc == 4 )) && error "$msg , network failure!" && exit 60
 (( rc == 8 )) && error "$msg , server issued an error response!" && exit 60
 (( rc != 0 )) && error "$msg , reason: $rc" && exit 60
