@@ -153,8 +153,8 @@ configureUser() {
 
   local forward
   forward=$(getUserPorts "$USER_PORTS")
-  [ ! -z "$forward" ] NET_OPTS+=",$forward"
-  
+  [ ! -z "$forward" ] && NET_OPTS+=",$forward"
+
   configureDNS
 
   return 0
