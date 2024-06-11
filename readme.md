@@ -12,17 +12,15 @@
 
 Docker container for running virtual machines using QEMU.
 
-It allows you to create VM's which behave just like normal containers, meaning you can manage them using all your existing tools (like Portainer) and configure them in a language (YAML) you are already familiar with.
-
-This greatly reduces the learning curve and eliminates the need for a dedicated Proxmox or ESXi server in many cases.
-
-It uses high-performance QEMU options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed.
-
 ## Features ✨
 
- - Multi-platform
- - KVM acceleration
- - Web-based viewer
+  - Allows you to create VM's which behave just like normal containers, meaning you can manage them using all your existing tools (like Portainer) and configure them in a language (YAML) you are already familiar with.
+
+  - Greatly reduces the learning curve and eliminates the need for a dedicated Proxmox or ESXi server in many cases.
+
+ - Has a web-based viewer to control the machine directly from your browser
+
+  - Uses high-performance QEMU options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed.
 
 ## Usage  🐳
 
