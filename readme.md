@@ -14,9 +14,11 @@ Docker container for running virtual machines using QEMU.
 
 ## Features ✨
 
-  - Allows you to create VM's which behave just like normal containers, meaning you can manage them using all your existing tools (like Portainer) and configure them in a language (YAML) you are already familiar with.
+  - Create VM's which behave just like normal containers
 
-  - Greatly reduces the learning curve and eliminates the need for a dedicated Proxmox or ESXi server in many cases.
+  - Manage them using all your existing tools (like Portainer) and configure them in a language (YAML) you are already familiar with
+
+  - Reduces the learning curve and eliminates the need for a dedicated Proxmox or ESXi server in many cases.
 
  - Has a web-based viewer to control the machine directly from your browser
 
