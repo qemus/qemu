@@ -18,13 +18,13 @@ This greatly reduces the learning curve and eliminates the need for a dedicated 
 
 It uses high-performance QEMU options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed.
 
-## Features
+## Features ✨
 
  - Multi-platform
  - KVM acceleration
  - Web-based viewer
 
-## Usage
+## Usage  🐳
 
 Via Docker Compose:
 
@@ -56,7 +56,7 @@ Via Kubernetes:
 kubectl apply -f kubernetes.yml
 ```
 
-## FAQ
+## FAQ 💬
 
 * ### How do I use it?
 
@@ -259,7 +259,7 @@ kubectl apply -f kubernetes.yml
     ARGUMENTS: "-device usb-tablet"
   ```
 
-## Stars
+## Stars 🌟
 [![Stars](https://starchart.cc/qemus/qemu-docker.svg?variant=adaptive)](https://starchart.cc/qemus/qemu-docker)
 
 [build_url]: https://github.com/qemus/qemu-docker/
