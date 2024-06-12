@@ -4,7 +4,7 @@ set -Eeuo pipefail
 # Docker environment variables
 : "${TPM:="N"}"         # Disable TPM
 : "${SMM:="N"}"         # Disable SMM
-: "${BIOS:=""}"                 # Bios file
+: "${BIOS:=""}"             # BIOS file
 : "${BOOT_MODE:="legacy"}"  # Boot mode
 
 BOOT_DESC=""
