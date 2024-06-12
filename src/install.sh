@@ -23,7 +23,7 @@ detectType() {
       [ -n "$dir" ] && BOOT_MODE="uefi"
       ;;
 
-    *".img" | *".raw" )
+    *".img" )
 
       DISK_NAME=$(basename "$file")
       DISK_NAME="${DISK_NAME%.*}"
@@ -109,6 +109,11 @@ convertImage() {
 
   [ -f "$dst_file" ] && error "Conversion failed, destination file $dst_file already exists?" && return 1
   [ ! -f "$source_file" ] && error "Conversion failed, source file $source_file does not exists?" && return 1
+
+  if [[ "$source_fmt" == "raw" ]] && [[ "$dst_fmt" == "raw" ]]; then
+    mv -f "$source_file" "$dst_file"
+    return 0
+  fi
 
   local tmp_file="$dst_file.tmp"
   local dir=$(dirname "$tmp_file")
@@ -206,19 +211,24 @@ base=$(basename "${BOOT%%\?*}")
 base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
 
 case "${base,,}" in
-  *".vdi" | *".vmdk" | *".vhd" | *".vhdx" ) ;;
-  *".iso" | *".img" | *".raw" | *".qcow2" )
+
+  *".iso" | *".img" | *".qcow2" )
 
     detectType "$STORAGE/$base" && return 0 ;;
+
+  *".raw" | *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
+
+    detectType "$STORAGE/${base%.*}.img" && return 0
+    detectType "$STORAGE/${base%.*}.qcow2" && return 0 ;;
 
   *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
 
     case "${base%.*}" in
-      *".iso" | *".img" | *".raw" | *".qcow2" )
+      *".iso" | *".img" | *".qcow2" )
 
         detectType "$STORAGE/${base%.*}" && return 0 ;;
 
-      *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
+      *".raw" | *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
 
         find="${base%.*}"
 
@@ -278,7 +288,7 @@ case "${base,,}" in
 esac
 
 case "${base,,}" in
-  *".iso" | *".img" | *".raw" | *".qcow2" )
+  *".iso" | *".img" | *".qcow2" )
     detectType "$STORAGE/$base" && return 0
     error "Cannot read file \"${base}\"" && exit 63 ;;
 esac
@@ -289,6 +299,7 @@ target_fmt="${DISK_FMT:-}"
 [[ "$target_fmt" != "raw" ]] && target_ext="qcow2"
 
 case "${base,,}" in
+  *".raw" ) source_fmt="raw" ;;
   *".vdi" ) source_fmt="vdi" ;;
   *".vhd" ) source_fmt="vhd" ;;
   *".vmdk" ) source_fmt="vmdk" ;;
