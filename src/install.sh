@@ -7,11 +7,11 @@ detect () {
   [ ! -f "$file" ] && return 1
   [ ! -s "$file" ] && return 1
 
-  dir=$(isoinfo -f -i "$file")
-
-  # Automaticly detect UEFI-compatible ISO's
-  if echo "${dir^^}" | grep -q "^/EFI"; then
-    [ -z "${BOOT_MODE:-}" ] && BOOT_MODE="uefi"
+  if [ -z "${BOOT_MODE:-}" ]; then
+    # Automaticly detect UEFI-compatible ISO's
+    dir=$(isoinfo -f -i "$file")
+    dir=$(echo "${dir^^}" | grep "^/EFI")
+    [ -n "$dir" ] && BOOT_MODE="uefi"
   fi
 
   BOOT="$file"
