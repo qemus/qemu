@@ -207,7 +207,7 @@ hasDisk() {
   [ -b "${DEVICE:-}" ] && return 0
   [ -s "$STORAGE/data.img" ]  && return 0
   [ -s "$STORAGE/data.qcow2" ] && return 0
-  
+
   return 1
 }
 
