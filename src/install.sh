@@ -12,25 +12,45 @@ detectType() {
   case "${file,,}" in
     *".iso" )
 
+      BOOT="$file"
       [ -n "${BOOT_MODE:-}" ] && break
 
       # Automaticly detect UEFI-compatible ISO's
       dir=$(isoinfo -f -i "$file")
-
-      [ -z "$dir" ] && error "Failed to read ISO file, invalid format!" && return 1
+      [ -z "$dir" ] && error "Failed to read ISO file, invalid format!" && BOOT="" && return 1
 
       dir=$(echo "${dir^^}" | grep "^/EFI")
       [ -n "$dir" ] && BOOT_MODE="uefi"
-
       ;;
-    *".img" | *".raw" | *".qcow2" | *".ova")
 
+    *".img" | *".raw" )
+
+      DISK_NAME=$(basename "$file")
+      DISK_NAME="${DISK_NAME%.*}"
+      [ -n "${BOOT_MODE:-}" ] && break
+
+      # Automaticly detect UEFI-compatible images
+      dir=$(sfdisk -l "$file")
+      [ -z "$dir" ] && error "Failed to read IMG file, invalid format!" && DISK_NAME="" && return 1
+
+      dir=$(echo "${dir^^}" | grep "EFI SYSTEM")
+      [ -n "$dir" ] && BOOT_MODE="uefi"
       ;;
+
+    *".qcow2" )
+
+      DISK_NAME=$(basename "$file")
+      DISK_NAME="${DISK_NAME%.*}"
+      [ -n "${BOOT_MODE:-}" ] && break
+
+      # TODO: Detect boot mode from partition table in image
+      BOOT_MODE="uefi"
+      ;;
+
     * )
-      error "Unknown file format, extension \".${file/*./}\" is not recognized!" && return 1 ;;
+      return 1 ;;
   esac
 
-  BOOT="$file"
   return 0
 }
 
@@ -79,13 +99,107 @@ downloadFile() {
   return 1
 }
 
-file=$(find / -maxdepth 1 -type f -iname boot.iso | head -n 1)
-[ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname boot.iso | head -n 1)
-detectType "$file" && return 0
+convertImage() {
+
+  local source_file=$1
+  local source_fmt=$2
+  local dst_file=$3
+  local dst_fmt=$4
+  local base fs fa cur_size src_size space disk_param
+
+  [ -f "$dst_file" ] && error "Conversion failed, destination file $dst_file already exists?" && return 1
+  [ ! -f "$source_file" ] && error "Conversion failed, source file $source_file does not exists?" && return 1
+
+  local tmp_file="$dst_file.tmp"
+  local dir=$(dirname "$tmp_file")
+
+  rm -f "$tmp_file"
+
+  if [ -n "$ALLOCATE" ] && [[ "$ALLOCATE" != [Nn]* ]]; then
+
+    # Check free diskspace
+    src_size=$(qemu-img info "$source_file" -f "$source_fmt" | grep '^virtual size: ' | sed 's/.*(\(.*\) bytes)/\1/')
+    space=$(df --output=avail -B 1 "$dir" | tail -n 1)
+
+    if (( src_size > space )); then
+      local space_gb=$(( (space + 1073741823)/1073741824 ))
+      error "Not enough free space to convert image in $dir, it has only $space_gb GB available..." && return 1
+    fi
+  fi
+
+  base=$(basename "$source_file")
+  info "Converting $base..."
+  html "Converting image..."
+
+  local conv_flags="-p"
+
+  if [ -z "$ALLOCATE" ] || [[ "$ALLOCATE" == [Nn]* ]]; then
+    disk_param="preallocation=off"
+  else
+    disk_param="preallocation=falloc"
+  fi
+
+  fs=$(stat -f -c %T "$dir")
+  [[ "${fs,,}" == "btrfs" ]] && disk_param+=",nocow=on"
+
+  if [[ "$dst_fmt" != "raw" ]]; then
+    if [ -z "$ALLOCATE" ] || [[ "$ALLOCATE" == [Nn]* ]]; then
+      conv_flags+=" -c"
+    fi
+    [ -n "${DISK_FLAGS:-}" ] && disk_param+=",$DISK_FLAGS"
+  fi
+
+  # shellcheck disable=SC2086
+  if ! qemu-img convert -f "$source_fmt" $conv_flags -o "$disk_param" -O "$dst_fmt" -- "$source_file" "$tmp_file"; then
+    rm -f "$tmp_file"
+    error "Failed to convert image in $dir, is there enough space available?" && return 1
+  fi
+
+  if [[ "$dst_fmt" == "raw" ]]; then
+    if [ -n "$ALLOCATE" ] && [[ "$ALLOCATE" != [Nn]* ]]; then
+      # Work around qemu-img bug
+      cur_size=$(stat -c%s "$tmp_file")
+      if ! fallocate -l "$cur_size" "$tmp_file"; then
+        error "Failed to allocate $cur_size bytes for image!"
+      fi
+    fi
+  fi
+
+  rm -f "$source_file"
+  mv "$tmp_file" "$dst_file"
+
+  if [[ "${fs,,}" == "btrfs" ]]; then
+    fa=$(lsattr "$dst_file")
+    if [[ "$fa" != *"C"* ]]; then
+      error "Failed to disable COW for image on ${fs^^} filesystem!"
+    fi
+  fi
+
+  html "Conversion completed..."
+
+  return 0
+}
+
+findFile() {
+
+  local ext="$1"
+  local file
+
+  file=$(find / -maxdepth 1 -type f -iname "boot.$ext" | head -n 1)
+  [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "boot.$ext" | head -n 1)
+  detectType "$file" && return 0
+
+  return 1
+}
+
+findFile ".iso" && return 0
+findFile ".img" && return 0
+findFile ".raw" && return 0
+findFile ".qcow2" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   hasDisk && return 0
-  error "No boot disk specified, set BOOT= to the URL of an image file." && exit 64
+  error "No boot disk specified, set BOOT= to the URL of a ISO or disk image file." && exit 64
 fi
 
 base=$(basename "${BOOT%%\?*}")
@@ -93,24 +207,33 @@ base=$(basename "${BOOT%%\?*}")
 base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
 
 case "${base,,}" in
-  *".iso" )
+  *".vdi" | *".vmdk" | *".vhd" | *".vhdx" ) ;;
+  *".iso" | *".img" | *".raw" | *".qcow2" )
+
     detectType "$STORAGE/$base" && return 0 ;;
-  *".img" | *".raw" | *".qcow2" | *".ova" | "*.vdi" | "*.vmdk" )
-    detectType "$STORAGE/$base" && return 0 ;;
+
   *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
-    detectType "$STORAGE/${base%.*}" && return 0 ;;
+
+    case "${base%.*}" in
+      *".iso" | *".img" | *".raw" | *".qcow2" )
+
+        detectType "$STORAGE/${base%.*}" && return 0 ;;
+
+      *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
+
+        find="${base%.*}"
+
+        detectType "$STORAGE/${find%.*}.img" && return 0
+        detectType "$STORAGE/${find%.*}.qcow2" && return 0 ;;
+
+    esac ;;
+
   * )
     error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
 if ! downloadFile "$BOOT" "$base"; then
-  rm -f "$STORAGE/$base.tmp"
-  exit 60
-fi
-
-if [[ "${base,,}" == *".iso" ]]; then
- ! detectType "$STORAGE/$base" && exit 63
- return 0
+  rm -f "$STORAGE/$base.tmp" && exit 60
 fi
 
 case "${base,,}" in
@@ -121,12 +244,18 @@ esac
 
 case "${base,,}" in
   *".gz" | *".gzip" )
+
     gzip -dc "$STORAGE/$base" > "$STORAGE/${base%.*}"
+    rm -f "$STORAGE/$base"
     base="${base%.*}"
+
     ;;
   *".xz" )
+
     xz -dc "$STORAGE/$base" > "$STORAGE/${base%.*}"
+    rm -f "$STORAGE/$base"
     base="${base%.*}"
+
     ;;
   *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
 
@@ -149,27 +278,30 @@ case "${base,,}" in
     ;;
 esac
 
-if [[ "${base,,}" == *".iso" ]]; then
- ! detectType "$STORAGE/$base" && exit 63
- return 0
-fi
+case "${base,,}" in
+  *".iso" | *".img" | *".raw" | *".qcow2" )
+    detectType "$STORAGE/$base" && return 0
+    error "Cannot read file \"${base}\"" && exit 63 ;;
+esac
 
-# QCOW2, VDI, VHD, VHDX, VMDK
+target_ext="img"
+target_fmt="${DISK_FMT:-}"
+[ -z "$target_fmt" ] && target_fmt="raw"
+[[ "$target_fmt" != "raw" ]] && target_ext="qcow2"
 
 case "${base,,}" in
-  *".img" | *".raw" | *".ova" | *".vdi" | "*.vmdk" )
-    mv -f "$dest" "$STORAGE/data.img"
-    BOOT=""
-    return 0 ;;
-  *".qcow2" )
-    BOOT_MODE="uefi"
-    mv -f "$STORAGE/$base" "$STORAGE/data.qcow2"
-    BOOT=""
-    return 0 ;;
+  *".vdi" ) source_fmt="vdi" ;;
+  *".vhd" ) source_fmt="vhd" ;;
+  *".vmdk" ) source_fmt="vmdk" ;;
+  *".vhdx" ) source_fmt="vhdx" ;;
   * )
     error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
-! detectType "$STORAGE/$base" && exit 63
+dst="$STORAGE/${base%.*}.$target_ext"
 
-return 0
+! convertImage "$STORAGE/$base" "$source_fmt" "$dst" "$target_fmt" && exit 35
+
+base=$(basename "$dst")
+detectType "$STORAGE/$base" && return 0
+error "Cannot read file \"${base}\"" && exit 36
