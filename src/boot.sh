@@ -4,23 +4,32 @@ set -Eeuo pipefail
 # Docker environment variables
 : "${TPM:="N"}"         # Disable TPM
 : "${SMM:="N"}"         # Disable SMM
+: "${BIOS:=""}"                 # Bios file
 : "${BOOT_MODE:="legacy"}"  # Boot mode
 
 BOOT_DESC=""
 BOOT_OPTS=""
 
-if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-
-  BOOT_OPTS="-rtc base=localtime"
-  BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
-  BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
-
-fi
-
 SECURE="off"
 [[ "$SMM" == [Yy1]* ]] && SECURE="on"
 
+if [ -n "$BIOS" ]; then
+  BOOT_OPTS="-bios $BIOS"
+  return 0
+fi
+
 case "${BOOT_MODE,,}" in
+  "windows"* )
+    BOOT_OPTS="-rtc base=localtime"
+    BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
+    BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
+    ;;
+esac
+
+case "${BOOT_MODE,,}" in
+  "legacy" )
+    BOOT_OPTS=""
+    ;;
   "uefi" )
     BOOT_DESC=" with UEFI"
     ROM="OVMF_CODE_4M.fd"
@@ -47,8 +56,8 @@ case "${BOOT_MODE,,}" in
     BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
     ;;
-  "legacy" )
-    BOOT_OPTS=""
+  "uboot" | "u-boot")
+    BOOT_OPTS="-bios /usr/lib/u-boot/qemu-x86_64/u-boot.rom"
     ;;
   *)
     error "Unknown BOOT_MODE, value \"${BOOT_MODE}\" is not recognized!"
@@ -56,29 +65,31 @@ case "${BOOT_MODE,,}" in
     ;;
 esac
 
-if [[ "${BOOT_MODE,,}" != *"legacy" ]]; then
+case "${BOOT_MODE,,}" in
+  "uefi" | "secure" | "windows" | "windows_plain" | "windows_secure" )
 
-  OVMF="/usr/share/OVMF"
-  DEST="$STORAGE/${BOOT_MODE,,}"
+    OVMF="/usr/share/OVMF"
+    DEST="$STORAGE/${BOOT_MODE,,}"
 
-  if [ ! -s "$DEST.rom" ] || [ ! -f "$DEST.rom" ]; then
-    [ ! -s "$OVMF/$ROM" ] || [ ! -f "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
-    cp "$OVMF/$ROM" "$DEST.rom"
-  fi
+    if [ ! -s "$DEST.rom" ] || [ ! -f "$DEST.rom" ]; then
+      [ ! -s "$OVMF/$ROM" ] || [ ! -f "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
+      cp "$OVMF/$ROM" "$DEST.rom"
+    fi
 
-  if [ ! -s "$DEST.vars" ] || [ ! -f "$DEST.vars" ]; then
-    [ ! -s "$OVMF/$VARS" ] || [ ! -f "$OVMF/$VARS" ]&& error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
-    cp "$OVMF/$VARS" "$DEST.vars"
-  fi
+    if [ ! -s "$DEST.vars" ] || [ ! -f "$DEST.vars" ]; then
+      [ ! -s "$OVMF/$VARS" ] || [ ! -f "$OVMF/$VARS" ]&& error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
+      cp "$OVMF/$VARS" "$DEST.vars"
+    fi
 
-  if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
-    BOOT_OPTS+=" -global driver=cfi.pflash01,property=secure,value=on"
-  fi
+    if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
+      BOOT_OPTS+=" -global driver=cfi.pflash01,property=secure,value=on"
+    fi
 
-  BOOT_OPTS+=" -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
-  BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
+    BOOT_OPTS+=" -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
+    BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
 
-fi
+    ;;
+esac
 
 if [[ "$TPM" == [Yy1]* ]]; then
 
