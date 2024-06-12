@@ -14,6 +14,7 @@ RUN set -eu && \
         wget \
         7zip \
         ovmf \
+        fdisk \
         nginx \
         swtpm \
         procps \
