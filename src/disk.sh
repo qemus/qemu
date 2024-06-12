@@ -524,6 +524,7 @@ addDevice () {
 html "Initializing disks..."
 
 [ -z "${DISK_OPTS:-}" ] && DISK_OPTS=""
+[ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
 [ -z "${DISK_TYPE:-}" ] && DISK_TYPE="scsi"
 
 case "${DISK_TYPE,,}" in
@@ -564,10 +565,10 @@ if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
   DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "1" "" "0x6")
 fi
 
-DISK1_FILE="$STORAGE/data"
-DISK2_FILE="/storage2/data2"
-DISK3_FILE="/storage3/data3"
-DISK4_FILE="/storage4/data4"
+DISK1_FILE="$STORAGE/${DISK_NAME}"
+DISK2_FILE="/storage2/${DISK_NAME}2"
+DISK3_FILE="/storage3/${DISK_NAME}3"
+DISK4_FILE="/storage4/${DISK_NAME}4"
 
 if [ -z "$DISK_FMT" ]; then
   if [ -f "$DISK1_FILE.qcow2" ]; then
