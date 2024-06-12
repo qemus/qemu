@@ -17,13 +17,15 @@ Docker container for running virtual machines using QEMU.
 
   - Create VM's which behave just like normal containers
 
-  - Manage them using all your existing tools (like Portainer) and configure them in a language (YAML) you are already familiar with
+  - Manage them using all your existing tools (like Portainer)
 
-  - Reduces the learning curve and eliminates the need for a dedicated Proxmox or ESXi server
+  - Configure them in a language (YAML) you are already familiar with
 
- - Web-based viewer to control the machine directly from your browser
+  - Web-based viewer to take control of the machine directly from your browser
 
-  - High-performance QEMU options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed
+  - Supports `.iso`, `.img`, `.qcow2`, `.vhd`, `.vhdx`, `.vdi`, `.vmdk` and `.raw` disk formats
+
+  - High-performance options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed
 
 ## Usage  🐳
 
@@ -35,7 +37,7 @@ services:
     container_name: qemu
     image: qemux/qemu-docker
     environment:
-      BOOT: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
+      BOOT: "https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2"
     devices:
       - /dev/kvm
     cap_add:
@@ -63,7 +65,7 @@ kubectl apply -f kubernetes.yml
 
   Very simple! These are the steps:
 
-  - Set the `BOOT` environment variable to the URL of an ISO image you want to install.
+  - Set the `BOOT` environment variable to the URL of any [disk image](https://github.com/qemus/qemu-docker#what-image-formats-are-supported) you want to install.
 
   - Start the container and connect to [port 8006](http://localhost:8006) using your web browser.
 
@@ -95,7 +97,7 @@ kubectl apply -f kubernetes.yml
 
 * ### How do I boot a local ISO?
 
-  You can use a local file directly, and skip the download altogether, by binding it in your compose file in this way:
+  You can use a local ISO file directly, and skip the download altogether, by binding it in your compose file in this way:
   
   ```yaml
   volumes:
@@ -259,6 +261,12 @@ kubectl apply -f kubernetes.yml
   environment:
     ARGUMENTS: "-device usb-tablet"
   ```
+
+* ### What image formats are supported?
+
+  You can set the `BOOT` URL to any `.iso`, `.img`, `.raw`, `.qcow2`, `.vhd`, `.vhdx`, `.vdi` or `.vmdk` file.
+
+  It will even automaticly extract compressed images, like `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more!
 
 ## Stars 🌟
 [![Stars](https://starchart.cc/qemus/qemu-docker.svg?variant=adaptive)](https://starchart.cc/qemus/qemu-docker)
