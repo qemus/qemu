@@ -274,10 +274,10 @@ convertDisk() {
   isCow "$FS" && DISK_PARAM+=",nocow=on"
 
   if [[ "$DST_FMT" != "raw" ]]; then
-      if [[ "$ALLOCATE" == [Nn]* ]]; then
-        CONV_FLAGS+=" -c"
-      fi
-      [ -n "$DISK_FLAGS" ] && DISK_PARAM+=",$DISK_FLAGS"
+    if [[ "$ALLOCATE" == [Nn]* ]]; then
+      CONV_FLAGS+=" -c"
+    fi
+    [ -n "$DISK_FLAGS" ] && DISK_PARAM+=",$DISK_FLAGS"
   fi
 
   # shellcheck disable=SC2086
