@@ -315,8 +315,3 @@ dst="$STORAGE/${base%.*}.$target_ext"
 base=$(basename "$dst")
 detectType "$STORAGE/$base" && return 0
 error "Cannot read file \"${base}\"" && exit 36
-
-./src/install.sh:16:34: error: In functions, use return instead of break. [SC2104]
-./src/install.sh:30:34: error: In functions, use return instead of break. [SC2104]
-./src/install.sh:44:34: error: In functions, use return instead of break. [SC2104]
-./src/install.sh:119:9: warning: Declare and assign separately to avoid masking return values. [SC2155]
