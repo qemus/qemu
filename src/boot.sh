@@ -56,11 +56,6 @@ case "${BOOT_MODE,,}" in
     BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
     ;;
-  "uboot" | "u-boot")
-    BOOT_DESC=" with U-Boot"
-    addPackage "u-boot-qemu" "U-Boot BIOS"
-    BOOT_OPTS="-bios /usr/lib/u-boot/qemu-x86_64/u-boot.rom"
-    ;;
   *)
     error "Unknown BOOT_MODE, value \"${BOOT_MODE}\" is not recognized!"
     exit 33
