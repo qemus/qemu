@@ -31,7 +31,7 @@ case "${BOOT_MODE,,}" in
     BOOT_OPTS=""
     ;;
   "uefi" )
-    BOOT_DESC=" with UEFI"
+    BOOT_DESC=" with OVMF"
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
