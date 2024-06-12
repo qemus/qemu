@@ -95,16 +95,16 @@ kubectl apply -f kubernetes.yml
   
   This can also be used to resize the existing disk to a larger capacity without any data loss.
 
-* ### How do I boot a local ISO?
+* ### How do I boot a local image?
 
-  You can use a local ISO file directly, and skip the download altogether, by binding it in your compose file in this way:
+  You can use a local image file directly, and skip the download altogether, by binding it in your compose file:
   
   ```yaml
   volumes:
     - /home/user/example.iso:/boot.iso
   ```
 
-  Replace the example path `/home/user/example.iso` with the filename of the desired ISO file, the value of `BOOT` will be ignored in this case.
+  This way you can supply a `boot.iso`, `boot.img` or `boot.qcow2` file. The URL of the `BOOT` variable will be ignored in this case.
 
 * ### How do I boot ARM images?
 
