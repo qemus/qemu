@@ -531,13 +531,21 @@ case "${DISK_TYPE,,}" in
   * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
 esac
 
+case "${MACHINE,,}" in
+  "virt" )
+    FALLBACK="usb" ;;
+  "pc-q35-2"* | "pc-i440fx-2"* )
+    FALLBACK="auto" ;;
+  * )
+    FALLBACK="ide" ;;
+esac
+
 if [ -z "${MEDIA_TYPE:-}" ]; then
-  case "${MACHINE,,}" in
-    "virt" | "pc-q35-2"* | "pc-i440fx-2"* )
-      MEDIA_TYPE="auto" ;;
-    * )
-      [[ "${DISK_TYPE,,}" != "blk" ]] && MEDIA_TYPE="$DISK_TYPE" || MEDIA_TYPE="ide" ;;
-  esac
+  if [[ "${DISK_TYPE,,}" == "blk" ]]; then
+    MEDIA_TYPE="$FALLBACK"
+  else
+    MEDIA_TYPE="$DISK_TYPE"
+  fi
 fi
 
 case "${MEDIA_TYPE,,}" in
@@ -553,13 +561,7 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  case "${MACHINE,,}" in
-    "virt" | "pc-q35-2"* | "pc-i440fx-2"* )
-      DRIVER_TYPE="auto" ;;
-    * )
-      DRIVER_TYPE="ide" ;;
-  esac
-  DISK_OPTS+=$(addMedia "$DRIVERS" "$DRIVER_TYPE" "1" "" "0x6")
+  DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "1" "" "0x6")
 fi
 
 DISK1_FILE="$STORAGE/data"
