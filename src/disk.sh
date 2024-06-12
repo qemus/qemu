@@ -565,7 +565,13 @@ if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
   DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "1" "" "0x6")
 fi
 
-DISK1_FILE="$STORAGE/${DISK_NAME}"
+DISK1_FILE="/boot"
+if [ ! -f "$DISK1_FILE.img" ] || [ ! -s "$DISK1_FILE.img" ]; then
+  if [ ! -f "$DISK1_FILE.qcow2" ] || [ ! -s "$DISK1_FILE.qcow2" ]; then
+    DISK1_FILE="$STORAGE/${DISK_NAME}"
+  fi
+fi
+
 DISK2_FILE="/storage2/${DISK_NAME}2"
 DISK3_FILE="/storage3/${DISK_NAME}3"
 DISK4_FILE="/storage4/${DISK_NAME}4"
