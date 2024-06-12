@@ -287,13 +287,13 @@ convertDisk() {
   fi
 
   if [[ "$DST_FMT" == "raw" ]]; then
-      if [[ "$ALLOCATE" != [Nn]* ]]; then
-        # Work around qemu-img bug
-        CUR_SIZE=$(stat -c%s "$TMP_FILE")
-        if ! fallocate -l "$CUR_SIZE" "$TMP_FILE"; then
-            error "Failed to allocate $CUR_SIZE bytes for $DISK_DESC image $TMP_FILE"
-        fi
+    if [[ "$ALLOCATE" != [Nn]* ]]; then
+      # Work around qemu-img bug
+      CUR_SIZE=$(stat -c%s "$TMP_FILE")
+      if ! fallocate -l "$CUR_SIZE" "$TMP_FILE"; then
+          error "Failed to allocate $CUR_SIZE bytes for $DISK_DESC image $TMP_FILE"
       fi
+    fi
   fi
 
   rm -f "$SOURCE_FILE"
