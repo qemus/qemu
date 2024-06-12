@@ -13,7 +13,7 @@ detectType() {
     *".iso" )
 
       BOOT="$file"
-      [ -n "${BOOT_MODE:-}" ] && break
+      [ -n "${BOOT_MODE:-}" ] && return 0
 
       # Automaticly detect UEFI-compatible ISO's
       dir=$(isoinfo -f -i "$file")
@@ -27,7 +27,7 @@ detectType() {
 
       DISK_NAME=$(basename "$file")
       DISK_NAME="${DISK_NAME%.*}"
-      [ -n "${BOOT_MODE:-}" ] && break
+      [ -n "${BOOT_MODE:-}" ] && return 0
 
       # Automaticly detect UEFI-compatible images
       dir=$(sfdisk -l "$file")
@@ -41,7 +41,7 @@ detectType() {
 
       DISK_NAME=$(basename "$file")
       DISK_NAME="${DISK_NAME%.*}"
-      [ -n "${BOOT_MODE:-}" ] && break
+      [ -n "${BOOT_MODE:-}" ] && return 0
 
       # TODO: Detect boot mode from partition table in image
       BOOT_MODE="uefi"
@@ -105,7 +105,7 @@ convertImage() {
   local source_fmt=$2
   local dst_file=$3
   local dst_fmt=$4
-  local base fs fa cur_size src_size space disk_param
+  local dir base fs fa cur_size src_size space disk_param
 
   [ -f "$dst_file" ] && error "Conversion failed, destination file $dst_file already exists?" && return 1
   [ ! -f "$source_file" ] && error "Conversion failed, source file $source_file does not exists?" && return 1
@@ -116,7 +116,7 @@ convertImage() {
   fi
 
   local tmp_file="$dst_file.tmp"
-  local dir=$(dirname "$tmp_file")
+  dir=$(dirname "$tmp_file")
 
   rm -f "$tmp_file"
 
@@ -315,3 +315,8 @@ dst="$STORAGE/${base%.*}.$target_ext"
 base=$(basename "$dst")
 detectType "$STORAGE/$base" && return 0
 error "Cannot read file \"${base}\"" && exit 36
+
+./src/install.sh:16:34: error: In functions, use return instead of break. [SC2104]
+./src/install.sh:30:34: error: In functions, use return instead of break. [SC2104]
+./src/install.sh:44:34: error: In functions, use return instead of break. [SC2104]
+./src/install.sh:119:9: warning: Declare and assign separately to avoid masking return values. [SC2155]
