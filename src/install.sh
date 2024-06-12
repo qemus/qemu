@@ -193,9 +193,6 @@ findFile() {
 }
 
 findFile ".iso" && return 0
-findFile ".img" && return 0
-findFile ".raw" && return 0
-findFile ".qcow2" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   hasDisk && return 0
