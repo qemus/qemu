@@ -21,9 +21,9 @@ Docker container for running virtual machines using QEMU.
 
   - Reduces the learning curve and eliminates the need for a dedicated Proxmox or ESXi server
 
- - Has a web-based viewer to control the machine directly from your browser
+ - Web-based viewer to control the machine directly from your browser
 
-  - Uses high-performance QEMU options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed
+  - High-performance QEMU options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed
 
 ## Usage  🐳
 
