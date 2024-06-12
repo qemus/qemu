@@ -198,7 +198,7 @@ findFile ".qcow2" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   hasDisk && return 0
-  error "No boot disk specified, set BOOT= to the URL of a ISO or disk image file." && exit 64
+  error "No boot disk specified, set BOOT= to the URL of a disk image file." && exit 64
 fi
 
 base=$(basename "${BOOT%%\?*}")
