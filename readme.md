@@ -21,7 +21,7 @@ Docker container for running virtual machines using QEMU.
 
   - Configure them in a language (YAML) you are already familiar with
 
-  - Web-based viewer to take control of the machine directly from your browser
+  - Web-based viewer to control the machine directly from your browser
 
   - Supports `.iso`, `.img`, `.qcow2`, `.vhd`, `.vhdx`, `.vdi`, `.vmdk` and `.raw` disk formats
 
