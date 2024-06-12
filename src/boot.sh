@@ -57,6 +57,8 @@ case "${BOOT_MODE,,}" in
     USB="usb-ehci,id=ehci"
     ;;
   "uboot" | "u-boot")
+    BOOT_DESC=" with U-Boot"
+    addPackage "u-boot-qemu" "U-Boot BIOS"
     BOOT_OPTS="-bios /usr/lib/u-boot/qemu-x86_64/u-boot.rom"
     ;;
   *)
