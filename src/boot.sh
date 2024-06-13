@@ -2,10 +2,9 @@
 set -Eeuo pipefail
 
 # Docker environment variables
+: "${BIOS:=""}"             # BIOS file
 : "${TPM:="N"}"         # Disable TPM
 : "${SMM:="N"}"         # Disable SMM
-: "${BIOS:=""}"             # BIOS file
-: "${BOOT_MODE:="legacy"}"  # Boot mode
 
 BOOT_DESC=""
 BOOT_OPTS=""
@@ -15,6 +14,7 @@ SECURE="off"
 
 if [ -n "$BIOS" ]; then
   BOOT_OPTS="-bios $BIOS"
+  BOOT_DESC=" with custom BIOS file"
   return 0
 fi
 
@@ -28,10 +28,9 @@ esac
 
 case "${BOOT_MODE,,}" in
   "legacy" )
-    BOOT_OPTS=""
+    BOOT_OPTS=" with SeaBIOS"
     ;;
   "uefi" )
-    BOOT_DESC=" with OVMF"
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
