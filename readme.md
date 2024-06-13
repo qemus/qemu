@@ -65,7 +65,7 @@ kubectl apply -f kubernetes.yml
 
   Very simple! These are the steps:
 
-  - Set the `BOOT` environment variable to the URL of any [disk image](https://github.com/qemus/qemu-docker#what-image-formats-are-supported) you want to install.
+  - Set the `BOOT` environment variable to the URL of any [disk image](#what-image-formats-are-supported) you want to install.
 
   - Start the container and connect to [port 8006](http://localhost:8006) using your web browser.
 
