@@ -105,12 +105,13 @@ convertImage() {
   local source_fmt=$2
   local dst_file=$3
   local dst_fmt=$4
-  local dir base fs fa cur_size src_size space disk_param
+  local dir base fs fa space
+  local cur_size src_size disk_param
 
   [ -f "$dst_file" ] && error "Conversion failed, destination file $dst_file already exists?" && return 1
   [ ! -f "$source_file" ] && error "Conversion failed, source file $source_file does not exists?" && return 1
 
-  if [[ "$source_fmt" == "raw" ]] && [[ "$dst_fmt" == "raw" ]]; then
+  if [[ "${source_fmt,,}" == "${dst_fmt,,}" ]]; then
     mv -f "$source_file" "$dst_file"
     return 0
   fi
@@ -181,7 +182,6 @@ convertImage() {
   fi
 
   html "Conversion completed..."
-
   return 0
 }
 
