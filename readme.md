@@ -271,9 +271,21 @@ kubectl apply -f kubernetes.yml
 
 ### What image formats are supported?
 
-  You can set the `BOOT` URL to any `.iso`, `.img`, `.raw`, `.qcow2`, `.vhd`, `.vhdx`, `.vdi` or `.vmdk` file.
+  The `BOOT` URL accepts files in any of the following formats:
+  
+  | **Extension** | **Format**   |
+  |---|---|
+  | `.img`       | Raw           |
+  | `.raw`       | Raw           |
+  | `.iso`        | Optical       |
+  | `.qcow2` | QEMU         |
+  | `.vmdk`   | VMware      |
+  | `.vhd`       | VirtualPC   |
+  | `.vhdx`     | Hyper-V     |
+  | `.vdi`        | VirtualBox |
 
-  It will even automaticly extract compressed images, like `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more!
+> [!TIP]
+> It will also accept `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, as it automaticly extracts compressed files.
 
 ## Stars 🌟
 [![Stars](https://starchart.cc/qemus/qemu-docker.svg?variant=adaptive)](https://starchart.cc/qemus/qemu-docker)
