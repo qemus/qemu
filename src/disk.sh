@@ -397,12 +397,11 @@ addMedia () {
 
   local DISK_FILE=$1
   local DISK_TYPE=$2
-  local DISK_BUS=$3
-  local DISK_INDEX=$4
-  local DISK_ADDRESS=$5
+  local DISK_INDEX=$3
+  local DISK_ADDRESS=$4
 
   local index=""
-  local DISK_ID="cdrom$DISK_BUS"
+  local DISK_ID="cdrom$DISK_INDEX"
   [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
   local result=" -drive file=$DISK_FILE,id=$DISK_ID,format=raw,cache=unsafe,readonly=on,media=cdrom"
 
@@ -417,8 +416,8 @@ addMedia () {
       ;;
     "ide" )
       result+=",if=none \
-      -device ich9-ahci,id=ahci${DISK_BUS},addr=$DISK_ADDRESS \
-      -device ide-cd,drive=${DISK_ID},bus=ahci${DISK_BUS}.0${index}"
+      -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS \
+      -device ide-cd,drive=${DISK_ID},bus=ahci${DISK_INDEX}.0${index}"
       echo "$result"
       ;;
     "blk" | "virtio-blk" )
@@ -472,11 +471,6 @@ addDisk () {
   FS=$(stat -f -c %T "$DIR")
   checkFS "$FS" "$DISK_FILE" "$DISK_DESC" || exit $?
 
-  if ! supportsDirect "$FS"; then
-    DISK_IO="threads"
-    DISK_CACHE="writeback"
-  fi
-
   if ! [ -s "$DISK_FILE" ] ; then
 
     if [[ "${DISK_FMT,,}" != "raw" ]]; then
@@ -529,12 +523,12 @@ addDevice () {
 html "Initializing disks..."
 
 [ -z "${DISK_OPTS:-}" ] && DISK_OPTS=""
-[ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
 [ -z "${DISK_TYPE:-}" ] && DISK_TYPE="scsi"
+[ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
 
 case "${DISK_TYPE,,}" in
   "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
-  * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is unrecognized!" && exit 80 ;;
+  * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
 case "${MACHINE,,}" in
@@ -556,27 +550,30 @@ fi
 
 case "${MEDIA_TYPE,,}" in
   "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
-  * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is unrecognized!" && exit 80 ;;
+  * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
 if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
-  DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "0" "$BOOT_INDEX" "0x5")
+  case "${BOOT,,}" in
+    *".iso" )
+        DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "$BOOT_INDEX" "0x5") ;;
+    *".img" | *".raw" )
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE") ;;
+    *".qcow2" )
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "qcow2" "$DISK_IO" "$DISK_CACHE") ;;
+    * )
+        error "Invalid BOOT image specified, extension \".${BOOT/*./}\" is not recognized!" && exit 80 ;;
+  esac
 fi
 
 DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "1" "" "0x6")
+  DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "" "0x6")
 fi
 
-DISK1_FILE="/boot"
-if [ ! -f "$DISK1_FILE.img" ] || [ ! -s "$DISK1_FILE.img" ]; then
-  if [ ! -f "$DISK1_FILE.qcow2" ] || [ ! -s "$DISK1_FILE.qcow2" ]; then
-    DISK1_FILE="$STORAGE/${DISK_NAME}"
-  fi
-fi
-
+DISK1_FILE="$STORAGE/${DISK_NAME}"
 DISK2_FILE="/storage2/${DISK_NAME}2"
 DISK3_FILE="/storage3/${DISK_NAME}3"
 DISK4_FILE="/storage4/${DISK_NAME}4"
