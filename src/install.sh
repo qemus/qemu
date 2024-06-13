@@ -31,7 +31,7 @@ detectType() {
 
       # Automaticly detect UEFI-compatible images
       dir=$(sfdisk -l "$file")
-      [ -z "$dir" ] && error "Failed to read IMG file, invalid format!" && DISK_NAME="" && return 1
+      [ -z "$dir" ] && error "Failed to read disk image file, invalid format!" && DISK_NAME="" && return 1
 
       dir=$(echo "${dir^^}" | grep "EFI SYSTEM")
       [ -n "$dir" ] && BOOT_MODE="uefi"
