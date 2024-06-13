@@ -298,8 +298,8 @@ target_fmt="${DISK_FMT:-}"
 
 case "${base,,}" in
   *".vdi" ) source_fmt="vdi" ;;
-  *".vhd" ) source_fmt="vhd" ;;
-  *".vhdx" ) source_fmt="vhdx" ;;
+  *".vhd" ) source_fmt="vpc" ;;
+  *".vhdx" ) source_fmt="vpc" ;;
   *".vmdk" ) source_fmt="vmdk" ;;
   * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
