@@ -24,8 +24,8 @@ echo "❯ For support visit $SUPPORT"
 : "${RAM_SIZE:="1G"}"     # Maximum RAM amount
 : "${RAM_CHECK:="Y"}"     # Check available RAM
 : "${DISK_SIZE:="16G"}"   # Initial data disk size
+: "${BOOT_MODE:=""}"      # Boot system with UEFI
 : "${BOOT_INDEX:="9"}"    # Boot index of CD drive
-: "${BOOT_MODE:="uefi"}"  # Boot system with UEFI
 
 # Helper variables
 
