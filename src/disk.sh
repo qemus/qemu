@@ -458,7 +458,7 @@ addDisk () {
 
   [ -z "$DISK_SPACE" ] && DISK_SPACE="16G"
   DISK_SPACE=$(echo "${DISK_SPACE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-  [[ -z ${DISK_SPACE//[0-9]} ]] && DISK_SPACE="${DISK_SPACE}G"
+  [[ -z "${DISK_SPACE//[0-9]}" ]] && DISK_SPACE="${DISK_SPACE}G"
   DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
 
   if (( DATA_SIZE < 1 )); then
