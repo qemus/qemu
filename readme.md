@@ -17,7 +17,7 @@ Docker container for running virtual machines using QEMU.
 
   - Create VM's which behave just like normal containers
 
-  - Manage them using all your existing tools (like Portainer)
+  - Manage them using your existing tools (like Portainer)
 
   - Configure them in a language (YAML) you are already familiar with
 
@@ -61,7 +61,7 @@ kubectl apply -f kubernetes.yml
 
 ## FAQ 💬
 
-* ### How do I use it?
+### How do I use it?
 
   Very simple! These are the steps:
 
@@ -73,7 +73,7 @@ kubectl apply -f kubernetes.yml
 
   Enjoy your brand new machine, and don't forget to star this repo!
 
-* ### How do I change the storage location?
+### How do I change the storage location?
 
   To change the storage location, include the following bind mount in your compose file:
 
@@ -84,7 +84,7 @@ kubectl apply -f kubernetes.yml
 
   Replace the example path `/var/qemu` with the desired storage folder.
 
-* ### How do I change the size of the disk?
+### How do I change the size of the disk?
 
   To expand the default size of 16 GB, add the `DISK_SIZE` setting to your compose file and set it to your preferred capacity:
 
@@ -93,9 +93,10 @@ kubectl apply -f kubernetes.yml
     DISK_SIZE: "128G"
   ```
   
-  This can also be used to resize the existing disk to a larger capacity without any data loss.
+> [!TIP]
+> This can also be used to resize the existing disk to a larger capacity without any data loss.
 
-* ### How do I boot a local image?
+### How do I boot a local image?
 
   You can use a local image file directly, and skip the download altogether, by binding it in your compose file:
   
@@ -104,21 +105,24 @@ kubectl apply -f kubernetes.yml
     - /home/user/example.iso:/boot.iso
   ```
 
-  This way you can supply a `boot.iso`, `boot.img` or `boot.qcow2` file. The URL of the `BOOT` variable will be ignored in this case.
+  This way you can supply a `boot.iso`, `boot.img` or `boot.qcow2` file.
+  
+> [!NOTE]
+> The URL of the `BOOT` variable will be ignored in this case.
 
-* ### How do I boot ARM images?
+### How do I boot ARM images?
 
   You can use [qemu-arm](https://github.com/qemus/qemu-arm/) to run ARM64-based images.
 
-* ### How do I boot Windows?
+### How do I boot Windows?
 
   Use [dockur/windows](https://github.com/dockur/windows) instead, as it includes all the drivers required during installation, amongst many other features.
 
-* ### How do I boot macOS?
+### How do I boot macOS?
 
   Use [dockur/macos](https://github.com/dockur/macos) instead, as it uses all the right settings and automaticly downloads the installation files.
 
-* ### How do I boot without VirtIO drivers?
+### How do I boot without VirtIO drivers?
 
   By default, the machine makes use of `virtio-scsi` drives for performance reasons, and even though most Linux kernels bundle the necessary driver for this device, that may not always be the case for other operating systems.
 
@@ -129,9 +133,10 @@ kubectl apply -f kubernetes.yml
     DISK_TYPE: "blk"
   ```
 
-   If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is slow but requires no drivers and is compatible with almost every system.
+> [!TIP]
+> If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is slow but requires no drivers and is compatible with almost every system.
 
-* ### How do I change the amount of CPU or RAM?
+### How do I change the amount of CPU or RAM?
 
   By default, the container will be allowed to use a maximum of 1 CPU core and 1 GB of RAM.
 
@@ -143,7 +148,7 @@ kubectl apply -f kubernetes.yml
     CPU_CORES: "4"
   ```
 
-* ### How do I verify if my system supports KVM?
+### How do I verify if my system supports KVM?
 
   To verify that your system supports KVM, run the following commands:
 
@@ -164,7 +169,7 @@ kubectl apply -f kubernetes.yml
 
   If you didn't receive any error from `kvm-ok` at all, but the container still complains that `/dev/kvm` is missing, it might help to add `privileged: true` to your compose file (or `--privileged` to your `run` command), to rule out any permission issue.
 
-* ### How do I assign an individual IP address to the container?
+### How do I assign an individual IP address to the container?
 
   By default, the container uses bridge networking, which shares the IP address with the host. 
 
@@ -198,9 +203,10 @@ kubectl apply -f kubernetes.yml
  
   An added benefit of this approach is that you won't have to perform any port mapping anymore, since all ports will be exposed by default.
 
-  Please note that this IP address won't be accessible from the Docker host due to the design of macvlan, which doesn't permit communication between the two. If this is a concern, you need to create a [second macvlan](https://blog.oddbit.com/post/2018-03-12-using-docker-macvlan-networks/#host-access) as a workaround.
+> [!IMPORTANT]
+> This IP address won't be accessible from the Docker host due to the design of macvlan, which doesn't permit communication between the two. If this is a concern, you need to create a [second macvlan](https://blog.oddbit.com/post/2018-03-12-using-docker-macvlan-networks/#host-access) as a workaround.
 
-* ### How can the VM acquire an IP address from my router?
+### How can the VM acquire an IP address from my router?
 
   After configuring the container for macvlan (see above), it is possible for the VM to become part of your home network by requesting an IP from your router, just like a real PC.
 
@@ -215,9 +221,10 @@ kubectl apply -f kubernetes.yml
     - 'c *:* rwm'
   ```
 
-  Please note that in this mode, the container and the VM will each have their own separate IPs. The container will keep the macvlan IP, and the VM will use the DHCP IP.
+> [!NOTE]
+> In this mode, the container and the VM will each have their own separate IPs.
 
-* ### How do I add multiple disks?
+### How do I add multiple disks?
 
   To create additional disks, modify your compose file like this:
   
@@ -230,7 +237,7 @@ kubectl apply -f kubernetes.yml
     - /mnt/data/example:/storage3
   ```
 
-* ### How do I pass-through a disk?
+### How do I pass-through a disk?
 
   It is possible to pass-through disk devices directly by adding them to your compose file in this way:
 
@@ -242,7 +249,7 @@ kubectl apply -f kubernetes.yml
 
   Use `/disk1` if you want it to become your main drive, and use `/disk2` and higher to add them as secondary drives.
 
-* ### How do I pass-through a USB device?
+### How do I pass-through a USB device?
 
   To pass-through a USB device, first lookup its vendor and product id via the `lsusb` command, then add them to your compose file like this:
 
@@ -253,7 +260,7 @@ kubectl apply -f kubernetes.yml
     - /dev/bus/usb
   ```
 
-* ### How can I provide custom arguments to QEMU?
+### How can I provide custom arguments to QEMU?
 
   You can create the `ARGUMENTS` environment variable to provide additional arguments to QEMU at runtime:
 
@@ -262,7 +269,7 @@ kubectl apply -f kubernetes.yml
     ARGUMENTS: "-device usb-tablet"
   ```
 
-* ### What image formats are supported?
+### What image formats are supported?
 
   You can set the `BOOT` URL to any `.iso`, `.img`, `.raw`, `.qcow2`, `.vhd`, `.vhdx`, `.vdi` or `.vmdk` file.
 
