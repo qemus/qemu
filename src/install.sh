@@ -10,45 +10,42 @@ detectType() {
   [ ! -s "$file" ] && return 1
 
   case "${file,,}" in
+    *".iso" | *".img" | *".raw" | *".qcow2" )
+      BOOT="$file"
+      [ -n "${BOOT_MODE:-}" ] && return 0 ;;
+    * ) return 1 ;;
+  esac
+  
+  # Automaticly detect UEFI-compatible images
+
+  case "${file,,}" in
     *".iso" )
 
-      BOOT="$file"
-      [ -n "${BOOT_MODE:-}" ] && return 0
-
-      # Automaticly detect UEFI-compatible ISO's
       dir=$(isoinfo -f -i "$file")
-      [ -z "$dir" ] && error "Failed to read ISO file, invalid format!" && BOOT="" && return 1
+      if [ -z "$dir" ]; then
+        BOOT="" 
+        error "Failed to read ISO file, invalid format!" && return 1
+      fi
 
       dir=$(echo "${dir^^}" | grep "^/EFI")
-      [ -n "$dir" ] && BOOT_MODE="uefi"
-      ;;
+      [ -n "$dir" ] && BOOT_MODE="uefi" ;;
 
     *".img" | *".raw" )
 
-      DISK_NAME=$(basename "$file")
-      DISK_NAME="${DISK_NAME%.*}"
-      [ -n "${BOOT_MODE:-}" ] && return 0
-
-      # Automaticly detect UEFI-compatible images
       dir=$(sfdisk -l "$file")
-      [ -z "$dir" ] && error "Failed to read disk image file, invalid format!" && DISK_NAME="" && return 1
+      if [ -z "$dir" ]; then
+        BOOT="" 
+        error "Failed to read disk image file, invalid format!" && return 1
+      fi
 
       dir=$(echo "${dir^^}" | grep "EFI SYSTEM")
-      [ -n "$dir" ] && BOOT_MODE="uefi"
-      ;;
+      [ -n "$dir" ] && BOOT_MODE="uefi" ;;
 
     *".qcow2" )
 
-      DISK_NAME=$(basename "$file")
-      DISK_NAME="${DISK_NAME%.*}"
-      [ -n "${BOOT_MODE:-}" ] && return 0
-
       # TODO: Detect boot mode from partition table in image
-      BOOT_MODE="uefi"
-      ;;
+      BOOT_MODE="uefi" ;;
 
-    * )
-      return 1 ;;
   esac
 
   return 0
@@ -239,7 +236,7 @@ case "${base,,}" in
 
     esac ;;
 
-  * ) error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
+  * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
 if ! downloadFile "$BOOT" "$base"; then
@@ -302,9 +299,9 @@ target_fmt="${DISK_FMT:-}"
 case "${base,,}" in
   *".vdi" ) source_fmt="vdi" ;;
   *".vhd" ) source_fmt="vhd" ;;
-  *".vmdk" ) source_fmt="vmdk" ;;
   *".vhdx" ) source_fmt="vhdx" ;;
-  * ) error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
+  *".vmdk" ) source_fmt="vmdk" ;;
+  * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
 dst="$STORAGE/${base%.*}.$target_ext"
