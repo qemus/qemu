@@ -24,7 +24,7 @@ echo "❯ For support visit $SUPPORT"
 : "${RAM_SIZE:="1G"}"     # Maximum RAM amount
 : "${RAM_CHECK:="Y"}"     # Check available RAM
 : "${DISK_SIZE:="16G"}"   # Initial data disk size
-: "${BOOT_INDEX:="10"}"   # Boot index of CD drive
+: "${BOOT_INDEX:="9"}"    # Boot index of CD drive
 
 # Helper variables
 
@@ -83,17 +83,22 @@ echo
 
 # Check compatibilty
 
-if [[ "${FS,,}" == "btrfs" ]] && [[ "${SYS,,}" == *"-unraid"* ]]; then
-  warn "you are using BTRFS on Unraid, this might introduce issues!"
+if [[ "${FS,,}" == "ecryptfs" ]] || [[ "${FS,,}" == "tmpfs" ]]; then
+  DISK_IO="threads"
+  DISK_CACHE="writeback"
+fi
+
+if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
+  if [[ "${FS,,}" == "btrfs" ]] && [[ "${SYS,,}" == *"-unraid"* ]]; then
+    warn "you are using BTRFS on Unraid, this might introduce issues!"
+  fi
 fi
 
 # Check memory
 
-if [[ "$RAM_CHECK" != [Nn]* ]]; then
-  if (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); then
-    error "Your configured RAM_SIZE of $WANTED_GB GB is too high for the $AVAIL_GB GB of memory available, please set a lower value."
-    exit 17
-  fi
+if [[ "$RAM_CHECK" != [Nn]* ]] && (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); then
+  error "Your configured RAM_SIZE of $WANTED_GB GB is too high for the $AVAIL_GB GB of memory available, please set a lower value."
+  exit 17
 fi
 
 # Helper functions
@@ -200,13 +205,14 @@ addPackage() {
 
 hasDisk() {
 
+  [ -b "/disk" ] && return 0
   [ -b "/disk1" ] && return 0
   [ -b "/dev/disk1" ] && return 0
-  [ -s "/boot.img" ]  && return 0
-  [ -s "/boot.qcow2" ] && return 0
   [ -b "${DEVICE:-}" ] && return 0
-  [ -s "$STORAGE/data.img" ]  && return 0
-  [ -s "$STORAGE/data.qcow2" ] && return 0
+
+  [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
+  [ -s "$STORAGE/$DISK_NAME.img" ]  && return 0
+  [ -s "$STORAGE/$DISK_NAME.qcow2" ] && return 0
 
   return 1
 }
