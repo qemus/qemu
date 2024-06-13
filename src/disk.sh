@@ -650,5 +650,4 @@ fi
 DISK_OPTS+=" -object iothread,id=io2"
 
 html "Initialized disks successfully..."
-
 return 0
