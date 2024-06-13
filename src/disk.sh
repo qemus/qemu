@@ -471,6 +471,11 @@ addDisk () {
   FS=$(stat -f -c %T "$DIR")
   checkFS "$FS" "$DISK_FILE" "$DISK_DESC" || exit $?
 
+  if ! supportsDirect "$FS"; then
+    DISK_IO="threads"
+    DISK_CACHE="writeback"
+  fi
+
   if ! [ -s "$DISK_FILE" ] ; then
 
     if [[ "${DISK_FMT,,}" != "raw" ]]; then
