@@ -23,7 +23,7 @@ detectType() {
       [ -n "$dir" ] && BOOT_MODE="uefi"
       ;;
 
-    *".img" )
+    *".img" | *".raw" )
 
       DISK_NAME=$(basename "$file")
       DISK_NAME="${DISK_NAME%.*}"
@@ -212,11 +212,11 @@ base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
 
 case "${base,,}" in
 
-  *".iso" | *".img" | *".qcow2" )
+  *".iso" | *".img" | *".raw" | *".qcow2" )
 
     detectType "$STORAGE/$base" && return 0 ;;
 
-  *".raw" | *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
+  *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
 
     detectType "$STORAGE/${base%.*}.img" && return 0
     detectType "$STORAGE/${base%.*}.qcow2" && return 0 ;;
@@ -224,11 +224,12 @@ case "${base,,}" in
   *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
 
     case "${base%.*}" in
-      *".iso" | *".img" | *".qcow2" )
+
+      *".iso" | *".img" | *".raw" | *".qcow2" )
 
         detectType "$STORAGE/${base%.*}" && return 0 ;;
 
-      *".raw" | *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
+      *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
 
         find="${base%.*}"
 
@@ -237,8 +238,7 @@ case "${base,,}" in
 
     esac ;;
 
-  * )
-    error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
+  * ) error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
 if ! downloadFile "$BOOT" "$base"; then
@@ -288,7 +288,7 @@ case "${base,,}" in
 esac
 
 case "${base,,}" in
-  *".iso" | *".img" | *".qcow2" )
+  *".iso" | *".img" | *".raw" | *".qcow2" )
     detectType "$STORAGE/$base" && return 0
     error "Cannot read file \"${base}\"" && exit 63 ;;
 esac
@@ -299,13 +299,11 @@ target_fmt="${DISK_FMT:-}"
 [[ "$target_fmt" != "raw" ]] && target_ext="qcow2"
 
 case "${base,,}" in
-  *".raw" ) source_fmt="raw" ;;
   *".vdi" ) source_fmt="vdi" ;;
   *".vhd" ) source_fmt="vhd" ;;
   *".vmdk" ) source_fmt="vmdk" ;;
   *".vhdx" ) source_fmt="vhdx" ;;
-  * )
-    error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
+  * ) error "Unknown file format, extension \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
 dst="$STORAGE/${base%.*}.$target_ext"
