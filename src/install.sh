@@ -12,7 +12,7 @@ detectType() {
   case "${file,,}" in
     *".iso" | *".img" | *".raw" | *".qcow2" )
       BOOT="$file"
-      [ -n "${BOOT_MODE:-}" ] && return 0 ;;
+      [ -n "$BOOT_MODE" ] && return 0 ;;
     * ) return 1 ;;
   esac
   
@@ -28,7 +28,7 @@ detectType() {
       fi
 
       dir=$(echo "${dir^^}" | grep "^/EFI")
-      [ -n "$dir" ] && BOOT_MODE="uefi" ;;
+      [ -z "$dir" ] && BOOT_MODE="legacy" ;;
 
     *".img" | *".raw" )
 
@@ -39,12 +39,12 @@ detectType() {
       fi
 
       dir=$(echo "${dir^^}" | grep "EFI SYSTEM")
-      [ -n "$dir" ] && BOOT_MODE="uefi" ;;
+      [ -z "$dir" ] && BOOT_MODE="legacy" ;;
 
     *".qcow2" )
 
       # TODO: Detect boot mode from partition table in image
-      BOOT_MODE="uefi" ;;
+      ;;
 
   esac
 
