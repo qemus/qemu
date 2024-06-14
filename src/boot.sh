@@ -13,6 +13,7 @@ SECURE="off"
 [[ "$SMM" == [Yy1]* ]] && SECURE="on"
 
 if [ -n "$BIOS" ]; then
+  BOOT_MODE="custom"
   BOOT_OPTS="-bios $BIOS"
   BOOT_DESC=" with custom BIOS file"
   return 0
@@ -31,7 +32,7 @@ esac
 
 case "${BOOT_MODE,,}" in
   "legacy" )
-    BOOT_OPTS=" with SeaBIOS"
+    BOOT_DESC=" with SeaBIOS"
     ;;
   "uefi" )
     ROM="OVMF_CODE_4M.fd"
