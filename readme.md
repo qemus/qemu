@@ -15,12 +15,6 @@ Docker container for running virtual machines using QEMU.
 
 ## Features ✨
 
-  - Create VM's which behave just like normal containers
-
-  - Manage them using your existing tools (like Portainer)
-
-  - Configure them in a language (YAML) you are already familiar with
-
   - Web-based viewer to control the machine directly from your browser
 
   - Supports `.iso`, `.img`, `.qcow2`, `.vhd`, `.vhdx`, `.vdi`, `.vmdk` and `.raw` disk formats
