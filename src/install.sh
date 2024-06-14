@@ -14,15 +14,15 @@ detectType() {
       BOOT="$file" ;;
     * ) return 1 ;;
   esac
-  
+
   [ -n "$BOOT_MODE" ] && return 0
   [[ "${file,,}" != *".iso" ]] && return 0
 
   # Automaticly detect UEFI-compatible ISO's
   dir=$(isoinfo -f -i "$file")
-  
+
   if [ -z "$dir" ]; then
-    BOOT="" 
+    BOOT=""
     error "Failed to read ISO file, invalid format!" && return 1
   fi
 
