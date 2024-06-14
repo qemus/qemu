@@ -19,22 +19,18 @@ if [ -n "$BIOS" ]; then
   return 0
 fi
 
-case "${BOOT_MODE,,}" in
-  "" )
-    BOOT_MODE="uefi"
-    ;;
-  "windows"* )
-    BOOT_OPTS="-rtc base=localtime"
-    BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
-    BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
-    ;;
-esac
+if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+  BOOT_OPTS="-rtc base=localtime"
+  BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
+  BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
+fi
 
 case "${BOOT_MODE,,}" in
   "legacy" )
     BOOT_DESC=" with SeaBIOS"
     ;;
-  "uefi" )
+  "uefi" | "" )
+    BOOT_MODE="uefi"
     ROM="OVMF_CODE_4M.fd"
     VARS="OVMF_VARS_4M.fd"
     ;;
