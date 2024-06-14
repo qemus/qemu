@@ -11,42 +11,23 @@ detectType() {
 
   case "${file,,}" in
     *".iso" | *".img" | *".raw" | *".qcow2" )
-      BOOT="$file"
-      [ -n "$BOOT_MODE" ] && return 0 ;;
+      BOOT="$file" ;;
     * ) return 1 ;;
   esac
   
-  # Automaticly detect UEFI-compatible images
+  [ -n "$BOOT_MODE" ] && return 0
+  [[ "${file,,}" != *".iso" ]] && return 0
 
-  case "${file,,}" in
-    *".iso" )
+  # Automaticly detect UEFI-compatible ISO's
+  dir=$(isoinfo -f -i "$file")
+  
+  if [ -z "$dir" ]; then
+    BOOT="" 
+    error "Failed to read ISO file, invalid format!" && return 1
+  fi
 
-      dir=$(isoinfo -f -i "$file")
-      if [ -z "$dir" ]; then
-        BOOT="" 
-        error "Failed to read ISO file, invalid format!" && return 1
-      fi
-
-      dir=$(echo "${dir^^}" | grep "^/EFI")
-      [ -z "$dir" ] && BOOT_MODE="legacy" ;;
-
-    *".img" | *".raw" )
-
-      dir=$(sfdisk -l "$file")
-      if [ -z "$dir" ]; then
-        BOOT="" 
-        error "Failed to read disk image file, invalid format!" && return 1
-      fi
-
-      dir=$(echo "${dir^^}" | grep "EFI SYSTEM")
-      [ -z "$dir" ] && BOOT_MODE="legacy" ;;
-
-    *".qcow2" )
-
-      # TODO: Detect boot mode from partition table in image
-      ;;
-
-  esac
+  dir=$(echo "${dir^^}" | grep "^/EFI")
+  [ -z "$dir" ] && BOOT_MODE="legacy"
 
   return 0
 }
