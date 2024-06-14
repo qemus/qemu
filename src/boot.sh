@@ -19,6 +19,9 @@ if [ -n "$BIOS" ]; then
 fi
 
 case "${BOOT_MODE,,}" in
+  "" )
+    BOOT_MODE="uefi"
+    ;;
   "windows"* )
     BOOT_OPTS="-rtc base=localtime"
     BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
