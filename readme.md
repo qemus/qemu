@@ -202,7 +202,7 @@ kubectl apply -f kubernetes.yml
 
 ### How can the VM acquire an IP address from my router?
 
-  After configuring the container for macvlan (see above), it is possible for the VM to become part of your home network by requesting an IP from your router, just like a real PC.
+  After configuring the container for [macvlan](#how-do-i-assign-an-individual-ip-address-to-the-container), it is possible for the VM to become part of your home network by requesting an IP from your router, just like a real PC.
 
   To enable this mode, add the following lines to your compose file:
 
