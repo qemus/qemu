@@ -1,7 +1,7 @@
 FROM debian:trixie-slim
 
 ARG VERSION_ARG="0.0"
-ARG VERSION_VNC="1.4.0"
+ARG VERSION_VNC="1.5.0"
 
 ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
