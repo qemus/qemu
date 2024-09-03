@@ -293,5 +293,4 @@ kubectl apply -f kubernetes.yml
 [Size]: https://img.shields.io/docker/image-size/qemux/qemu-docker/latest?color=066da5&label=size
 [Pulls]: https://img.shields.io/docker/pulls/qemux/qemu-docker.svg?style=flat&label=pulls&logo=docker
 [Version]: https://img.shields.io/docker/v/qemux/qemu-docker/latest?arch=amd64&sort=semver&color=066da5
-[Package]: 
-https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fqemus%2Fqemu-docker%2Fqemu-docker.json&query=%24.downloads&logo=github&style=flat&color=066da5&label=pulls
+[Package]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fqemus%2Fqemu-docker%2Fqemu-docker.json&query=%24.downloads&logo=github&style=flat&color=066da5&label=pulls
