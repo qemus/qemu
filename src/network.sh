@@ -112,7 +112,7 @@ getUserPorts() {
 
   [ -z "$list" ] && list="$ssh,$rdp" || list+=",$ssh,$rdp"
 
-  list="${list/,/ }"
+  list="${list//,/ }"
   list="${list## }"
   list="${list%% }"
 
