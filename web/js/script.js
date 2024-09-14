@@ -1,12 +1,29 @@
 var request;
 var interval = 1000;
 
+var webSocketFactory = {
+    connect: function(url) {
+
+        var ws = new WebSocket(url);
+
+        ws.addEventListener("open", e => {
+            ws.close();
+            document.location.reload();
+        });
+
+        ws.addEventListener("error", e => {
+            if (e.target.readyState === 3) {
+                setTimeout(() => this.connect(url), 1000);
+            }
+        });
+    }
+};
+
 function getInfo() {
 
     var url = "/msg.html";
 
     try {
-
         if (window.XMLHttpRequest) {
             request = new XMLHttpRequest();
         } else {
@@ -52,7 +69,7 @@ function processInfo() {
 
         if (notFound) {
             setInfo("Connecting to VNC", true);
-            reload();
+            var webSocket = webSocketFactory.connect("ws://" + window.location.host + "/websockify");
             return true;
         }
 
@@ -109,12 +126,6 @@ function setError(text) {
 
 function schedule() {
     setTimeout(getInfo, interval);
-}
-
-function reload() {
-    setTimeout(() => {
-        document.location.reload();
-    }, 3000);
 }
 
 schedule();
