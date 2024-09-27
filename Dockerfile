@@ -1,4 +1,4 @@
-FROM debian:trixie-slim
+FROM debian:trixie-20240926-slim
 
 ARG VERSION_ARG="0.0"
 ARG VERSION_VNC="1.5.0"
