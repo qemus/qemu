@@ -536,16 +536,18 @@ case "${DISK_TYPE,,}" in
   * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
+if [ -z "${MEDIA_TYPE:-}" ]; then
+  case "${MACHINE,,}" in
+    "virt" )
+      MEDIA_TYPE="usb" ;;
+    "pc-q35-2"* | "pc-i440fx-2"* )
+      MEDIA_TYPE="auto" ;;
+    * )
+      MEDIA_TYPE="ide" ;;
+  esac
+fi
+
 case "${MEDIA_TYPE,,}" in
-  "" )
-    case "${MACHINE,,}" in
-      "virt" )
-        MEDIA_TYPE="usb" ;;
-      "pc-q35-2"* | "pc-i440fx-2"* )
-        MEDIA_TYPE="auto" ;;
-      * )
-        MEDIA_TYPE="ide" ;;
-    esac ;;
   "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
