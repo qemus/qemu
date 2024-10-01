@@ -89,32 +89,30 @@ esac
 
 if [[ "$TPM" == [Yy1]* ]]; then
 
-  rm -rf /run/shm/tpm
   rm -f /var/run/tpm.pid
-  mkdir -p /run/shm/tpm
-  chmod 755 /run/shm/tpm
 
-  if ! swtpm socket -t -d --tpmstate dir=/run/shm/tpm --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; then
-    error "Failed to start TPM emulator, reason: $?" && exit 19
-  fi
-
-  for (( i = 1; i < 20; i++ )); do
-
-    [ -S "/run/swtpm-sock" ] && break
-
-    if (( i % 10 == 0 )); then
-      echo "Waiting for TPM emulator to become available..."
-    fi
-
-    sleep 0.1
-
-  done
-
-  if [ ! -S "/run/swtpm-sock" ]; then
-    error "TPM socket not found? Disabling TPM module..."
+  if ! swtpm socket -t -d --tpmstate "backend-uri=file://$STORAGE/${BOOT_MODE,,}.tpm" --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; then
+    error "Failed to start TPM emulator, reason: $?"
   else
-    BOOT_OPTS+=" -chardev socket,id=chrtpm,path=/run/swtpm-sock"
-    BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
+
+    for (( i = 1; i < 20; i++ )); do
+
+      [ -S "/run/swtpm-sock" ] && break
+
+      if (( i % 10 == 0 )); then
+        echo "Waiting for TPM emulator to become available..."
+      fi
+
+      sleep 0.1
+
+    done
+
+    if [ ! -S "/run/swtpm-sock" ]; then
+      error "TPM socket not found? Disabling TPM module..."
+    else
+      BOOT_OPTS+=" -chardev socket,id=chrtpm,path=/run/swtpm-sock"
+      BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
+    fi
   fi
 
 fi
