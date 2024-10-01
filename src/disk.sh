@@ -536,24 +536,16 @@ case "${DISK_TYPE,,}" in
   * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
-case "${MACHINE,,}" in
-  "virt" )
-    FALLBACK="usb" ;;
-  "pc-q35-2"* | "pc-i440fx-2"* )
-    FALLBACK="auto" ;;
-  * )
-    FALLBACK="ide" ;;
-esac
-
-if [ -z "${MEDIA_TYPE:-}" ]; then
-  if [[ "${DISK_TYPE,,}" == "blk" ]]; then
-    MEDIA_TYPE="$FALLBACK"
-  else
-    MEDIA_TYPE="$DISK_TYPE"
-  fi
-fi
-
 case "${MEDIA_TYPE,,}" in
+  "" )
+    case "${MACHINE,,}" in
+      "virt" )
+        MEDIA_TYPE="usb" ;;
+      "pc-q35-2"* | "pc-i440fx-2"* )
+        MEDIA_TYPE="auto" ;;
+      * )
+        MEDIA_TYPE="ide" ;;
+    esac ;;
   "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
@@ -575,7 +567,14 @@ DRIVERS="/drivers.iso"
 [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
 if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "" "0x6")
+  DISK_OPTS+=$(addMedia "$DRIVERS" "$MEDIA_TYPE" "" "0x6")
+fi
+
+RESCUE="/start.iso"
+[ ! -f "$RESCUE" ] || [ ! -s "$RESCUE" ] && RESCUE="$STORAGE/start.iso"
+
+if [ -f "$RESCUE" ] && [ -s "$RESCUE" ]; then
+  DISK_OPTS+=$(addMedia "$RESCUE" "$MEDIA_TYPE" "1" "0x6")
 fi
 
 DISK1_FILE="$STORAGE/${DISK_NAME}"
