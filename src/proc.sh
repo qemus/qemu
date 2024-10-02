@@ -5,6 +5,7 @@ set -Eeuo pipefail
 
 : "${HV="Y"}"
 : "${KVM:="Y"}"
+: "${VMX:="N"}"
 : "${CPU_FLAGS:=""}"
 : "${CPU_MODEL:=""}"
 : "${DEF_MODEL:="qemu64"}"
@@ -85,7 +86,7 @@ if [[ "$KVM" != [Nn]* ]]; then
   else
 
     # Intel processor
-    if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+    if [[ "$VMX" == [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
       CPU_FEATURES+=",-vmx"
     fi
 
