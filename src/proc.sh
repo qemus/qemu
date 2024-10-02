@@ -85,6 +85,9 @@ if [[ "$KVM" != [Nn]* ]]; then
   else
 
     # Intel processor
+    if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+      CPU_FEATURES+=",-vmx"
+    fi
 
     vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 
