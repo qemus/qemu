@@ -52,6 +52,7 @@ case "${BOOT_MODE,,}" in
     VARS="OVMF_VARS_4M.ms.fd"
     ;;
   "windows_legacy" )
+    SECURE="on"
     BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
     ;;
