@@ -371,7 +371,7 @@ createDevice () {
       -device usb-storage,drive=${DISK_ID}${index}"
       echo "$result"
       ;;
-    "ide" )
+    "ide" | "sata" )
       result+=",if=none \
       -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS \
       -device ide-hd,drive=${DISK_ID},bus=ahci$DISK_INDEX.0,rotation_rate=$DISK_ROTATION${index}"
@@ -414,7 +414,7 @@ addMedia () {
       -device usb-storage,drive=${DISK_ID}${index},removable=on"
       echo "$result"
       ;;
-    "ide" )
+    "ide" | "sata" )
       result+=",if=none \
       -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS \
       -device ide-cd,drive=${DISK_ID},bus=ahci${DISK_INDEX}.0${index}"
@@ -532,7 +532,7 @@ html "Initializing disks..."
 [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
 
 case "${DISK_TYPE,,}" in
-  "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
+  "ide" | "sata" | "usb" | "scsi" | "blk" | "auto" ) ;;
   * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
@@ -558,7 +558,7 @@ if [ -z "${MEDIA_TYPE:-}" ]; then
 fi
 
 case "${MEDIA_TYPE,,}" in
-  "ide" | "usb" | "scsi" | "blk" | "auto" ) ;;
+  "ide" | "sata" | "usb" | "scsi" | "blk" | "auto" ) ;;
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
