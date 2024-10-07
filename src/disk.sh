@@ -371,6 +371,11 @@ createDevice () {
       -device usb-storage,drive=${DISK_ID}${index}"
       echo "$result"
       ;;
+    "nvme" )
+      result+=",if=none \
+      -device nvme,drive=${DISK_ID}${index},serial=deadbeaf${DISK_INDEX}"
+      echo "$result"
+      ;;      
     "ide" | "sata" )
       result+=",if=none \
       -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS \
@@ -412,6 +417,11 @@ addMedia () {
     "usb" )
       result+=",if=none \
       -device usb-storage,drive=${DISK_ID}${index},removable=on"
+      echo "$result"
+      ;;
+    "nvme" )
+      result+=",if=none \
+      -device nvme,drive=${DISK_ID}${index},serial=deadbeaf${DISK_INDEX}"
       echo "$result"
       ;;
     "ide" | "sata" )
