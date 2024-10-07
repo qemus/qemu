@@ -5,7 +5,7 @@ set -Eeuo pipefail
 
 : "${DISK_IO:="native"}"          # I/O Mode, can be set to 'native', 'threads' or 'io_uring'
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
-: "${DISK_TYPE:=""}"              # Device type to be used, choose "ide", "usb", "blk" or "scsi"
+: "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
@@ -544,7 +544,7 @@ html "Initializing disks..."
 [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
 
 case "${DISK_TYPE,,}" in
-  "ide" | "sata" | "usb" | "scsi" | "blk" | "auto" ) ;;
+  "ide" | "sata" | "nvme" | "usb" | "scsi" | "blk" | "auto" | "none" ) ;;
   * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
@@ -570,7 +570,7 @@ if [ -z "${MEDIA_TYPE:-}" ]; then
 fi
 
 case "${MEDIA_TYPE,,}" in
-  "ide" | "sata" | "usb" | "scsi" | "blk" | "auto" ) ;;
+  "ide" | "sata" | "nvme" | "usb" | "scsi" | "blk" | "auto" | "none" ) ;;
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
