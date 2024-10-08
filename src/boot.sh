@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 # Docker environment variables
-: "${BIOS:=""}"             # BIOS file
+: "${BIOS:=""}"         # BIOS file
 : "${TPM:="N"}"         # Disable TPM
 : "${SMM:="N"}"         # Disable SMM
 
@@ -52,6 +52,7 @@ case "${BOOT_MODE,,}" in
     VARS="OVMF_VARS_4M.ms.fd"
     ;;
   "windows_legacy" )
+    HV="N"
     SECURE="on"
     BOOT_DESC=" (legacy)"
     USB="usb-ehci,id=ehci"
@@ -114,8 +115,8 @@ if [[ "$TPM" == [Yy1]* ]]; then
       BOOT_OPTS+=" -chardev socket,id=chrtpm,path=/run/swtpm-sock"
       BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
     fi
-  fi
 
+  fi
 fi
 
 return 0
