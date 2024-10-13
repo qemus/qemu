@@ -40,8 +40,8 @@ RUN set -eu && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 COPY --chmod=755 ./src /run/
-COPY --chmod=644 ./web /var/www/
-COPY --chmod=644 ./web/nginx.conf /etc/nginx/sites-enabled/web.conf
+COPY --chmod=755 ./web /var/www/
+COPY --chmod=744 ./web/nginx.conf /etc/nginx/sites-enabled/web.conf
 
 VOLUME /storage
 EXPOSE 22 5900 8006
