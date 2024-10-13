@@ -108,8 +108,8 @@ if [[ "${FS,,}" == "ecryptfs" ]] || [[ "${FS,,}" == "tmpfs" ]]; then
 fi
 
 if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
-  if [[ "${FS,,}" == "btrfs" ]] && [[ "${SYS,,}" == *"-unraid"* ]]; then
-    warn "you are using BTRFS on Unraid, this might introduce issues!"
+  if [[ "${FS,,}" == "btrfs" ]]; then
+    warn "you are using the BTRFS filesystem for /storage, this might introduce issues with Windows Setup!"
   fi
 fi
 
