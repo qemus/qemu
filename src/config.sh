@@ -22,7 +22,7 @@ else
   [[ "${BOOT_MODE,,}" != "windows"* ]] && DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0,addr=0x4"
 fi
 
-ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
+ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
 ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 
 if [[ "${DISPLAY,,}" == "web" ]]; then
