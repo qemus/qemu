@@ -10,8 +10,8 @@ DEF_OPTS="-nodefaults"
 SERIAL_OPTS="-serial $SERIAL"
 CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
 RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-[[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
 MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on"
+[ -n "$USB" ] && [[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
 MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=off,dump-guest-core=off,hpet=off${KVM_OPTS}"
 
 if [[ "${MACHINE,,}" == "pc-i440fx-2"* ]]; then
