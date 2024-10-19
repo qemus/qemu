@@ -55,7 +55,7 @@ case "${BOOT_MODE,,}" in
     HV="N"
     SECURE="on"
     BOOT_DESC=" (legacy)"
-    USB="usb-ehci,id=ehci"
+    [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci"
     ;;
   *)
     error "Unknown BOOT_MODE, value \"${BOOT_MODE}\" is not recognized!"
