@@ -548,14 +548,13 @@ case "${DISK_TYPE,,}" in
   * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
-case "${MACHINE,,}" in
-  "virt" )
-    FALLBACK="usb" ;;
-  "pc-q35-2"* | "pc-i440fx-2"* )
-    FALLBACK="auto" ;;
-  * )
-    FALLBACK="ide" ;;
-esac
+if [[ "${MACHINE,,}" != "virt" ]]; then
+  FALLBACK="ide"
+else
+  FALLBACK="usb"
+fi
+  
+[[ "${BOOT_MODE:-}" == "windows_legacy" ]] && FALLBACK="auto"
 
 if [ -z "${MEDIA_TYPE:-}" ]; then
   if [[ "${BOOT_MODE:-}" != "windows"* ]]; then
