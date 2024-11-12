@@ -17,6 +17,7 @@ echo "❯ For support visit $SUPPORT"
 
 : "${BOOT:=""}"            # URL of the ISO file
 : "${DEBUG:="N"}"          # Disable debugging
+: "${COMMIT:="N"}"         # Commit to image
 : "${MACHINE:="q35"}"      # Machine selection
 : "${ALLOCATE:=""}"        # Preallocate diskspace
 : "${ARGUMENTS:=""}"       # Extra QEMU parameters
@@ -80,8 +81,13 @@ fi
 
 # Check folder
 
-if [ ! -d "$STORAGE" ]; then
-  error "Storage folder ($STORAGE) not found!" && exit 13
+if [[ "$COMMIT" != [Nn]* ]]; then
+  STORAGE="/local"
+  mkdir -p "$STORAGE"
+else
+  if [ ! -d "$STORAGE" ]; then
+    error "Storage folder ($STORAGE) not found!" && exit 13
+  fi
 fi
 
 # Read memory
