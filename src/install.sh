@@ -54,7 +54,7 @@ downloadFile() {
 
   /run/progress.sh "$dest" "0" "$msg ([P])..." &
 
-  { wget "$url" -O "$dest" -q --timeout=30 --show-progress "$progress"; rc=$?; } || :
+  { wget "$url" -O "$dest" -q --timeout=30 --no-http-keep-alive --show-progress "$progress"; rc=$?; } || :
 
   fKill "progress.sh"
 
