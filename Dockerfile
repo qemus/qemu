@@ -34,6 +34,7 @@ RUN set -eu && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
     cd "/tmp/noVNC-${VERSION_VNC}" && \
     mv app core vendor package.json *.html /usr/share/novnc && \
+    sed -i "s|UI\.initSetting('path', 'websockify')|UI.initSetting('path', window.location.pathname.replace(/[^/]*$/, '').substring(1) + 'websockify')|" /usr/share/novnc/app/ui.js && \
     unlink /etc/nginx/sites-enabled/default && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
     echo "$VERSION_ARG" > /run/version && \
