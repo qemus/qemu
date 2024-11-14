@@ -21,7 +21,7 @@ var webSocketFactory = {
 
 function getInfo() {
 
-    var url = "/msg.html";
+    var url = "msg.html";
 
     try {
         if (window.XMLHttpRequest) {
@@ -69,7 +69,11 @@ function processInfo() {
 
         if (notFound) {
             setInfo("Connecting to VNC", true);
-            var webSocket = webSocketFactory.connect("ws://" + window.location.host + "/websockify");
+            var protocol = window.location.protocol === "https:" ? "wss:" : "ws:",
+                wsHref = window.location.href.replace(window.location.protocol, protocol),
+                wsUrl = wsHref + "websockify",
+                webSocket = webSocketFactory.connect(wsUrl);
+
             return true;
         }
 
