@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+: "${UUID:=""}"
 : "${SERIAL:="mon:stdio"}"
 : "${USB:="qemu-xhci,id=xhci"}"
 : "${MONITOR:="telnet:localhost:7100,server,nowait,nodelay"}"
@@ -12,6 +13,7 @@ CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
 RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on"
 MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=off,dump-guest-core=off,hpet=off${KVM_OPTS}"
+[ -n "$UUID" ] && MAC_OPTS="$MAC_OPTS -uuid $UUID"
 
 if [[ "${MACHINE,,}" == "pc-i440fx-2"* ]]; then
   DEV_OPTS=""
