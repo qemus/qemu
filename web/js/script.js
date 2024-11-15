@@ -70,7 +70,7 @@ function processInfo() {
         if (notFound) {
             setInfo("Connecting to VNC", true);
 
-            var path = window.location.href;
+            var path = window.location.href.split("#")[0].split("?")[0];
             var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
 
             // Is this a file-like path, e.g. http.../foo.bar?
@@ -82,13 +82,9 @@ function processInfo() {
                 const { [1]:dirname, [2]:file, [4]:ext } = match;
                 path = dirname;
             }
-  
-            if (!path.endsWith('/')) {
-                path = path + '/'
-            }
 
             path = path.replace(window.location.protocol, protocol);    
-            var webSocket = webSocketFactory.connect(path + "websockify");
+            var webSocket = webSocketFactory.connect(path.replace(/\/$/, '') + "/websockify");
     
             return true;
         }
