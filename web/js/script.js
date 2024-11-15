@@ -69,11 +69,27 @@ function processInfo() {
 
         if (notFound) {
             setInfo("Connecting to VNC", true);
-            var protocol = window.location.protocol === "https:" ? "wss:" : "ws:",
-                wsHref = window.location.href.replace(window.location.protocol, protocol),
-                wsUrl = wsHref + "websockify",
-                webSocket = webSocketFactory.connect(wsUrl);
 
+            var path = window.location.href;
+            var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+
+            // Is this a file-like path, e.g. http.../foo.bar?
+            const regex = /^(.*)\/([^.]+(\.([^\/?#]+))+)(\?[^#]*)?(#.*)?$/;
+            const match = path.match(regex);
+
+            // Only if it is, do we cut that part off:
+            if (match !== null) {
+                const { [1]:dirname, [2]:file, [4]:ext } = match;
+                path = dirname;
+            }
+  
+            if (!path.endsWith('/')) {
+                path = path + '/'
+            }
+
+            path = path.replace(window.location.protocol, protocol);    
+            var webSocket = webSocketFactory.connect(path + "websockify");
+    
             return true;
         }
 
