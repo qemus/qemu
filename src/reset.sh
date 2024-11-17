@@ -68,6 +68,7 @@ CPU="${CPU// CPU/}"
 CPU="${CPU// 16 Core/}"
 CPU="${CPU// Processor/}"
 CPU="${CPU// Quad core/}"
+CPU="${CPU// Core TM/ Core}"
 CPU="${CPU// with Radeon Graphics/}"
 [ -z "${CPU// /}" ] && CPU="Unknown"
 
