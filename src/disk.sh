@@ -376,7 +376,7 @@ createDevice () {
       result+=",if=none \
       -device nvme,drive=${DISK_ID}${index},serial=deadbeaf${DISK_INDEX}"
       echo "$result"
-      ;;      
+      ;;
     "ide" | "sata" )
       result+=",if=none \
       -device ich9-ahci,id=ahci${DISK_INDEX},addr=$DISK_ADDRESS \
@@ -553,7 +553,7 @@ if [[ "${MACHINE,,}" != "virt" ]]; then
 else
   FALLBACK="usb"
 fi
-  
+
 [[ "${BOOT_MODE:-}" == "windows_legacy" ]] && FALLBACK="auto"
 
 if [ -z "${MEDIA_TYPE:-}" ]; then
