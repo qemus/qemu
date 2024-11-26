@@ -6,8 +6,9 @@ set -Eeuo pipefail
 : "${MAC:=""}"
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
-: "${HOST_PORTS:=""}"
 : "${USER_PORTS:=""}"
+: "${HOST_PORTS:=""}"
+: "${ADAPTER:="virtio-net-pci"}"
 
 : "${VM_NET_DEV:=""}"
 : "${VM_NET_TAP:="qemu"}"
@@ -431,7 +432,7 @@ else
 
 fi
 
-NET_OPTS+=" -device virtio-net-pci,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,id=net0"
+NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,id=net0"
 
 html "Initialized network successfully..."
 return 0
