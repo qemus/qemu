@@ -1,10 +1,11 @@
+---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: qemu-pvc
 spec:
   accessModes:
-    - ReadWriteOnce
+  - ReadWriteOnce
   resources:
     requests:
       storage: 16Gi
@@ -16,47 +17,53 @@ metadata:
   labels:
     name: qemu
 spec:
-  terminationGracePeriodSeconds: 120 # the Kubernetes default is 30 seconds and it may be not enough
   containers:
-    - name: qemu
-      image: qemux/qemu-docker
-      ports:
-        - containerPort: 8006
-          protocol: TCP
-      securityContext:
-        privileged: true
-      env:
-        - name: BOOT
-          value: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
-        - name: RAM_SIZE
-          value: 1G
-        - name: CPU_CORES
-          value: "1"
-        - name: DISK_SIZE
-          value: "16G"
-      volumeMounts:
-        - mountPath: /storage
-          name: storage
-        - mountPath: /dev/kvm
-          name: dev-kvm
+  - name: qemu
+    image: qemux/qemu-docker
+    env:
+    - name: BOOT
+      value: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
+    - name: RAM_SIZE
+      value: "1G"
+    - name: CPU_CORES
+      value: "1"
+    - name: DISK_SIZE
+      value: "16G"
+    ports:
+    - containerPort: 8006
+    securityContext:
+      capabilities:
+        add:
+        - NET_ADMIN
+      privileged: true
+    volumeMounts:
+    - mountPath: /storage
+      name: storage
+    - mountPath: /dev/kvm
+      name: dev-kvm
+    - mountPath: /dev/net/tun
+      name: dev-tun
+  terminationGracePeriodSeconds: 120
   volumes:
-    - name: storage
-      persistentVolumeClaim:
-        claimName: qemu-pvc
-    - name: dev-kvm
-      hostPath:
-        path: /dev/kvm
+  - name: storage
+    persistentVolumeClaim:
+      claimName: qemu-pvc
+  - hostPath:
+      path: /dev/kvm
+    name: dev-kvm
+  - hostPath:
+      path: /dev/net/tun
+      type: CharDevice
+    name: dev-tun
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: qemu
 spec:
-  type: NodePort
+  ports:
+  - name: tcp-8006
+    port: 8006
   selector:
     name: qemu
-  ports:
-    - name: tcp-8006
-      protocol: TCP
-      port: 8006
-      targetPort: 8006
+  type: NodePort
