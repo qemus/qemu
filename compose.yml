@@ -6,6 +6,7 @@ services:
       BOOT: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
     devices:
       - /dev/kvm
+      - /dev/net/tun
     cap_add:
       - NET_ADMIN
     ports:
