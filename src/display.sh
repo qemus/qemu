@@ -9,16 +9,16 @@ set -Eeuo pipefail
 : "${RENDERNODE:="/dev/dri/renderD128"}"  # Render node
 
 case "${DISPLAY,,}" in
-  vnc)
+  "vnc" )
     DISPLAY_OPTS="-display vnc=:0 -vga $VGA"
     ;;
-  web)
+  "web" | ":0" )
     DISPLAY_OPTS="-display vnc=:0,websocket=5700 -vga $VGA"
     ;;
-  disabled)
+  "disabled" )
     DISPLAY_OPTS="-display none -vga $VGA"
     ;;
-  none)
+  "none" )
     DISPLAY_OPTS="-display none -vga none"
     ;;
   *)
