@@ -19,8 +19,8 @@ if [[ "${MACHINE,,}" == "pc-i440fx-2"* ]]; then
   DEV_OPTS=""
 else
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
-  DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=pcie.0,addr=0x1c"
-  [[ "${BOOT_MODE,,}" != "windows"* ]] && DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0,addr=0x4"
+  DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=pcie.0"
+  [[ "${BOOT_MODE,,}" != "windows"* ]] && DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0"
   [ -n "$USB" ] && [[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
 fi
 
