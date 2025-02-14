@@ -1,7 +1,7 @@
 FROM debian:trixie-slim
 
 ARG VERSION_ARG="0.0"
-ARG VERSION_VNC="1.5.0"
+ARG VERSION_VNC="1.6.0-beta"
 
 ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -34,7 +34,6 @@ RUN set -eu && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
     cd "/tmp/noVNC-${VERSION_VNC}" && \
     mv app core vendor package.json *.html /usr/share/novnc && \
-    sed -i "s|UI\.initSetting('path', 'websockify')|UI.initSetting('path', window.location.pathname.replace(/[^/]*$/, '').substring(1) + 'websockify')|" /usr/share/novnc/app/ui.js && \
     unlink /etc/nginx/sites-enabled/default && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
     echo "$VERSION_ARG" > /run/version && \
@@ -42,7 +41,8 @@ RUN set -eu && \
 
 COPY --chmod=755 ./src /run/
 COPY --chmod=755 ./web /var/www/
-COPY --chmod=744 ./web/nginx.conf /etc/nginx/sites-enabled/web.conf
+COPY --chmod=755 ./web/conf/defaults.json /usr/share/novnc
+COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/sites-enabled/web.conf
 
 VOLUME /storage
 EXPOSE 22 5900 8006
