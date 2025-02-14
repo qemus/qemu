@@ -1,5 +1,6 @@
 {
   "resize": "scale",
   "reconnect": "true",
-  "autoconnect": "true"
+  "autoconnect": "true",
+  "reconnect_delay": "3000"
 }
