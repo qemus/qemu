@@ -26,11 +26,6 @@ ADD_ERR="Please add the following setting to your container:"
 #  Functions
 # ######################################
 
-if [[ -d /sys/class/net/$VM_NET_TAP ]]; then                                                                        
-    printf 'Lingering infertace will be removed: %s\n' "$VM_NET_TAP"                                                                
-    ip link delete "$VM_NET_TAP"                                                                                    
-fi  
-
 configureDHCP() {
 
   # Create the necessary file structure for /dev/vhost-net
@@ -391,6 +386,11 @@ if [[ "$DEBUG" == [Yy1]* ]]; then
   info "Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC"
   [ -f /etc/resolv.conf ] && grep '^nameserver*' /etc/resolv.conf
   echo
+fi
+
+if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then                                               
+    info "Lingering interface will be removed..."                        
+    ip link delete "$VM_NET_TAP" || true
 fi
 
 if [[ "$DHCP" == [Yy1]* ]]; then
