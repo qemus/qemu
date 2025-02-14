@@ -26,6 +26,11 @@ ADD_ERR="Please add the following setting to your container:"
 #  Functions
 # ######################################
 
+if [[ -d /sys/class/net/$VM_NET_TAP ]]; then                                                                        
+    printf 'Lingering infertace will be removed: %s\n' "$VM_NET_TAP"                                                                
+    ip link delete "$VM_NET_TAP"                                                                                    
+fi  
+
 configureDHCP() {
 
   # Create the necessary file structure for /dev/vhost-net
