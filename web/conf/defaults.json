@@ -1,1 +1,5 @@
-{}
+{
+  "resize": "scale",
+  "reconnect": "true",
+  "autoconnect": "true"
+}
