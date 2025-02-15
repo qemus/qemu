@@ -251,6 +251,9 @@ hasDisk() {
   return 1
 }
 
+# Set password
+echo "test:$2a$13$giX.3WMo43vRgF9fMrU8bOz0HHC.dRjidFJXN/RZbRWqaOkFlecE2" > /etc/nginx/.htpasswd
+
 # Start webserver
 cp -r /var/www/* /run/shm
 html "Starting $APP for Docker..."
