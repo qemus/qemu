@@ -41,8 +41,8 @@ RUN set -eu && \
 
 COPY --chmod=755 ./src /run/
 COPY --chmod=755 ./web /var/www/
-COPY --chmod=755 ./web/conf/defaults.json /usr/share/novnc
-COPY --chmod=755 ./web/conf/mandatory.json /usr/share/novnc
+COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
+COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/sites-enabled/web.conf
 
 VOLUME /storage
