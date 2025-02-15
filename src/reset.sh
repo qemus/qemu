@@ -65,6 +65,7 @@ if [ -z "${CPU// /}" ] && grep -qi "model:" <<< "$CPI"; then
 fi
 
 CPU="${CPU// CPU/}"
+CPU="${CPU// 8 Core/}"
 CPU="${CPU// 16 Core/}"
 CPU="${CPU// 32 Core/}"
 CPU="${CPU// 64 Core/}"
@@ -251,8 +252,20 @@ hasDisk() {
   return 1
 }
 
+if [ -z "${USER:-}" ]; then
+  user="admin"
+else
+  user="${USER:-}"
+fi
+
+if [ -z "${PASS:-}" ]; then
+  pass=""
+else
+  pass="${PASS:-}"
+fi
+
 # Set password
-echo "test:\$2a\$13\$giX.3WMo43vRgF9fMrU8bOz0HHC.dRjidFJXN/RZbRWqaOkFlecE2" > /etc/nginx/.htpasswd
+echo "$user:\$2a\$13\$giX.3WMo43vRgF9fMrU8bOz0HHC.dRjidFJXN/RZbRWqaOkFlecE2" > /etc/nginx/.htpasswd
 
 # Start webserver
 cp -r /var/www/* /run/shm
