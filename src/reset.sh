@@ -253,13 +253,20 @@ hasDisk() {
 }
 
 user="admin"
-pass="$user"
-
 [ -n "${USER:-}" ] && user="${USER:-}"
-[ -n "${PASS:-}" ] && pass="${PASS:-}"
+
+if [ -n "${PASS:-}" ]; then
+
+  sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
+
+else
+
+  sed -i "s/auth_basic \"NoVNC\"/auth_basic off/g" /etc/nginx/sites-enabled/web.conf
+
+fi
 
 # Set password
-echo "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd
+echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
 
 # Start webserver
 cp -r /var/www/* /run/shm
