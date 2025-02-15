@@ -252,20 +252,14 @@ hasDisk() {
   return 1
 }
 
-if [ -z "${USER:-}" ]; then
-  user="admin"
-else
-  user="${USER:-}"
-fi
+user="admin"
+pass="pass"
 
-if [ -z "${PASS:-}" ]; then
-  pass=""
-else
-  pass="${PASS:-}"
-fi
+[ -n "${USER:-}" ] && user="${USER:-}"
+[ -n "${PASS:-}" ] && pass="${PASS:-}"
 
 # Set password
-echo "$user:\$2a\$13\$giX.3WMo43vRgF9fMrU8bOz0HHC.dRjidFJXN/RZbRWqaOkFlecE2" > /etc/nginx/.htpasswd
+echo "$user:$pass" > /etc/nginx/.htpasswd
 
 # Start webserver
 cp -r /var/www/* /run/shm
