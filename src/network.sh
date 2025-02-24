@@ -221,6 +221,11 @@ configureNAT() {
     error "$tuntap" && return 1
   fi
 
+  GATEWAY_MAC=$(echo "$VM_NET_MAC" | rev)
+  if ! ip link set dev "$VM_NET_TAP" address "$GATEWAY_MAC"; then
+    warn "Failed to set gateway MAC address.."
+  fi
+
   while ! ip link set "$VM_NET_TAP" up promisc on; do
     info "Waiting for TAP to become available..."
     sleep 2
@@ -388,8 +393,8 @@ if [[ "$DEBUG" == [Yy1]* ]]; then
   echo
 fi
 
-if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then                                               
-    info "Lingering interface will be removed..."                        
+if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
+    info "Lingering interface will be removed..."
     ip link delete "$VM_NET_TAP" || true
 fi
 
