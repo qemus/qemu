@@ -1,5 +1,5 @@
 <h1 align="center">QEMU<br />
-<div align="center"><a href="https://github.com/qemus/qemu-docker"><img src="https://github.com/qemus/qemu-docker/raw/master/.github/logo.png" title="Logo" style="max-width:100%;" width="128" /></a>
+<div align="center"><a href="https://github.com/qemus/qemu"><img src="https://github.com/qemus/qemu/raw/master/.github/logo.png" title="Logo" style="max-width:100%;" width="128" /></a>
 </div>
 <div align="center">
 
@@ -52,7 +52,7 @@ docker run -it --rm -e "BOOT=http://example.com/image.iso" -p 8006:8006 --device
 Via Kubernetes:
 
 ```shell
-kubectl apply -f https://raw.githubusercontent.com/qemus/qemu-docker/refs/heads/master/kubernetes.yml
+kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/kubernetes.yml
 ```
 
 ## Compatibility ⚙️
@@ -298,15 +298,15 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu-docker/refs/heads/
 > It will also accept `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, as it automaticly extracts compressed files.
 
 ## Stars 🌟
-[![Stars](https://starchart.cc/qemus/qemu-docker.svg?variant=adaptive)](https://starchart.cc/qemus/qemu-docker)
+[![Stars](https://starchart.cc/qemus/qemu.svg?variant=adaptive)](https://starchart.cc/qemus/qemu)
 
-[build_url]: https://github.com/qemus/qemu-docker/
+[build_url]: https://github.com/qemus/qemu/
 [hub_url]: https://hub.docker.com/r/qemux/qemu-docker/
 [tag_url]: https://hub.docker.com/r/qemux/qemu-docker/tags
-[pkg_url]: https://github.com/qemus/qemu-docker/pkgs/container/qemu-docker
+[pkg_url]: https://github.com/qemus/qemu/pkgs/container/qemu-docker
 
-[Build]: https://github.com/qemus/qemu-docker/actions/workflows/build.yml/badge.svg
+[Build]: https://github.com/qemus/qemu/actions/workflows/build.yml/badge.svg
 [Size]: https://img.shields.io/docker/image-size/qemux/qemu-docker/latest?color=066da5&label=size
 [Pulls]: https://img.shields.io/docker/pulls/qemux/qemu-docker.svg?style=flat&label=pulls&logo=docker
 [Version]: https://img.shields.io/docker/v/qemux/qemu-docker/latest?arch=amd64&sort=semver&color=066da5
-[Package]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fqemus%2Fqemu-docker%2Fqemu-docker.json&query=%24.downloads&logo=github&style=flat&color=066da5&label=pulls
+[Package]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fqemus%2Fqemu%2Fqemu-docker.json&query=%24.downloads&logo=github&style=flat&color=066da5&label=pulls
