@@ -47,7 +47,7 @@ jobs:
           context: git
           images: |
             ${{ secrets.DOCKERHUB_REPO }}
-            ghcr.io/${{ github.repository }}
+            ghcr.io/qemus/qemu-docker
           tags: |
             type=raw,value=latest,priority=100
             type=raw,value=${{ vars.MAJOR }}.${{ vars.MINOR }}
