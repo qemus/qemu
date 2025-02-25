@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 : "${APP:="QEMU"}"
-: "${SUPPORT:="https://github.com/qemus/qemu-docker"}"
+: "${SUPPORT:="https://github.com/qemus/qemu"}"
 
 cd /run
 
