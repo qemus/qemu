@@ -46,8 +46,10 @@ jobs:
         with:
           context: git
           images: |
-            ${{ secrets.DOCKERHUB_REPO }}
+            qemux/qemu
             ghcr.io/qemus/qemu-docker
+            ghcr.io/${{ github.repository }}
+            ${{ secrets.DOCKERHUB_REPO }}
           tags: |
             type=raw,value=latest,priority=100
             type=raw,value=${{ vars.MAJOR }}.${{ vars.MINOR }}
