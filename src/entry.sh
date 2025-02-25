@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-APP="QEMU"
-SUPPORT="https://github.com/qemus/qemu-docker"
+: "${APP:="QEMU"}"
+: "${SUPPORT:="https://github.com/qemus/qemu-docker"}"
 
 cd /run
 
