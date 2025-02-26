@@ -22,3 +22,12 @@ jobs:
         repository: ${{ secrets.DOCKERHUB_REPO }}
         short-description: ${{ github.event.repository.description }}
         readme-filepath: ./readme.md
+    - 
+      name: Docker Hub Description
+      uses: peter-evans/dockerhub-description@v4
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_TOKEN }}
+        repository: qemux/qemu-docker
+        short-description: ${{ github.event.repository.description }}
+        readme-filepath: ./readme.md
