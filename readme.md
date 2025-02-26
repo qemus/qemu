@@ -28,8 +28,8 @@ Via Docker Compose:
 ```yaml
 services:
   qemu:
+    image: qemux/qemu
     container_name: qemu
-    image: qemux/qemu-docker
     environment:
       BOOT: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
     devices:
@@ -46,7 +46,7 @@ services:
 Via Docker CLI:
 
 ```bash
-docker run -it --rm -e "BOOT=http://example.com/image.iso" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN qemux/qemu-docker
+docker run -it --rm -e "BOOT=http://example.com/image.iso" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN qemux/qemu
 ```
 
 Via Kubernetes:
@@ -118,7 +118,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I boot ARM images?
 
-  You can use [qemu-arm](https://github.com/qemus/qemu-arm/) to run ARM64-based images.
+  You can use the [qemu-arm](https://github.com/qemus/qemu-arm/) container to run ARM64-based images.
 
 ### How do I boot Windows?
 
@@ -301,12 +301,12 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 [![Stars](https://starchart.cc/qemus/qemu.svg?variant=adaptive)](https://starchart.cc/qemus/qemu)
 
 [build_url]: https://github.com/qemus/qemu/
-[hub_url]: https://hub.docker.com/r/qemux/qemu-docker/
-[tag_url]: https://hub.docker.com/r/qemux/qemu-docker/tags
-[pkg_url]: https://github.com/qemus/qemu/pkgs/container/qemu-docker
+[hub_url]: https://hub.docker.com/r/qemux/qemu/
+[tag_url]: https://hub.docker.com/r/qemux/qemu/tags
+[pkg_url]: https://github.com/qemus/qemu/pkgs/container/qemu
 
 [Build]: https://github.com/qemus/qemu/actions/workflows/build.yml/badge.svg
-[Size]: https://img.shields.io/docker/image-size/qemux/qemu-docker/latest?color=066da5&label=size
+[Size]: https://img.shields.io/docker/image-size/qemux/qemu/latest?color=066da5&label=size
 [Pulls]: https://img.shields.io/docker/pulls/qemux/qemu-docker.svg?style=flat&label=pulls&logo=docker
-[Version]: https://img.shields.io/docker/v/qemux/qemu-docker/latest?arch=amd64&sort=semver&color=066da5
-[Package]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fqemus%2Fqemu%2Fqemu-docker.json&query=%24.downloads&logo=github&style=flat&color=066da5&label=pulls
+[Version]: https://img.shields.io/docker/v/qemux/qemu/latest?arch=amd64&sort=semver&color=066da5
+[Package]: https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fipitio.github.io%2Fbackage%2Fqemus%2Fqemu%2Fqemu.json&query=%24.downloads&logo=github&style=flat&color=066da5&label=pulls
