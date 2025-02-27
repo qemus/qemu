@@ -73,6 +73,8 @@ CPU="${CPU// Processor/}"
 CPU="${CPU// Quad core/}"
 CPU="${CPU// Core TM/ Core}"
 CPU="${CPU// with Radeon Graphics/}"
+CPU="${CPU// with Radeon Vega Graphics/}"
+
 [ -z "${CPU// /}" ] && CPU="Unknown"
 
 # Check system
