@@ -30,6 +30,8 @@ RUN set -eu && \
         netcat-openbsd \
         qemu-system-x86 && \
     apt-get clean && \
+    mkdir -p /etc/qemu && \
+    echo "allow br0" > /etc/qemu/bridge.conf && \
     mkdir -p /usr/share/novnc && \
     wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
