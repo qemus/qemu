@@ -168,6 +168,10 @@ findFile() {
   local ext="$1"
   local file
 
+  if [ -d "/boot.$ext" ]; then
+    warn "The file /boot.$ext has an invalid path!"
+  fi
+
   file=$(find / -maxdepth 1 -type f -iname "boot.$ext" | head -n 1)
   [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "boot.$ext" | head -n 1)
   detectType "$file" && return 0
