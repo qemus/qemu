@@ -165,15 +165,16 @@ convertImage() {
 
 findFile() {
 
-  local ext="$1"
   local file
+  local ext="$1"
+  local fname="boot.$ext"
 
-  if [ -d "/boot.$ext" ]; then
-    warn "The file /boot.$ext has an invalid path!"
+  if [ -d "/$fname" ]; then
+    warn "The file /$fname has an invalid path!"
   fi
 
-  file=$(find / -maxdepth 1 -type f -iname "boot.$ext" | head -n 1)
-  [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "boot.$ext" | head -n 1)
+  file=$(find / -maxdepth 1 -type f -iname "$fname" | head -n 1)
+  [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "$fname" | head -n 1)
   detectType "$file" && return 0
 
   return 1
