@@ -111,10 +111,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     - /home/user/example.iso:/boot.iso
   ```
 
-  This way you can supply a `boot.iso`, `boot.img` or `boot.qcow2` file.
-  
-> [!NOTE]
-> The URL of the `BOOT` variable will be ignored in this case.
+  This way you can supply a `boot.iso`, `boot.img` or `boot.qcow2` file. The value of the `BOOT` variable will be ignored in this case.
 
 ### How do I boot ARM images?
 
@@ -139,8 +136,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     DISK_TYPE: "blk"
   ```
 
-> [!TIP]
-> If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is slow but requires no drivers and is compatible with almost every system.
+  If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is relatively slow but requires no drivers and is compatible with almost every system.
 
 ### How do I change the amount of CPU or RAM?
 
@@ -220,7 +216,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   After configuring the container for [macvlan](#how-do-i-assign-an-individual-ip-address-to-the-container), it is possible for the VM to become part of your home network by requesting an IP from your router, just like a real PC.
 
-  To enable this mode, add the following lines to your compose file:
+  To enable this mode, in which the container and Windows will have separate IP addresses, add the following lines to your compose file:
 
   ```yaml
   environment:
@@ -230,9 +226,6 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   device_cgroup_rules:
     - 'c *:* rwm'
   ```
-
-> [!NOTE]
-> In this mode, the container and the VM will each have their own separate IPs.
 
 ### How do I add multiple disks?
 
