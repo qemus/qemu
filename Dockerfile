@@ -25,6 +25,7 @@ RUN set -eu && \
         net-tools \
         e2fsprogs \
         qemu-utils \
+        iputils-ping \
         genisoimage \
         ca-certificates \
         netcat-openbsd \
