@@ -216,7 +216,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   After configuring the container for [macvlan](#how-do-i-assign-an-individual-ip-address-to-the-container), it is possible for the VM to become part of your home network by requesting an IP from your router, just like a real PC.
 
-  To enable this mode, in which the container and Windows will have separate IP addresses, add the following lines to your compose file:
+  To enable this mode, in which the container and the VM will have separate IP addresses, add the following lines to your compose file:
 
   ```yaml
   environment:
