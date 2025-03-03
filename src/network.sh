@@ -63,13 +63,6 @@ configureDHCP() {
     warn "Failed to set MTU size.."
   fi
 
-  GATEWAY_MAC=$(echo "$VM_NET_MAC" | rev)
-  GATEWAY_MAC="02:${GATEWAY_MAC:0:14}"
-
-  if ! ip link set dev "$VM_NET_TAP" address "$GATEWAY_MAC"; then
-    warn "Failed to set gateway MAC address.."
-  fi
-
   while ! ip link set "$VM_NET_TAP" up; do
     info "Waiting for MAC address $VM_NET_MAC to become available..."
     sleep 2
