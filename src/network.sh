@@ -350,6 +350,10 @@ getInfo() {
     error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 27
   fi
 
+  if [ -z "$MTU" ]; then
+    MTU=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
+  fi
+
   if [ -z "$MAC" ]; then
     local file="$STORAGE/$PROCESS.mac"
     [ -s "$file" ] && MAC=$(<"$file")
@@ -391,7 +395,7 @@ getInfo
 html "Initializing network..."
 
 if [[ "$DEBUG" == [Yy1]* ]]; then
-  info "Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC"
+  info "Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $MTU"
   [ -f /etc/resolv.conf ] && grep '^nameserver*' /etc/resolv.conf
   echo
 fi
@@ -445,8 +449,7 @@ else
 
 fi
 
-NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,id=net0"
-[ -n "$MTU" ] && NET_OPTS+=",host_mtu=$MTU"
+NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,host_mtu=$MTU,id=net0"
 
 html "Initialized network successfully..."
 return 0
