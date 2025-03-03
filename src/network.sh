@@ -202,7 +202,7 @@ configureNAT() {
 
   # Create a bridge with a static IP for the VM guest
 
-  { ip link add dev dockerbridge type bridge ; rc=$?; } || :
+  { ip link add dev dockerbridge mtu "$MTU" type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
     error "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
@@ -220,6 +220,10 @@ configureNAT() {
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
     error "$tuntap" && return 1
+  fi
+
+  if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
+    warn "Failed to set MTU size.."
   fi
 
   GATEWAY_MAC=$(echo "$VM_NET_MAC" | rev)
