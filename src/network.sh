@@ -446,7 +446,7 @@ else
 fi
 
 NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,id=net0"
-[ -n "$MTU" ] && NET_OPTS+=",mtu=$MTU"
+[ -n "$MTU" ] && NET_OPTS+=",host_mtu=$MTU"
 
 html "Initialized network successfully..."
 return 0
