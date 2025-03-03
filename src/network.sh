@@ -4,6 +4,7 @@ set -Eeuo pipefail
 # Docker environment variables
 
 : "${MAC:=""}"
+: "${MTU:=""}"
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
 : "${USER_PORTS:=""}"
@@ -445,6 +446,7 @@ else
 fi
 
 NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,id=net0"
+[ -n "$MTU" ] && NET_OPTS+=",mtu=$MTU"
 
 html "Initialized network successfully..."
 return 0
