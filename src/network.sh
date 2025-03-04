@@ -59,7 +59,7 @@ configureDHCP() {
       fi ;;
   esac
 
-  if [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [ "$MTU" -lt "1500" ]; then
+  if [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
       warn "Failed to set MTU size.."
     fi
@@ -228,7 +228,7 @@ configureNAT() {
     error "$tuntap" && return 1
   fi
 
-  if [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [ "$MTU" -lt "1500" ]; then
+  if [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
       warn "Failed to set MTU size.."
     fi
@@ -365,6 +365,22 @@ getInfo() {
     MTU=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
   fi
 
+  if [ "$MTU" -gt "1500" ]; then
+    info "MTU size is too large: $MTU, ignoring..." && MTU="0"
+  fi
+
+  if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
+    if [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
+      warn "MTU size is $MTU, but cannot be set for $ADAPTER adapters!" && MTU="0"
+    fi
+  fi
+
+  if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
+    if [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
+      warn "MTU size is $MTU, but cannot be set for legacy Windows versions!" && MTU="0"
+    fi
+  fi
+
   if [ -z "$MAC" ]; then
     local file="$STORAGE/$PROCESS.mac"
     [ -s "$file" ] && MAC=$(<"$file")
@@ -393,27 +409,6 @@ getInfo() {
   return 0
 }
 
-setMTU() {
-
-  [ -z "$MTU" ] && return 0
-  [[ "$MTU" == "0" ]] && return 0
-  [[ "$MTU" == "1500" ]] && return 0
-
-  if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
-    warn "MTU size is $MTU, but cannot be set for $ADAPTER adapters!" && return 0
-  fi
-
-  if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
-    warn "MTU size is $MTU, but cannot be set for legacy Windows versions!" && return 0
-  fi
-
-  if [ "$MTU" -gt "1500" ]; then
-    info "MTU size is too large: $MTU, ignoring..." && return 0
-  fi
-
-  NET_OPTS+=",host_mtu=$MTU"
-}
-
 # ######################################
 #  Configure Network
 # ######################################
@@ -427,8 +422,9 @@ getInfo
 html "Initializing network..."
 
 if [[ "$DEBUG" == [Yy1]* ]]; then
-  line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC"
-  [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]] && line+="  MTU: $MTU"
+  mtu=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
+  line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
+  [[ "$MTU" != "0" ]] && [[ "$MTU" != "$mtu" ]] && line+=" ($MTU)"
   info "$line"
   [ -f /etc/resolv.conf ] && grep '^nameserver*' /etc/resolv.conf
   echo
@@ -484,7 +480,7 @@ else
 fi
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$VM_NET_MAC"
-setMTU
+[[ "$MTU" != "0" ]] && NET_OPTS+=",host_mtu=$MTU"
 
 html "Initialized network successfully..."
 return 0
