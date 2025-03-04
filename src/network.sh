@@ -59,7 +59,7 @@ configureDHCP() {
       fi ;;
   esac
 
-  if [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
+  if [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
       warn "Failed to set MTU size.."
     fi
@@ -228,7 +228,7 @@ configureNAT() {
     error "$tuntap" && return 1
   fi
 
-  if [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
+  if [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
       warn "Failed to set MTU size.."
     fi
@@ -480,7 +480,7 @@ else
 fi
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$VM_NET_MAC"
-[[ "$MTU" != "0" ]] && NET_OPTS+=",host_mtu=$MTU"
+[[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]] && NET_OPTS+=",host_mtu=$MTU"
 
 html "Initialized network successfully..."
 return 0
