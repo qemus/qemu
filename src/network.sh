@@ -427,7 +427,7 @@ getInfo
 html "Initializing network..."
 
 if [[ "$DEBUG" == [Yy1]* ]]; then
-  local line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC"
+  line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC"
   [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [[ "$MTU" != "1500" ]] && line+="  MTU: $MTU"
   info "$line"
   [ -f /etc/resolv.conf ] && grep '^nameserver*' /etc/resolv.conf
