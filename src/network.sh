@@ -59,8 +59,10 @@ configureDHCP() {
       fi ;;
   esac
 
-  if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
-    warn "Failed to set MTU size.."
+  if [ -n "$MTU" ] && [ "$MTU" -lt "1500" ]; then
+    if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
+      warn "Failed to set MTU size.."
+    fi
   fi
 
   while ! ip link set "$VM_NET_TAP" up; do
@@ -225,9 +227,11 @@ configureNAT() {
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
     error "$tuntap" && return 1
   fi
-
-  if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
-    warn "Failed to set MTU size.."
+  
+  if [ -n "$MTU" ] && [ "$MTU" -lt "1500" ]; then
+    if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
+      warn "Failed to set MTU size.."
+    fi
   fi
 
   GATEWAY_MAC=$(echo "$VM_NET_MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
@@ -402,7 +406,9 @@ getInfo
 html "Initializing network..."
 
 if [[ "$DEBUG" == [Yy1]* ]]; then
-  info "Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $MTU"
+  local line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC"
+  [ -n "$MTU" ] && [[ "$MTU" != "1500" ]] && line+="  MTU: $MTU"
+  info "$line"
   [ -f /etc/resolv.conf ] && grep '^nameserver*' /etc/resolv.conf
   echo
 fi
@@ -456,7 +462,8 @@ else
 
 fi
 
-NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,host_mtu=$MTU,id=net0"
+NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,id=net0"
+[[ "${ADAPTER,,}" == "virtio-net-pci" ]] && [ -n "$MTU" ] && [ "$MTU" -lt "1500" ] && NET_OPTS+=",host_mtu=$MTU"
 
 html "Initialized network successfully..."
 return 0
