@@ -227,7 +227,7 @@ configureNAT() {
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
     error "$tuntap" && return 1
   fi
-  
+
   if [ -n "$MTU" ] && [[ "$MTU" != "0" ]] && [ "$MTU" -lt "1500" ]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
       warn "Failed to set MTU size.."
