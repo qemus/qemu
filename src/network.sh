@@ -407,7 +407,7 @@ setMTU() {
     warn "MTU size is $MTU, but cannot be set for legacy Windows versions!" && return 0
   fi
 
-  if [ "$MTU" -gt "1500" ]
+  if [ "$MTU" -gt "1500" ]; then
     info "MTU size is too large: $MTU, ignoring..." && return 0
   fi
 
