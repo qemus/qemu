@@ -393,6 +393,26 @@ getInfo() {
   return 0
 }
 
+setMTU() {
+
+  [ -z "$MTU" ] && return 0
+  [[ "$MTU" == "1500" ]] && return 0
+
+  if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
+    warn "MTU size is $MTU, but cannot be set for $ADAPTER adapters!" && return 0
+  fi
+
+  if [[ "${ARGUMENTS:-}" == *"q35-pcihost.x-pci-hole64-fix=false"* ]]; then
+    warn "MTU size is $MTU, but cannot be set for legacy Windows versions!" && return 0
+  fi
+
+  if [ "$MTU" -gt "1500" ]
+    info "MTU size is too large: $MTU, ignoring..." && return 0
+  fi
+
+  NET_OPTS+=",host_mtu=$MTU"
+}
+
 # ######################################
 #  Configure Network
 # ######################################
@@ -462,8 +482,8 @@ else
 
 fi
 
-NET_OPTS+=" -device $ADAPTER,romfile=,netdev=hostnet0,mac=$VM_NET_MAC,id=net0"
-[[ "${ADAPTER,,}" == "virtio-net-pci" ]] && [ -n "$MTU" ] && [ "$MTU" -lt "1500" ] && NET_OPTS+=",host_mtu=$MTU"
+NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$VM_NET_MAC"
+setMTU
 
 html "Initialized network successfully..."
 return 0
