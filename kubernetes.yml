@@ -10,60 +10,81 @@ spec:
     requests:
       storage: 16Gi
 ---
-apiVersion: v1
-kind: Pod
+apiVersion: apps/v1
+kind: Deployment
 metadata:
   name: qemu
   labels:
     name: qemu
 spec:
-  containers:
-  - name: qemu
-    image: qemux/qemu
-    env:
-    - name: BOOT
-      value: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
-    - name: RAM_SIZE
-      value: "1G"
-    - name: CPU_CORES
-      value: "1"
-    - name: DISK_SIZE
-      value: "16G"
-    ports:
-    - containerPort: 8006
-    securityContext:
-      capabilities:
-        add:
-        - NET_ADMIN
-      privileged: true
-    volumeMounts:
-    - mountPath: /storage
-      name: storage
-    - mountPath: /dev/kvm
-      name: dev-kvm
-    - mountPath: /dev/net/tun
-      name: dev-tun
-  terminationGracePeriodSeconds: 120
-  volumes:
-  - name: storage
-    persistentVolumeClaim:
-      claimName: qemu-pvc
-  - hostPath:
-      path: /dev/kvm
-    name: dev-kvm
-  - hostPath:
-      path: /dev/net/tun
-      type: CharDevice
-    name: dev-tun
+  replicas: 1
+  selector:
+    matchLabels:
+      app: qemu
+  template:
+    metadata:
+      labels:
+        app: qemu
+    spec:
+      containers:
+      - name: qemu
+        image: qemux/qemu-arm
+        env:
+        - name: BOOT
+          value: "https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
+        - name: RAM_SIZE
+          value: "1G"
+        - name: CPU_CORES
+          value: "1"
+        - name: DISK_SIZE
+          value: "16G"
+        ports:
+          - containerPort: 8006
+            name: http
+            protocol: TCP
+          - containerPort: 5900
+            name: vnc
+            protocol: TCP
+        securityContext:
+          capabilities:
+            add:
+            - NET_ADMIN
+          privileged: true
+        volumeMounts:
+        - mountPath: /storage
+          name: storage
+        - mountPath: /dev/kvm
+          name: dev-kvm
+        - mountPath: /dev/net/tun
+          name: dev-tun
+      terminationGracePeriodSeconds: 120
+      volumes:
+      - name: storage
+        persistentVolumeClaim:
+          claimName: qemu-pvc
+      - hostPath:
+          path: /dev/kvm
+        name: dev-kvm
+      - hostPath:
+          path: /dev/net/tun
+          type: CharDevice
+        name: dev-tun
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: qemu
 spec:
+  internalTrafficPolicy: Cluster
   ports:
-  - name: tcp-8006
-    port: 8006
+    - name: http
+      port: 8006
+      protocol: TCP
+      targetPort: 8006
+    - name: vnc
+      port: 5900
+      protocol: TCP
+      targetPort: 5900
   selector:
-    name: qemu
-  type: NodePort
+    app: qemu
+  type: ClusterIP
