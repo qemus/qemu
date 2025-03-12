@@ -39,6 +39,8 @@ services:
       - NET_ADMIN
     ports:
       - 8006:8006
+    volumes:
+      - ./qemu:/storage
     restart: always
     stop_grace_period: 2m
 ```
@@ -46,7 +48,7 @@ services:
 Via Docker CLI:
 
 ```bash
-docker run -it --rm -e "BOOT=http://example.com/image.iso" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN qemux/qemu
+docker run -it --rm --name qemu -e "BOOT=http://example.com/image.iso" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v ${PWD:-.}/qemu:/storage --stop-timeout 120 qemux/qemu
 ```
 
 Via Kubernetes:
@@ -85,10 +87,10 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   ```yaml
   volumes:
-    - /var/qemu:/storage
+    - ./qemu:/storage
   ```
 
-  Replace the example path `/var/qemu` with the desired storage folder.
+  Replace the example path `./qemu` with the desired storage folder or named volume.
 
 ### How do I change the size of the disk?
 
@@ -108,10 +110,10 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   
   ```yaml
   volumes:
-    - /home/user/example.iso:/boot.iso
+    - ./example.iso:/boot.iso
   ```
 
-  This way you can supply a `boot.iso`, `boot.img` or `boot.qcow2` file. The value of the `BOOT` variable will be ignored in this case.
+  You can supply a `boot.iso`, `boot.img` or `boot.qcow2` file by replacing the example path `./example.iso` with the filename of your desired image. The value of `BOOT` will be ignored in this case.
 
 ### How do I boot ARM images?
 
@@ -236,8 +238,8 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     DISK2_SIZE: "32G"
     DISK3_SIZE: "64G"
   volumes:
-    - /home/example:/storage2
-    - /mnt/data/example:/storage3
+    - ./example2:/storage2
+    - ./example3:/storage3
   ```
 
 ### How do I pass-through a disk?
