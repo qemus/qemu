@@ -459,7 +459,7 @@ addDisk () {
   local DISK_FMT=$7
   local DISK_IO=$8
   local DISK_CACHE=$9
-  local DISK_EXT DIR DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE
+  local DISK_EXT DIR SPACE DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE
 
   DISK_EXT=$(fmt2ext "$DISK_FMT")
   local DISK_FILE="$DISK_BASE.$DISK_EXT"
@@ -467,15 +467,16 @@ addDisk () {
   DIR=$(dirname "$DISK_FILE")
   [ ! -d "$DIR" ] && return 0
 
-  [ -z "$DISK_SPACE" ] && DISK_SPACE="16G"
-  DISK_SPACE=$(echo "${DISK_SPACE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-  [[ -z "${DISK_SPACE//[0-9]}" ]] && DISK_SPACE="${DISK_SPACE}G"
+  SPACE="${DISK_SPACE// /}"
+  [ -z "$SPACE" ] && SPACE="16G"
+  [ -z "${SPACE//[0-9. ]}" ] && SPACE="${SPACE}G"
+  SPACE=$(echo "${SPACE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 
-  if ! numfmt --from=iec "$DISK_SPACE" &>/dev/null; then
+  if ! numfmt --from=iec "$SPACE" &>/dev/null; then
     error "Invalid value for ${DISK_DESC^^}_SIZE: $DISK_SPACE" && exit 73
   fi
 
-  DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
+  DATA_SIZE=$(numfmt --from=iec "$SPACE")
 
   if (( DATA_SIZE < 104857600 )); then
     error "Please increase ${DISK_DESC^^}_SIZE to at least 100 MB." && exit 73
@@ -509,12 +510,12 @@ addDisk () {
     CUR_SIZE=$(getSize "$DISK_FILE")
 
     if (( DATA_SIZE > CUR_SIZE )); then
-      resizeDisk "$DISK_FILE" "$DISK_SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
+      resizeDisk "$DISK_FILE" "$SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
     fi
 
   else
 
-    createDisk "$DISK_FILE" "$DISK_SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
+    createDisk "$DISK_FILE" "$SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
 
   fi
 
