@@ -61,7 +61,11 @@ if [[ "$RAM_CHECK" != [Nn]* ]]; then
   else
     if (( (RAM_WANTED + (RAM_SPARE * 3)) > RAM_AVAIL )); then
       msg="your configured RAM_SIZE of $WANTED_GB GB is very close to the $AVAIL_GB GB of memory available, please consider a lower value."
-      [[ "${FS,,}" != "zfs" ]] && warn "$msg" || info "$msg"
+      if [[ "${FS,,}" != "zfs" ]]; then
+        warn "$msg"
+      else
+        info "$msg"
+      fi
     fi
   fi
 
