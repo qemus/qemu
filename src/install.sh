@@ -36,7 +36,7 @@ downloadFile() {
 
   local url="$1"
   local base="$2"
-  local msg rc total progress
+  local msg rc total total_mb progress
 
   local dest="$STORAGE/$base.tmp"
   rm -f "$dest"
@@ -60,8 +60,9 @@ downloadFile() {
 
   if (( rc == 0 )) && [ -f "$dest" ]; then
     total=$(stat -c%s "$dest")
+    total_gb=$(formatBytes "$total")
     if [ "$total" -lt 100000 ]; then
-      error "Invalid image file: is only $total bytes?" && return 1
+      error "Invalid image file: is only $total_gb ?" && return 1
     fi
     html "Download finished successfully..."
     mv -f "$dest" "$STORAGE/$base"
@@ -83,8 +84,8 @@ convertImage() {
   local source_fmt=$2
   local dst_file=$3
   local dst_fmt=$4
-  local dir base fs fa space
-  local cur_size src_size disk_param
+  local dir base fs fa space space_gb
+  local cur_size cur_gb src_size disk_param
 
   [ -f "$dst_file" ] && error "Conversion failed, destination file $dst_file already exists?" && return 1
   [ ! -f "$source_file" ] && error "Conversion failed, source file $source_file does not exists?" && return 1
@@ -106,8 +107,8 @@ convertImage() {
     space=$(df --output=avail -B 1 "$dir" | tail -n 1)
 
     if (( src_size > space )); then
-      local space_gb=$(( (space + 1073741823)/1073741824 ))
-      error "Not enough free space to convert image in $dir, it has only $space_gb GB available..." && return 1
+      space_gb=$(formatBytes "$space")
+      error "Not enough free space to convert image in $dir, it has only $space_gb available..." && return 1
     fi
   fi
 
@@ -143,8 +144,9 @@ convertImage() {
     if [ -n "$ALLOCATE" ] && [[ "$ALLOCATE" != [Nn]* ]]; then
       # Work around qemu-img bug
       cur_size=$(stat -c%s "$tmp_file")
+      cur_gb=$(formatBytes "$cur_size")
       if ! fallocate -l "$cur_size" "$tmp_file"; then
-        error "Failed to allocate $cur_size bytes for image!"
+        error "Failed to allocate $cur_gb for image!"
       fi
     fi
   fi
