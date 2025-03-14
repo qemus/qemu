@@ -115,7 +115,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   You can supply a `boot.iso`, `boot.img` or `boot.qcow2` file by replacing the example path `./example.iso` with the filename of your desired image. The value of `BOOT` will be ignored in this case.
 
-### How do I boot ARM images?
+### How do I boot ARM64 images?
 
   You can use the [qemu-arm](https://github.com/qemus/qemu-arm/) container to run ARM64-based images.
 
@@ -264,6 +264,23 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   devices:
     - /dev/bus/usb
   ```
+
+### How do I share files with the host?
+
+  To share files with the host, first ensure that your guest OS has `9pfs` support compiled in or available as a kernel module. If so, add the following volume to your compose file:
+
+  ```yaml
+  volumes:
+    -  ./example:/shared
+  ```
+
+  Then start the container and execute the following command in the guest:
+  
+  ```shell
+  mount -t 9p -o trans=virtio shared /mnt/example
+  ```
+
+  Now the `./example` directory on the host will be available as `/mnt/example` in the guest.
 
 ### How can I provide custom arguments to QEMU?
 
