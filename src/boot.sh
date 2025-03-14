@@ -11,17 +11,7 @@ BOOT_OPTS=""
 
 SECURE="off"
 [[ "$SMM" == [Yy1]* ]] && SECURE="on"
-
-if [ -n "$BIOS" ]; then
-  BOOT_MODE="custom"
-  BOOT_OPTS="-bios $BIOS"
-fi
-
-if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-  BOOT_OPTS="-rtc base=localtime"
-  BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
-  BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
-fi
+[ -n "$BIOS" ] && BOOT_MODE="custom"
 
 case "${BOOT_MODE,,}" in
   "uefi" | "" )
@@ -56,6 +46,7 @@ case "${BOOT_MODE,,}" in
     BOOT_DESC=" with SeaBIOS"
     ;;
   "custom" )
+    BOOT_OPTS="-bios $BIOS"
     BOOT_DESC=" with custom BIOS file"
     ;;
   *)
@@ -63,6 +54,12 @@ case "${BOOT_MODE,,}" in
     exit 33
     ;;
 esac
+
+if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+  BOOT_OPTS="-rtc base=localtime"
+  BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
+  BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
+fi
 
 case "${BOOT_MODE,,}" in
   "uefi" | "secure" | "windows" | "windows_plain" | "windows_secure" )
