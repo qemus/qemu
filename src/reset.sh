@@ -139,13 +139,12 @@ if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
   fi
 fi
 
-# Check memory
-
-[[ "${FS,,}" == "zfs" ]] && RAM_CHECK="N"
+# Check available memory
 
 if [[ "$RAM_CHECK" != [Nn]* ]] && (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); then
-  error "Your configured RAM_SIZE of $WANTED_GB GB is too high for the $AVAIL_GB GB of memory available, please set a lower value."
-  exit 17
+  msg="Your configured RAM_SIZE of $WANTED_GB GB is too high for the $AVAIL_GB GB of memory available, please set a lower value."
+  [[ "${FS,,}" != "zfs" ]] && error "$msg" && exit 17
+  info "$msg"
 fi
 
 # Helper functions
