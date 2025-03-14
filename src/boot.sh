@@ -15,8 +15,6 @@ SECURE="off"
 if [ -n "$BIOS" ]; then
   BOOT_MODE="custom"
   BOOT_OPTS="-bios $BIOS"
-  BOOT_DESC=" with custom BIOS file"
-  return 0
 fi
 
 if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
@@ -26,9 +24,6 @@ if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 fi
 
 case "${BOOT_MODE,,}" in
-  "legacy" )
-    BOOT_DESC=" with SeaBIOS"
-    ;;
   "uefi" | "" )
     BOOT_MODE="uefi"
     ROM="OVMF_CODE_4M.fd"
@@ -56,6 +51,12 @@ case "${BOOT_MODE,,}" in
     SECURE="on"
     BOOT_DESC=" (legacy)"
     [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci"
+    ;;
+  "legacy" )
+    BOOT_DESC=" with SeaBIOS"
+    ;;
+  "custom" )
+    BOOT_DESC=" with custom BIOS file"
     ;;
   *)
     error "Unknown BOOT_MODE, value \"${BOOT_MODE}\" is not recognized!"
@@ -88,6 +89,31 @@ case "${BOOT_MODE,,}" in
 
     ;;
 esac
+
+MSRS="/sys/module/kvm/parameters/ignore_msrs"
+if [ -e "$MSRS" ]; then
+  result=$(<"$MSRS")
+  if [[ "$result" == "0" ]] || [[ "${result^^}" == "N" ]]; then
+    echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
+  fi
+fi
+
+CLOCKSOURCE="tsc"
+[[ "${ARCH,,}" == "arm64" ]] && CLOCKSOURCE="arch_sys_counter﻿"
+CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
+
+if [ ! -f "$CLOCK" ]; then
+  warn "file \"$CLOCK\" cannot not found?"
+else
+  result=$(<"$CLOCK")
+  case "${result,,}" in
+    "${CLOCKSOURCE,,}" ) ;;
+    "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
+    "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
+    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'" ;;
+    *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'" ;;
+  esac
+fi
 
 if [[ "$TPM" == [Yy1]* ]]; then
 
