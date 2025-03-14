@@ -48,7 +48,6 @@ fi
 if [[ "$KVM" != [Nn]* ]]; then
 
   CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
-  CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
 
   if [ -z "$CPU_MODEL" ]; then
@@ -56,16 +55,19 @@ if [[ "$KVM" != [Nn]* ]]; then
     CPU_FEATURES+=",migratable=no"
   fi
 
-  if [ -e /sys/module/kvm/parameters/ignore_msrs ]; then
-    if [ "$(cat /sys/module/kvm/parameters/ignore_msrs)" == "N" ]; then
-      echo 1 | tee /sys/module/kvm/parameters/ignore_msrs > /dev/null 2>&1 || true
+  MSRS="/sys/module/kvm/parameters/ignore_msrs"
+  if [ -e "$MSRS" ]; then
+    result=$(<"$MSRS")
+    if [[ "$result" == "0" ]] || [[ "${result^^}" == "N" ]]; then
+      echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
     fi
   fi
 
+  CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
   if [ -f "$CLOCK" ]; then
-    CLOCK=$(<"$CLOCK")
-    if [[ "${CLOCK,,}" != "tsc" ]]; then
-      warn "unexpected clocksource: $CLOCK"
+    result=$(<"$CLOCK")
+    if [[ "${result,,}" != "tsc" ]]; then
+      warn "unexpected clocksource: $result"
     fi
   else
     warn "file \"$CLOCK\" cannot not found?"
