@@ -10,6 +10,28 @@ set -Eeuo pipefail
 : "${CPU_MODEL:=""}"
 : "${DEF_MODEL:="qemu64"}"
 
+MSRS="/sys/module/kvm/parameters/ignore_msrs"
+if [ -e "$MSRS" ]; then
+  result=$(<"$MSRS")
+  if [[ "$result" == "0" ]] || [[ "${result^^}" == "N" ]]; then
+    echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
+  fi
+fi
+
+CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
+if [ -f "$CLOCK" ]; then
+  result=$(<"$CLOCK")
+  case "${result,,}" in
+    "tsc" ) ;;
+    "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
+    "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
+    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to 'tsc' " ;;
+    *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to 'tsc' " ;;
+  esac
+else
+  warn "file \"$CLOCK\" cannot not found?"
+fi
+
 if [[ "${ARCH,,}" != "amd64" ]]; then
   KVM="N"
   warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, this will cause a major loss of performance."
@@ -53,24 +75,6 @@ if [[ "$KVM" != [Nn]* ]]; then
   if [ -z "$CPU_MODEL" ]; then
     CPU_MODEL="host"
     CPU_FEATURES+=",migratable=no"
-  fi
-
-  MSRS="/sys/module/kvm/parameters/ignore_msrs"
-  if [ -e "$MSRS" ]; then
-    result=$(<"$MSRS")
-    if [[ "$result" == "0" ]] || [[ "${result^^}" == "N" ]]; then
-      echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
-    fi
-  fi
-
-  CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
-  if [ -f "$CLOCK" ]; then
-    result=$(<"$CLOCK")
-    if [[ "${result,,}" != "tsc" ]]; then
-      warn "unexpected clocksource: $result"
-    fi
-  else
-    warn "file \"$CLOCK\" cannot not found?"
   fi
 
   if grep -qw "svm" <<< "$flags"; then
