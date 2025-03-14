@@ -90,7 +90,7 @@ createDisk() {
   local DISK_DESC=$3
   local DISK_FMT=$4
   local FS=$5
-  local DATA_SIZE DIR SPACE FA
+  local DATA_SIZE DIR SPACE SPACE_GB FA
 
   DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
 
@@ -103,8 +103,8 @@ createDisk() {
     SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
 
     if (( DATA_SIZE > SPACE )); then
-      local SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
-      error "Not enough free space to create a $DISK_DESC of $DISK_SPACE in $DIR, it has only $SPACE_GB GB available..."
+      SPACE_GB=$(formatBytes "$SPACE")
+      error "Not enough free space to create a $DISK_DESC of ${DISK_SPACE/G/ GB} in $DIR, it has only $SPACE_GB available..."
       error "Please specify a smaller ${DISK_DESC^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
   fi
@@ -174,7 +174,7 @@ resizeDisk() {
   local DISK_DESC=$3
   local DISK_FMT=$4
   local FS=$5
-  local CUR_SIZE DATA_SIZE DIR SPACE
+  local CUR_SIZE DATA_SIZE DIR SPACE SPACE_GB
 
   CUR_SIZE=$(getSize "$DISK_FILE")
   DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
@@ -188,8 +188,8 @@ resizeDisk() {
     SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
 
     if (( REQ > SPACE )); then
-      local SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
-      error "Not enough free space to resize $DISK_DESC to $DISK_SPACE in $DIR, it has only $SPACE_GB GB available.."
+      SPACE_GB=$(formatBytes "$SPACE")
+      error "Not enough free space to resize $DISK_DESC to ${DISK_SPACE/G/ GB} in $DIR, it has only $SPACE_GB available.."
       error "Please specify a smaller ${DISK_DESC^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 74
     fi
   fi
@@ -251,7 +251,7 @@ convertDisk() {
 
   if [[ "$ALLOCATE" != [Nn]* ]]; then
 
-    local DIR CUR_SIZE SPACE
+    local DIR CUR_SIZE SPACE SPACE_GB
 
     # Check free diskspace
     DIR=$(dirname "$TMP_FILE")
@@ -259,8 +259,8 @@ convertDisk() {
     SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
 
     if (( CUR_SIZE > SPACE )); then
-      local SPACE_GB=$(( (SPACE + 1073741823)/1073741824 ))
-      error "Not enough free space to convert $DISK_DESC to $DST_FMT in $DIR, it has only $SPACE_GB GB available..."
+      SPACE_GB=$(formatBytes "$SPACE")
+      error "Not enough free space to convert $DISK_DESC to $DST_FMT in $DIR, it has only $SPACE_GB available..."
       error "Please free up some disk space or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
   fi
