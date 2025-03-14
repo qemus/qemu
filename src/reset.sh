@@ -75,7 +75,7 @@ CPU="${CPU// with Radeon Graphics/}"
 CPU="${CPU// with Radeon Vega Graphics/}"
 
 [ -z "${CPU// /}" ] && CPU="Unknown"
-[[ -n "${CPU_CORES//[0-9]}" ]] && error "Invalid amount of CPU_CORES: $CPU_CORES" && exit 15
+[ -n "${CPU_CORES//[0-9 ]}" ] && error "Invalid amount of CPU_CORES: $CPU_CORES" && exit 15
 
 # Check system
 
