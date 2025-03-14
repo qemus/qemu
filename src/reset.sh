@@ -75,7 +75,7 @@ CPU="${CPU// with Radeon Graphics/}"
 CPU="${CPU// with Radeon Vega Graphics/}"
 
 [ -z "${CPU// /}" ] && CPU="Unknown"
-[[ -n ${CPU_CORES//[0-9]} ]] && error "Invalid amount of CPU_CORES: $CPU_CORES" && exit 15
+[[ -n "${CPU_CORES//[0-9]}" ]] && error "Invalid amount of CPU_CORES: $CPU_CORES" && exit 15
 
 # Check system
 
@@ -95,6 +95,16 @@ fi
 if [ ! -d "$STORAGE" ]; then
   error "Storage folder ($STORAGE) not found!" && exit 13
 fi
+
+formatBytes() {
+  local result
+  result=$(numfmt --to=iec "$1")
+  local unit="${result//[0-9]}"
+  [ -z "$unit" ] && unit=" bytes"
+  unit=$(echo "$unit" | sed 's/K/ KB/g;s/M/ MB/g;s/G/ GB/g;s/T/ TB/g')
+  echo "${result%%.*} $unit"
+  return 0
+}
 
 # Read memory
 RAM_SPARE=500000000
@@ -150,7 +160,7 @@ fi
 # Helper functions
 
 isAlive() {
-  local pid=$1
+  local pid="$1"
 
   if kill -0 "$pid" 2>/dev/null; then
     return 0
@@ -160,7 +170,7 @@ isAlive() {
 }
 
 pKill() {
-  local pid=$1
+  local pid="$1"
 
   { kill -15 "$pid" || true; } 2>/dev/null
 
@@ -172,7 +182,7 @@ pKill() {
 }
 
 fWait() {
-  local name=$1
+  local name="$1"
 
   while pgrep -f -l "$name" >/dev/null; do
     sleep 0.2
@@ -182,7 +192,7 @@ fWait() {
 }
 
 fKill() {
-  local name=$1
+  local name="$1"
 
   { pkill -f "$name" || true; } 2>/dev/null
   fWait "$name"
