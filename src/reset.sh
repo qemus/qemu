@@ -125,8 +125,11 @@ RAM_SPARE=500000000
 RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
 RAM_TOTAL=$(free -b | grep -m 1 Mem: | awk '{print $2}')
 
-if [[ -z ${RAM_SIZE//[0-9]} ]]; then
-  [ "$RAM_SIZE" -lt "130" ] && RAM_SIZE="${RAM_SIZE}G" || RAM_SIZE="${RAM_SIZE}M"
+RAM_SIZE="${RAM_SIZE// /}"
+[ -z "$RAM_SIZE" ] && error "RAM_SIZE not specified!" && exit 16
+
+if [ -z "${RAM_SIZE//[0-9. ]}" ]; then
+  [ "${RAM_SIZE%%.*}" -lt "130" ] && RAM_SIZE="${RAM_SIZE}G" || RAM_SIZE="${RAM_SIZE}M"
 fi
 
 RAM_SIZE=$(echo "${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
