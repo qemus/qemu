@@ -52,7 +52,7 @@ fi
 if [[ "$RAM_CHECK" != [Nn]* ]]; then
 
   RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
-  AVAIL_MEM=$(formatBytes "$RAM_AVAIL" "down")
+  AVAIL_MEM=$(formatBytes "$RAM_AVAIL")
 
   if (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); then
     msg="Your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is too high for the $AVAIL_MEM of memory available, please set a lower value."
