@@ -99,10 +99,19 @@ fi
 formatBytes() {
   local result
   result=$(numfmt --to=iec "$1")
-  local unit="${result//[0-9]}"
-  [ -z "$unit" ] && unit=" bytes"
-  unit=$(echo "$unit" | sed 's/K/ KB/g;s/M/ MB/g;s/G/ GB/g;s/T/ TB/g')
-  echo "${result%%.*} $unit"
+  local unit="${result//[0-9. ]}"
+  [ -z "$unit" ] && unit="bytes"
+  unit=$(echo "${unit^^}" | sed 's/K/KB/g;s/M/MB/g;s/G/GB/g;s/T/TB/g')
+  result="${result//[a-zA-Z ]/}"
+  if [[ "$2" == "up" ]]; then
+    if [[ "$result" == *"."* ]]; then
+      result="${result%%.*}"
+      result=$((result+1))
+    fi
+    echo "$result $unit"
+  else
+    echo "${result%%.*} $unit"
+  fi
   return 0
 }
 
@@ -118,7 +127,7 @@ fi
 RAM_SIZE=$(echo "${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 ! numfmt --from=iec "$RAM_SIZE" &>/dev/null && error "Invalid RAM size: $RAM_SIZE" && exit 16
 RAM_WANTED=$(numfmt --from=iec "$RAM_SIZE")
-[ "$RAM_WANTED" -lt "136314880 " ] && error "Invalid RAM size: $RAM_SIZE" && exit 16
+[ "$RAM_WANTED" -lt "136314880 " ] && error "RAM size too low: $RAM_SIZE" && exit 16
 
 AVAIL_GB=$(( RAM_AVAIL/1073741824 ))
 TOTAL_GB=$(( (RAM_TOTAL + 1073741823)/1073741824 ))
