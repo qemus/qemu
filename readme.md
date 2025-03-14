@@ -81,6 +81,24 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   Enjoy your brand new machine, and don't forget to star this repo!
 
+### What image formats are supported?
+
+  The `BOOT` URL accepts files in any of the following formats:
+  
+  | **Extension** | **Format**   |
+  |---|---|
+  | `.img`       | Raw           |
+  | `.raw`       | Raw           |
+  | `.iso`        | Optical       |
+  | `.qcow2` | QEMU         |
+  | `.vmdk`   | VMware      |
+  | `.vhd`       | VirtualPC   |
+  | `.vhdx`     | Hyper-V     |
+  | `.vdi`        | VirtualBox |
+
+> [!TIP]
+> It will also accept `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, as it automaticly extracts compressed files.
+
 ### How do I change the storage location?
 
   To change the storage location, include the following bind mount in your compose file:
@@ -291,23 +309,12 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     ARGUMENTS: "-device usb-tablet"
   ```
 
-### What image formats are supported?
+  If you want to see the full command-line arguments used, you can set:
 
-  The `BOOT` URL accepts files in any of the following formats:
-  
-  | **Extension** | **Format**   |
-  |---|---|
-  | `.img`       | Raw           |
-  | `.raw`       | Raw           |
-  | `.iso`        | Optical       |
-  | `.qcow2` | QEMU         |
-  | `.vmdk`   | VMware      |
-  | `.vhd`       | VirtualPC   |
-  | `.vhdx`     | Hyper-V     |
-  | `.vdi`        | VirtualBox |
-
-> [!TIP]
-> It will also accept `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, as it automaticly extracts compressed files.
+  ```yaml
+  environment:
+    DEBUG: "Y"
+  ```
 
 ## Stars 🌟
 [![Stars](https://starchart.cc/qemus/qemu.svg?variant=adaptive)](https://starchart.cc/qemus/qemu)
