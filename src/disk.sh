@@ -110,9 +110,9 @@ createDisk() {
   fi
 
   html "Creating a $DISK_DESC image..."
-  info "Creating a $DISK_SPACE $DISK_STYLE $DISK_DESC image in $DISK_FMT format..."
+  info "Creating a ${DISK_SPACE/G/ GB} $DISK_STYLE $DISK_DESC image in $DISK_FMT format..."
 
-  local FAIL="Could not create a $DISK_STYLE $DISK_FMT $DISK_DESC image of $DISK_SPACE ($DISK_FILE)"
+  local FAIL="Could not create a $DISK_STYLE $DISK_FMT $DISK_DESC image of ${DISK_SPACE/G/ GB} ($DISK_FILE)"
 
   case "${DISK_FMT,,}" in
     raw)
@@ -194,11 +194,11 @@ resizeDisk() {
     fi
   fi
 
-  local GB=$(( (CUR_SIZE + 1073741823)/1073741824 ))
-  MSG="Resizing $DISK_DESC from ${GB}G to $DISK_SPACE..."
+  local GB=$(formatBytes "$CUR_SIZE")
+  MSG="Resizing $DISK_DESC from ${GB} to ${DISK_SPACE/G/ GB}..."
   info "$MSG" && html "$MSG"
 
-  local FAIL="Could not resize the $DISK_STYLE $DISK_FMT $DISK_DESC image from ${GB}G to $DISK_SPACE ($DISK_FILE)"
+  local FAIL="Could not resize the $DISK_STYLE $DISK_FMT $DISK_DESC image from ${GB} to ${DISK_SPACE/G/ GB} ($DISK_FILE)"
 
   case "${DISK_FMT,,}" in
     raw)
