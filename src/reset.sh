@@ -164,7 +164,7 @@ fi
 # Check available memory
 
 if [[ "$RAM_CHECK" != [Nn]* ]] && (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); then
-  msg="Your configured RAM_SIZE of $RAM_SIZE is too high for the $AVAIL_MEM of memory available, please set a lower value."
+  msg="Your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is too high for the $AVAIL_MEM of memory available, please set a lower value."
   [[ "${FS,,}" != "zfs" ]] && error "$msg" && exit 17
   info "$msg"
 fi
