@@ -100,10 +100,14 @@ formatBytes() {
   local result
   result=$(numfmt --to=iec "$1")
   local unit="${result//[0-9. ]}"
-  [ -z "$unit" ] && unit="bytes"
-  unit=$(echo "${unit^^}" | sed 's/K/KB/g;s/M/MB/g;s/G/GB/g;s/T/TB/g')
+  if [ -z "$unit" ]; then
+    unit="bytes"
+  else
+    unit=$(echo "${unit^^}" | sed 's/K/KB/g;s/M/MB/g;s/G/GB/g;s/T/TB/g')
+  fi
+  info "$result"
   result="${result//[a-zA-Z ]/}"
-  if [[ "$2" == "up" ]]; then
+  if [[ "${2:-}" == "up" ]]; then
     if [[ "$result" == *"."* ]]; then
       result="${result%%.*}"
       result=$((result+1))
