@@ -92,38 +92,38 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   Select from the values below:
   
-  | **Value** | **Version**           | **Size** |
+  | **Value**  | **Operating System** | **Size** |
   |---|---|---|
-  | `alma`   | Alma Linux           | x.x GB   |
-  | `alpine`  | Alpine Linux          | x.x GB   |
-  | `arch`   | Arch Linux           | x.x GB   |
-  | `cachy`  | CachyOS          | x.x GB   |
-  | `centos`  | CentOS Stream     | x.x GB   |
-  | `debian`  | Debian Desktop  | x.x GB   |
-  | `endeavour`  | EndeavourOS    | x.x GB   |
-  | `fedora`   | Fedora   | x.x GB   |
-  | `freebsd`   | FreeBSD     | x.x GB   |
-  | `gentoo`   | Gentoo | x.x GB   |
-  | `haiku`   | Haiku  | x.x GB   |
-  | `kali` | Kali Linux      | x.x GB   |
-  | `kubuntu` | Kubuntu      | x.x GB   |
-  | `mint` | Linux Mint     | x.x GB   |
-  | `manjaro` | Manjaro      | x.x GB   |
-  | `mx` | MX Linux      | x.x GB   |
-  | `netbsd` | NetBSD      | x.x GB   |
-  | `nixos` | NixOS      | x.x GB   |
-  | `openbsd` | OpenBSD      | x.x GB   |
-  | `opensuse` | OpenSUSE      | x.x GB   |
-  | `oracle`   | Oracle Linux  | x.x GB   |
-  | `popos`   | Pop!_OS  | x.x GB   |
-  | `rocky` | Rocky Linux    | x.x GB   |
-  | `slack` | Slackware     | x.x GB   |
-  | `tails` | Tails      | x.x GB   |
-  | `tinycore` | Tiny Core Linux      | x.x GB   |
-  | `ubuntu` | Ubuntu Desktop  | x.x GB   |
-  | `ubuntus` | Ubuntu Server    | x.x GB   |
-  | `xubuntu` | Xubuntu       | x.x GB   |
-  | `zorin` | ZorinOS      | x.x GB   |
+  | `alma`     | Alma Linux      | x.x GB   |
+  | `alpine`   | Alpine Linux    | x.x GB   |
+  | `arch`     | Arch Linux      | x.x GB   |
+  | `cachy`    | CachyOS         | x.x GB   |
+  | `centos`   | CentOS Stream   | x.x GB   |
+  | `debian`   | Debian Desktop  | x.x GB   |
+  | `endeavour`| EndeavourOS     | x.x GB   |
+  | `fedora`   | Fedora          | x.x GB   |
+  | `freebsd`  | FreeBSD         | x.x GB   |
+  | `gentoo`   | Gentoo          | x.x GB   |
+  | `haiku`    | Haiku           | x.x GB   |
+  | `kali`     | Kali Linux      | x.x GB   |
+  | `kubuntu`  | Kubuntu         | x.x GB   |
+  | `mint`     | Linux Mint      | x.x GB   |
+  | `manjaro`  | Manjaro         | x.x GB   |
+  | `mx`       | MX Linux        | x.x GB   |
+  | `netbsd`   | NetBSD          | x.x GB   |
+  | `nixos`    | NixOS           | x.x GB   |
+  | `openbsd`  | OpenBSD         | x.x GB   |
+  | `opensuse` | OpenSUSE        | x.x GB   |
+  | `oracle`   | Oracle Linux    | x.x GB   |
+  | `popos`    | Pop!_OS         | x.x GB   |
+  | `rocky`    | Rocky Linux     | x.x GB   |
+  | `slack`    | Slackware       | x.x GB   |
+  | `tails`    | Tails           | x.x GB   |
+  | `tinycore` | Tiny Core Linux | x.x GB   |
+  | `ubuntu`   | Ubuntu Desktop  | x.x GB   |
+  | `ubuntus`  | Ubuntu Server   | x.x GB   |
+  | `xubuntu`  | Xubuntu         | x.x GB   |
+  | `zorin`    | ZorinOS         | x.x GB   |
   
 > [!TIP]
 > To install ARM64 versions of Windows use [dockur/windows-arm](https://github.com/dockur/windows-arm/).
