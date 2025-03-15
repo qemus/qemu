@@ -3,72 +3,108 @@ set -Eeuo pipefail
 
 getURL() {
   local id="${1/ /}"
+  local ret="$2"
   local url=""
+  local name=""
 
   case "${id,,}" in
     "alma" )
+      name="AlmaLinux"
       url="https://repo.almalinux.org/almalinux/9.5/isos/x86_64/AlmaLinux-9.5-x86_64-dvd.iso" ;;
     "alpine" )
+      name="Alpine Linux"
       url="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso" ;;
     "arch" )
+      name="Arch Linux"
       url="https://geo.mirror.pkgbuild.com/images/v20250301.315930/Arch-Linux-x86_64-basic.qcow2" ;;
     "cachy" )
+      name="CachyOS"
       url="https://cdn77.cachyos.org/ISO/desktop/250202/cachyos-desktop-linux-250202.iso" ;;
     "centos" )
+      name="CentOS Stream"
       url="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/x86_64/iso/CentOS-Stream-10-latest-x86_64-dvd1.iso" ;;
     "debian" )
+      name="Debian"
       url="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2" ;;
     "endeavour" )
+      name="EndeavourOS"
       url="https://mirrors.gigenet.com/endeavouros/iso/EndeavourOS_Mercury-2025.02.08.iso" ;;
     "fedora" )
+      name="Fedora Linux"
       url="https://download.fedoraproject.org/pub/fedora/linux/releases/41/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-41-1.4.iso" ;;
     "freebsd" )
+      name="FreeBSD"
       url="https://download.freebsd.org/releases/VM-IMAGES/14.2-RELEASE/amd64/Latest/FreeBSD-14.2-RELEASE-amd64.qcow2.xz" ;;
     "gentoo" )
+      name="Gentoo Linux"
       url="https://distfiles.gentoo.org/releases/amd64/autobuilds/20250309T170330Z/di-amd64-console-20250309T170330Z.qcow2" ;;
     "haiku" )
+      name="Haiku"
       url="https://mirrors.rit.edu/haiku/r1beta5/haiku-r1beta5-x86_64-anyboot.iso" ;;
     "kali" )
+      name="Kali Linux"
       url="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-qemu-amd64.7z" ;;
     "kubuntu" )
+      name="Kubuntu"
       url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso" ;;
     "mint" )
+      name="Linux Mint"
       url="https://mirrors.layeronline.com/linuxmint/stable/22.1/linuxmint-22.1-cinnamon-64bit.iso" ;;
     "manjaro" )
+      name="Manjaro"
       url="https://download.manjaro.org/kde/24.2.1/manjaro-kde-24.2.1-241216-linux612.iso" ;;
     "mx" )
+      name="MX Linux"
       url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-23.5_x64.iso" ;;
     "netbsd" )
+      name="NetBSD"
       url="https://cdn.netbsd.org/pub/NetBSD/NetBSD-10.1/images/NetBSD-10.1-amd64.iso" ;;
     "nixos" )
+      name="NixOS"
       url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso" ;;
     "openbsd" )
+      name="OpenBSD"
       url="https://cdn.openbsd.org/pub/OpenBSD/7.6/amd64/install76.iso" ;;
     "opensuse" )
+      name="OpenSUSE"
       url="https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-1.0.0-kvm-and-xen-Snapshot20250313.qcow2" ;;
     "oracle" )
+      name="Oracle Linux"
       url="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/x86_64/OracleLinux-R9-U5-x86_64-boot.iso" ;;
     "popos" )
+      name="Pop!_OS"
       url="https://pop-iso.sfo2.cdn.digitaloceanspaces.com/22.04/amd64/intel/4/pop-os_22.04_amd64_intel_4.iso" ;;
     "rocky" )
+      name="Rocky Linux"
       url="https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2" ;;
     "slack" )
+      name="Slackware"
       url="https://mirrors.slackware.com/slackware/slackware-iso/slackware64-15.0-iso/slackware64-15.0-install-dvd.iso" ;;
     "tails" )
+      name="Tails"
       url="https://download.tails.net/tails/stable/tails-amd64-6.13/tails-amd64-6.13.img" ;;
     "tinycore" )
+      name="TinyCore Linux"
       url="http://www.tinycorelinux.net/15.x/x86/release/TinyCore-current.iso" ;;
     "ubuntu" )
+      name="Ubuntu Desktop"
       url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-desktop-amd64.iso" ;;
     "ubuntus" )
+      name="Ubuntu Server"
       url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso" ;;
     "xubuntu" )
+      name="Xubuntu"
       url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso" ;;
     "zorin" )
+      name="ZorinOS"
       url="https://mirrors.edge.kernel.org/zorinos-isos/17/Zorin-OS-17.2-Core-64-bit.iso" ;;
   esac
 
-  echo "$url"
+  case "${ret,,}" in
+    "name" ) echo "$name" ;;
+    *) echo "$url";;
+  esac
+
   return 0
 }
 
@@ -107,7 +143,7 @@ downloadFile() {
 
   local url="$1"
   local base="$2"
-  local msg rc total total_mb progress
+  local msg rc total total_mb progress name
 
   local dest="$STORAGE/$base.tmp"
   rm -f "$dest"
@@ -119,8 +155,16 @@ downloadFile() {
     progress="--progress=dot:giga"
   fi
 
-  msg="Downloading image"
-  info "Downloading $base..."
+  name=$(getURL "$base" "name")
+  
+  if [ -z "$name" ]; then
+    name="$base"
+    msg="Downloading image"
+  else
+    msg="Downloading $name"
+  fi
+
+  info "Downloading $name..."
   html "$msg..."
 
   /run/progress.sh "$dest" "0" "$msg ([P])..." &
@@ -263,7 +307,7 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   BOOT="alpine"
 fi
 
-url=$(getURL "$BOOT")
+url=$(getURL "$BOOT" "url")
 
 if [ -n "$url" ]; then
   BOOT="$url"
