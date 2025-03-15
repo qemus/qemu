@@ -220,9 +220,11 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   error "No value specified for the BOOT variable." && exit 64
 fi
 
-getURL "$BOOT" "test"
+! getURL "$BOOT" "test" && exit 34
+
 url=$(getURL "$BOOT" "url")
 name=$(getURL "$BOOT" "name")
+
 [ -n "$url" ] && BOOT="$url"
 
 if [[ "$BOOT" != *"."* ]]; then
