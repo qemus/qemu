@@ -81,6 +81,55 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   Enjoy your brand new machine, and don't forget to star this repo!
 
+### How do I select the operating system?
+
+  You can use the `BOOT` environment variable in order to specify the operating system to be installed:
+
+  ```yaml
+  environment:
+    BOOT: "debian"
+  ```
+
+  Select from the values below:
+  
+  | **Value** | **Version**           | **Size** |
+  |---|---|---|
+  | `alma`   | Alma Linux           | x.x GB   |
+  | `alpine`  | Alpine Linux          | x.x GB   |
+  | `android`  | Android x86    | x.x GB   |
+  | `arch`   | Arch Linux           | x.x GB   |
+  | `cachy`  | CachyOS          | x.x GB   |
+  | `centos`  | CentOS Stream     | x.x GB   |
+  | `debian`  | Debian Desktop  | x.x GB   |
+  | `debians`  | Debian Server   | x.x GB   |
+  | `endeavour`  | EndeavourOS    | x.x GB   |
+  | `fedora`   | Fedora   | x.x GB   |
+  | `freebsd`   | FreeBSD     | x.x GB   |
+  | `gentoo`   | Gentoo | x.x GB   |
+  | `haiku`   | Haiku  | x.x GB   |
+  | `kali` | Kali Linux      | x.x GB   |
+  | `kubuntu` | Kubuntu      | x.x GB   |
+  | `mint` | Linux Mint     | x.x GB   |
+  | `manjaro` | Manjaro      | x.x GB   |
+  | `mx` | MX Linux      | x.x GB   |
+  | `netbsd` | NetBSD      | x.x GB   |
+  | `nixos` | NixOS      | x.x GB   |
+  | `openbsd` | OpenBSD      | x.x GB   |
+  | `opensuse` | OpenSUSE      | x.x GB   |
+  | `oracle`   | Oracle Linux  | x.x GB   |
+  | `popos`   | Pop!_OS  | x.x GB   |
+  | `rocky` | Rocky Linux    | x.x GB   |
+  | `slack` | Slackware     | x.x GB   |
+  | `tails` | Tails      | x.x GB   |
+  | `tinycore` | Tiny Core Linux      | x.x GB   |
+  | `ubuntu` | Ubuntu Desktop  | x.x GB   |
+  | `ubuntus` | Ubuntu Server    | x.x GB   |
+  | `xubuntu` | Xubuntu       | x.x GB   |
+  | `zorin` | ZorinOS      | x.x GB   |
+  
+> [!TIP]
+> To install ARM64 versions of Windows use [dockur/windows-arm](https://github.com/dockur/windows-arm/).
+
 ### What image formats are supported?
 
   The `BOOT` URL accepts files in any of the following formats:
