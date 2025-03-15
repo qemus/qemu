@@ -50,9 +50,6 @@ getURL() {
     "mx" )
       name="MX Linux"
       url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-23.5_x64.iso" ;;
-    "netbsd" )
-      name="NetBSD"
-      url="https://cdn.netbsd.org/pub/NetBSD/NetBSD-10.1/images/NetBSD-10.1-amd64.iso" ;;
     "nixos" )
       name="NixOS"
       url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso" ;;
