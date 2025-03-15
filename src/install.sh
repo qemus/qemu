@@ -1,6 +1,81 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+getURL() {
+  local id="${1/ /}"
+  local url=""
+
+  case "${id,,}" in
+    "alma" )
+      url="" ;;
+    "alpine" )
+      url="" ;;
+    "android" )
+      url="" ;;
+    "arch" )
+      url="" ;;
+    "cachy" )
+      url="" ;;
+    "centos" )
+      url="" ;;
+    "debian" )
+      url="" ;;
+    "debians" )
+      url="" ;;
+    "endeavour" )
+      url="" ;;
+    "fedora" )
+      url="" ;;
+    "freebsd" )
+      url="" ;;
+    "gentoo" )
+      url="" ;;
+    "haiku" )
+      url="" ;;
+    "kali" )
+      url="" ;;
+    "kubuntu" )
+      url="" ;;
+    "mint" )
+      url="" ;;
+    "manjaro" )
+      url="" ;;
+    "mx" )
+      url="" ;;
+    "netbsd" )
+      url="" ;;
+    "nixos" )
+      url="" ;;
+    "openbsd" )
+      url="" ;;
+    "opensuse" )
+      url="" ;;
+    "oracle" )
+      url="" ;;
+    "popos" )
+      url="" ;;
+    "rocky" )
+      url="" ;;
+    "slack" )
+      url="" ;;
+    "tails" )
+      url="" ;;
+    "tinycore" )
+      url="" ;;
+    "ubuntu" )
+      url="" ;;
+    "ubuntus" )
+      url="" ;;
+    "xubuntu" )
+      url="" ;;
+    "zorin" )
+      url="" ;;
+  esac
+
+  echo "$url"
+  return 0
+}
+
 detectType() {
 
   local dir=""
@@ -189,7 +264,17 @@ findFile "qcow2" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   hasDisk && return 0
-  error "No boot disk specified, set BOOT= to the URL of a disk image file." && exit 64
+  BOOT="alpine"
+fi
+
+url=$(getURL "$BOOT")
+
+if [ -n "$url" ]; then
+  BOOT="$url"
+else
+  if [[ "${url,,}" != *"."* ]]; then
+    error "Invalid BOOT shortcut specified, value \"$url\" is not recognized!" && exit 64
+  fi
 fi
 
 base=$(basename "${BOOT%%\?*}")
