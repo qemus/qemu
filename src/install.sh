@@ -10,7 +10,7 @@ getURL() {
   case "${id,,}" in
     "alma" )
       name="AlmaLinux"
-      url="https://repo.almalinux.org/almalinux/9.5/isos/x86_64/AlmaLinux-9.5-x86_64-dvd.iso" ;;
+      url="https://repo.almalinux.org/almalinux/9.5/isos/x86_64/AlmaLinux-9.5-x86_64-boot.iso" ;;
     "alpine" )
       name="Alpine Linux"
       url="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso" ;;
@@ -143,6 +143,7 @@ downloadFile() {
 
   local url="$1"
   local base="$2"
+  local name="$3"
   local msg rc total total_mb progress name
 
   local dest="$STORAGE/$base.tmp"
@@ -155,8 +156,6 @@ downloadFile() {
     progress="--progress=dot:giga"
   fi
 
-  name=$(getURL "$base" "name")
-  
   if [ -z "$name" ]; then
     name="$base"
     msg="Downloading image"
@@ -308,18 +307,25 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
 fi
 
 url=$(getURL "$BOOT" "url")
+name=$(getURL "$BOOT" "name")
 
 if [ -n "$url" ]; then
   BOOT="$url"
 else
-  if [[ "${url,,}" != *"."* ]]; then
-    error "Invalid BOOT shortcut specified, value \"$url\" is not recognized!" && exit 64
+  if [[ "$BOOT" != *"."* ]]; then
+    error "Invalid BOOT shortcut specified, value \"$BOOT\" is not recognized!" && exit 64
+  fi
+  if [[ "${BOOT,,}" == "http"* ]]; then
+    base=$(basename "${BOOT%%\?*}")
+    : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
+    base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
+  else
+    if [ ! -f "$STORAGE/$BOOT" ]; then
+      error "Invalid BOOT value specified, file \"$STORAGE/$BOOT\" does not exist!" && exit 64
+    fi
+    base="$BOOT"
   fi
 fi
-
-base=$(basename "${BOOT%%\?*}")
-: "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
-base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
 
 case "${base,,}" in
 
@@ -352,7 +358,11 @@ case "${base,,}" in
   * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
-if ! downloadFile "$BOOT" "$base"; then
+if [[ "${BOOT,,}" != "http"* ]]; then
+  error "Invalid BOOT url specified, value \"$BOOT\" is not a valid URL!" && exit 64
+fi
+
+if ! downloadFile "$BOOT" "$base" "$name"; then
   rm -f "$STORAGE/$base.tmp" && exit 60
 fi
 
