@@ -94,20 +94,19 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   
   | **Value**  | **Operating System** | **Size** |
   |---|---|---|
-  | `alma`     | Alma Linux      | x.x GB   |
-  | `alpine`   | Alpine Linux    | x.x GB   |
-  | `arch`     | Arch Linux      | x.x GB   |
-  | `cachy`    | CachyOS         | x.x GB   |
-  | `centos`   | CentOS Stream   | x.x GB   |
-  | `debian`   | Debian Desktop  | x.x GB   |
-  | `endeavour`| EndeavourOS     | x.x GB   |
-  | `fedora`   | Fedora          | x.x GB   |
-  | `freebsd`  | FreeBSD         | x.x GB   |
-  | `gentoo`   | Gentoo          | x.x GB   |
-  | `haiku`    | Haiku           | x.x GB   |
-  | `kali`     | Kali Linux      | x.x GB   |
-  | `kubuntu`  | Kubuntu         | x.x GB   |
-  | `mint`     | Linux Mint      | x.x GB   |
+  | `alma`     | Alma Linux      | 2.2 GB  |
+  | `alpine`   | Alpine Linux    | 60 MB    |
+  | `arch`     | Arch Linux      | 1.2 GB   |
+  | `cachy`    | CachyOS         | 2.6 GB   |
+  | `centos`   | CentOS Stream   | 7.0 GB   |
+  | `debian`   | Debian          | 3.3 GB   |
+  | `endeavour`| EndeavourOS     | 3.0 GB   |
+  | `fedora`   | Fedora          | 2.3 GB   |
+  | `freebsd`  | FreeBSD         | 3.7 GB   |
+  | `gentoo`   | Gentoo          | 3.6 GB   |
+  | `kali`     | Kali Linux      | 3.8 GB   |
+  | `kubuntu`  | Kubuntu         | 4.4 GB   |
+  | `mint`     | Linux Mint      | 2.8 GB   |
   | `manjaro`  | Manjaro         | x.x GB   |
   | `mx`       | MX Linux        | x.x GB   |
   | `netbsd`   | NetBSD          | x.x GB   |
