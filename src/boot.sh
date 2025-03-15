@@ -56,7 +56,7 @@ case "${BOOT_MODE,,}" in
 esac
 
 if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-  BOOT_OPTS="-rtc base=localtime"
+  BOOT_OPTS+=" -rtc base=localtime"
   BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
   BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
 fi
