@@ -7,69 +7,65 @@ getURL() {
 
   case "${id,,}" in
     "alma" )
-      url="" ;;
+      url="https://repo.almalinux.org/almalinux/9.5/isos/x86_64/AlmaLinux-9.5-x86_64-dvd.iso" ;;
     "alpine" )
-      url="" ;;
-    "android" )
-      url="" ;;
+      url="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso" ;;
     "arch" )
-      url="" ;;
+      url="https://geo.mirror.pkgbuild.com/images/v20250301.315930/Arch-Linux-x86_64-basic.qcow2" ;;
     "cachy" )
-      url="" ;;
+      url="https://cdn77.cachyos.org/ISO/desktop/250202/cachyos-desktop-linux-250202.iso" ;;
     "centos" )
-      url="" ;;
+      url="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/x86_64/iso/CentOS-Stream-10-latest-x86_64-dvd1.iso" ;;
     "debian" )
-      url="" ;;
-    "debians" )
-      url="" ;;
+      url="https://cloud.debian.org/images/cloud/bookworm/latest/debian-12-nocloud-amd64.qcow2" ;;
     "endeavour" )
-      url="" ;;
+      url="https://mirrors.gigenet.com/endeavouros/iso/EndeavourOS_Mercury-2025.02.08.iso" ;;
     "fedora" )
-      url="" ;;
+      url="https://download.fedoraproject.org/pub/fedora/linux/releases/41/Everything/x86_64/iso/Fedora-Everything-netinst-x86_64-41-1.4.iso" ;;
     "freebsd" )
-      url="" ;;
+      url="https://download.freebsd.org/releases/VM-IMAGES/14.2-RELEASE/amd64/Latest/FreeBSD-14.2-RELEASE-amd64.qcow2.xz" ;;
     "gentoo" )
-      url="" ;;
+      url="https://distfiles.gentoo.org/releases/amd64/autobuilds/20250309T170330Z/di-amd64-console-20250309T170330Z.qcow2" ;;
     "haiku" )
-      url="" ;;
+      url="https://mirrors.rit.edu/haiku/r1beta5/haiku-r1beta5-x86_64-anyboot.iso" ;;
     "kali" )
-      url="" ;;
+      url="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-qemu-amd64.7z" ;;
     "kubuntu" )
-      url="" ;;
+      url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso" ;;
     "mint" )
-      url="" ;;
+      url="https://mirrors.layeronline.com/linuxmint/stable/22.1/linuxmint-22.1-cinnamon-64bit.iso" ;;
     "manjaro" )
-      url="" ;;
+      url="https://download.manjaro.org/kde/24.2.1/manjaro-kde-24.2.1-241216-linux612.iso" ;;
     "mx" )
-      url="" ;;
+      url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-23.5_x64.iso" ;;
     "netbsd" )
-      url="" ;;
+      url="https://cdn.netbsd.org/pub/NetBSD/NetBSD-10.1/images/NetBSD-10.1-amd64.iso" ;;
     "nixos" )
-      url="" ;;
+      url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso" ;;
     "openbsd" )
-      url="" ;;
+      url="https://cdn.openbsd.org/pub/OpenBSD/7.6/amd64/install76.iso" ;;
     "opensuse" )
-      url="" ;;
+      url="https://download.opensuse.org/tumbleweed/appliances/openSUSE-Tumbleweed-Minimal-VM.x86_64-1.0.0-kvm-and-xen-Snapshot20250313.qcow2" ;;
     "oracle" )
-      url="" ;;
+      url="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/x86_64/OracleLinux-R9-U5-x86_64-boot.iso" ;;
     "popos" )
-      url="" ;;
+      url="https://pop-iso.sfo2.cdn.digitaloceanspaces.com/22.04/amd64/intel/4/pop-os_22.04_amd64_intel_4.iso" ;;
     "rocky" )
-      url="" ;;
+      url="https://dl.rockylinux.org/pub/rocky/9/images/x86_64/Rocky-9-GenericCloud-Base.latest.x86_64.qcow2" ;;
     "slack" )
-      url="" ;;
+      url="https://mirrors.slackware.com/slackware/slackware-iso/slackware64-15.0-iso/slackware64-15.0-install-dvd.iso" ;;
     "tails" )
-      url="" ;;
+      url="https://download.tails.net/tails/stable/tails-amd64-6.13/tails-amd64-6.13.img" ;;
     "tinycore" )
-      url="" ;;
+      url="http://www.tinycorelinux.net/15.x/x86/release/TinyCore-current.iso" ;;
     "ubuntu" )
-      url="" ;;
+      url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-desktop-amd64.iso" ;;
     "ubuntus" )
-      url="" ;;
+      url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso" ;;
     "xubuntu" )
-      url="" ;;
+      url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso" ;;
     "zorin" )
-      url="" ;;
+      url="https://mirrors.edge.kernel.org/zorinos-isos/17/Zorin-OS-17.2-Core-64-bit.iso" ;;
   esac
 
   echo "$url"
