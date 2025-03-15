@@ -117,9 +117,8 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `ubuntu`   | Ubuntu Desktop  | 6.0 GB   |
   | `ubuntus`  | Ubuntu Server   | 3.0 GB   |
   | `xubuntu`  | Xubuntu         | 4.0 GB   |
-  | `zorin`    | ZorinOS         | 3.2 GB   |
   
-### How do I use my own image?
+### How can I use my own image?
 
   If you want to boot an operating system that is not in the list, you can set the `BOOT` variable to the URL of the image:
 
