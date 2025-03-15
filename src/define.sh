@@ -43,7 +43,7 @@ getURL() {
       url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso" ;;
     "macos" | "osx" )
       name="macOS"
-      error "To install $name use: https://github.com/dockur/macos" && exit 34 ;;
+      error "To install $name use: https://github.com/dockur/macos" && return 1 ;;
     "mint" | "linuxmint" )
       name="Linux Mint"
       url="https://mirrors.layeronline.com/linuxmint/stable/22.1/linuxmint-22.1-cinnamon-64bit.iso" ;;
@@ -79,13 +79,14 @@ getURL() {
       url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso" ;;
     "windows" )
       name="Windows"
-      error "To install $name use: https://github.com/dockur/windows" && exit 34 ;;
+      error "To install $name use: https://github.com/dockur/windows" && return 1 ;;
     "xubuntu" )
       name="Xubuntu"
       url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso" ;;
   esac
 
   case "${ret,,}" in
+    "test" ) ;;
     "name" ) echo "$name" ;;
     *) echo "$url";;
   esac
