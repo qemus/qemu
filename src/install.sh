@@ -80,9 +80,6 @@ getURL() {
     "xubuntu" )
       name="Xubuntu"
       url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso" ;;
-    "zorin" )
-      name="ZorinOS"
-      url="https://mirrors.edge.kernel.org/zorinos-isos/17/Zorin-OS-17.2-Core-64-bit.iso" ;;
   esac
 
   case "${ret,,}" in
