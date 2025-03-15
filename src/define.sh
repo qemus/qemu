@@ -17,7 +17,7 @@ getURL() {
     "arch" )
       name="Arch Linux"
       url="https://geo.mirror.pkgbuild.com/iso/2025.03.01/archlinux-x86_64.iso" ;;
-    "cachy" )
+    "cachy" | "cachyos" )
       name="CachyOS"
       url="https://cdn77.cachyos.org/ISO/desktop/250202/cachyos-desktop-linux-250202.iso" ;;
     "centos" )
@@ -26,7 +26,7 @@ getURL() {
     "debian" )
       name="Debian"
       url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-12.9.0-amd64-gnome.iso" ;;
-    "endeavour" )
+    "endeavour" | "endeavouros" )
       name="EndeavourOS"
       url="https://mirrors.gigenet.com/endeavouros/iso/EndeavourOS_Mercury-2025.02.08.iso" ;;
     "fedora" )
@@ -41,7 +41,9 @@ getURL() {
     "kubuntu" )
       name="Kubuntu"
       url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso" ;;
-    "mint" )
+    "macos" | "osx" )
+      error "To install macOS use: https://github.com/dockur/macos" && exit 34 ;;
+    "mint" | "linuxmint" )
       name="Linux Mint"
       url="https://mirrors.layeronline.com/linuxmint/stable/22.1/linuxmint-22.1-cinnamon-64bit.iso" ;;
     "manjaro" )
@@ -53,7 +55,7 @@ getURL() {
     "nixos" )
       name="NixOS"
       url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso" ;;
-    "opensuse" )
+    "opensuse" | "suse" )
       name="OpenSUSE"
       url="https://download.opensuse.org/distribution/leap/15.0/live/openSUSE-Leap-15.0-GNOME-Live-x86_64-Current.iso" ;;
     "oracle" )
@@ -62,18 +64,20 @@ getURL() {
     "rocky" )
       name="Rocky Linux"
       url="https://dl.rockylinux.org/pub/rocky/9/live/x86_64/Rocky-9-Workstation-x86_64-latest.iso" ;;
-    "slack" )
+    "slack" | "slackware" )
       name="Slackware"
       url="https://slackware.nl/slackware-live/slackware64-15.0-live/slackware64-live-15.0.iso" ;;
     "tails" )
       name="Tails"
       url="https://download.tails.net/tails/stable/tails-amd64-6.13/tails-amd64-6.13.img" ;;
-    "ubuntu" )
+    "ubuntu" | "ubuntu-desktop" )
       name="Ubuntu Desktop"
       url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-desktop-amd64.iso" ;;
-    "ubuntus" )
+    "ubuntus" | "ubuntu-server")
       name="Ubuntu Server"
       url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso" ;;
+    "windows" )
+      error "To install Windows use: https://github.com/dockur/windows" && exit 34 ;;
     "xubuntu" )
       name="Xubuntu"
       url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso" ;;
