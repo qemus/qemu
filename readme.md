@@ -31,7 +31,7 @@ services:
     image: qemux/qemu
     container_name: qemu
     environment:
-      BOOT: "alpine"
+      BOOT: "mint"
     devices:
       - /dev/kvm
       - /dev/net/tun
@@ -48,7 +48,7 @@ services:
 Via Docker CLI:
 
 ```bash
-docker run -it --rm --name qemu -e "BOOT=alpine" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v ${PWD:-.}/qemu:/storage --stop-timeout 120 qemux/qemu
+docker run -it --rm --name qemu -e "BOOT=mint" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v ${PWD:-.}/qemu:/storage --stop-timeout 120 qemux/qemu
 ```
 
 Via Kubernetes:
@@ -87,7 +87,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   ```yaml
   environment:
-    BOOT: "alpine"
+    BOOT: "mint"
   ```
 
   Select from the values below:
@@ -102,27 +102,22 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `debian`   | Debian          | 3.3 GB   |
   | `endeavour`| EndeavourOS     | 3.0 GB   |
   | `fedora`   | Fedora          | 2.3 GB   |
-  | `freebsd`  | FreeBSD         | 3.7 GB   |
   | `gentoo`   | Gentoo          | 3.6 GB   |
   | `kali`     | Kali Linux      | 3.8 GB   |
   | `kubuntu`  | Kubuntu         | 4.4 GB   |
   | `mint`     | Linux Mint      | 2.8 GB   |
   | `manjaro`  | Manjaro         | 4.1 GB   |
   | `mx`       | MX Linux        | 2.2 GB   |
-  | `netbsd`   | NetBSD          | 638 MB   |
   | `nixos`    | NixOS           | 2.4 GB   |
-  | `openbsd`  | OpenBSD         | x.x GB   |
-  | `opensuse` | OpenSUSE        | x.x GB   |
-  | `oracle`   | Oracle Linux    | x.x GB   |
-  | `popos`    | Pop!_OS         | x.x GB   |
-  | `rocky`    | Rocky Linux     | x.x GB   |
-  | `slack`    | Slackware       | x.x GB   |
-  | `tails`    | Tails           | x.x GB   |
-  | `tinycore` | Tiny Core Linux | x.x GB   |
-  | `ubuntu`   | Ubuntu Desktop  | x.x GB   |
-  | `ubuntus`  | Ubuntu Server   | x.x GB   |
-  | `xubuntu`  | Xubuntu         | x.x GB   |
-  | `zorin`    | ZorinOS         | x.x GB   |
+  | `opensuse` | OpenSUSE        | 1.0 GB   |
+  | `oracle`   | Oracle Linux    | 1.1 GB   |
+  | `rocky`    | Rocky Linux     | 2.1 GB   |
+  | `slack`    | Slackware       | 3.7 GB   |
+  | `tails`    | Tails           | 1.5 GB   |
+  | `ubuntu`   | Ubuntu Desktop  | 6.0 GB   |
+  | `ubuntus`  | Ubuntu Server   | 3.0 GB   |
+  | `xubuntu`  | Xubuntu         | 4.0 GB   |
+  | `zorin`    | ZorinOS         | 3.2 GB   |
   
 ### How do I use my own image?
 
