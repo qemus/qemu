@@ -7,7 +7,8 @@ set -Eeuo pipefail
 cd /run
 
 . reset.sh      # Initialize system
-. install.sh    # Get bootdisk
+. define.sh     # Define images
+. install.sh    # Download image
 . disk.sh       # Initialize disks
 . display.sh    # Initialize graphics
 . network.sh    # Initialize network
