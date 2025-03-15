@@ -96,12 +96,10 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   |---|---|---|
   | `alma`   | Alma Linux           | x.x GB   |
   | `alpine`  | Alpine Linux          | x.x GB   |
-  | `android`  | Android x86    | x.x GB   |
   | `arch`   | Arch Linux           | x.x GB   |
   | `cachy`  | CachyOS          | x.x GB   |
   | `centos`  | CentOS Stream     | x.x GB   |
   | `debian`  | Debian Desktop  | x.x GB   |
-  | `debians`  | Debian Server   | x.x GB   |
   | `endeavour`  | EndeavourOS    | x.x GB   |
   | `fedora`   | Fedora   | x.x GB   |
   | `freebsd`   | FreeBSD     | x.x GB   |
