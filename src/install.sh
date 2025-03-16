@@ -58,7 +58,7 @@ downloadFile() {
   local url="$1"
   local base="$2"
   local name="$3"
-  local msg rc total total_mb progress
+  local msg rc total size progress
 
   local dest="$STORAGE/$base.tmp"
   rm -f "$dest"
@@ -88,9 +88,9 @@ downloadFile() {
 
   if (( rc == 0 )) && [ -f "$dest" ]; then
     total=$(stat -c%s "$dest")
-    total_gb=$(formatBytes "$total")
+    size=$(formatBytes "$total")
     if [ "$total" -lt 100000 ]; then
-      error "Invalid image file: is only $total_gb ?" && return 1
+      error "Invalid image file: is only $size ?" && return 1
     fi
     html "Download finished successfully..."
     mv -f "$dest" "$STORAGE/$base"
