@@ -140,16 +140,16 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `.vhdx`       | Hyper-V     |
   | `.vdi`        | VirtualBox  |
 
-  It will also accept `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, as it automaticly extracts compressed files.
+  It will also accept files such as `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, because it will automaticly extract compressed files.
 
-  You can also use a local image file directly, and skip the download altogether, by binding it in your compose file like this:
+  Alternatively you can use a local image file directly, by binding it in your compose file:
   
   ```yaml
   volumes:
     - ./example.iso:/boot.iso
   ```
 
-  This way you can supply a `/boot.iso`, `/boot.img` or a `/boot.qcow2` file. The value of `BOOT` will be ignored in this case.
+  This way you can supply either a `/boot.iso`, `/boot.img` or a `/boot.qcow2` file. The value of `BOOT` will be ignored in this case.
 
 ### How do I change the storage location?
 
