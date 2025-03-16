@@ -58,7 +58,7 @@ downloadFile() {
   local url="$1"
   local base="$2"
   local name="$3"
-  local msg rc total total_mb progress name
+  local msg rc total total_mb progress
 
   local dest="$STORAGE/$base.tmp"
   rm -f "$dest"
