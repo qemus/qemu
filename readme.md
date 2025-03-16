@@ -245,6 +245,17 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
  
   - it could help to add `privileged: true` to your compose file (or `sudo` to your `docker run` command), to rule out any permission issue.
 
+### How do I expose network ports?
+
+  You can expose ports just by adding them to your compose file. If you want to be able to connect to the SSH service of the machine for example, you would add it like this:
+  
+  ```yaml
+  ports:
+    - 2222:22
+  ```
+
+  This will make port 2222 on your host redirect to port 22 of the virtual machine.
+
 ### How do I assign an individual IP address to the container?
 
   By default, the container uses bridge networking, which shares the IP address with the host. 
