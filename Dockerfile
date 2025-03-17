@@ -54,7 +54,7 @@ VOLUME /storage
 EXPOSE 22 80 5900
 
 ENV CPU_CORES="1"
-ENV RAM_SIZE="1G"
+ENV RAM_SIZE="2G"
 ENV DISK_SIZE="16G"
 ENV BOOT="http://example.com/image.iso"
 
