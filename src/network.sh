@@ -16,7 +16,7 @@ set -Eeuo pipefail
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="QEMU"}"
 : "${VM_NET_IP:="20.20.20.21"}"
-: "${VM_NET_IP6:="fd00::"}"
+: "${VM_NET_IP6:="::fe13:1"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
@@ -106,19 +106,25 @@ configureDHCP() {
 configureDNS() {
 
   # dnsmasq configuration:
-  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP --dhcp-range=$VM_NET_IP6,static --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite --dhcp-option=option:netmask,255.255.255.0"
+  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP --dhcp-range=$VM_NET_IP6:1:2,$VM_NET_IP6:1:2,constructor:dockerbridge --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite --dhcp-option=option:netmask,255.255.255.0"
 
   # Create lease file for faster resolve
   echo "0 $VM_NET_MAC $VM_NET_IP $VM_NET_HOST 01:$VM_NET_MAC" > /var/lib/misc/dnsmasq.leases
   chmod 644 /var/lib/misc/dnsmasq.leases
 
   # Set DNS server and gateway
-  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1 --dhcp-option=option:router,${VM_NET_IP%.*}.1"
+  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1 --dhcp-option=option:router,${VM_NET_IP%.*}.1 --dhcp-option=option6:dns-server,[::] --enable-ra"
 
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/${VM_NET_IP%.*}.1"
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
+
+  if [[ "$DEBUG" == [Yy1]* ]]; then
+   DNSMASQ_OPTS+=" -d"
+   $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS} &
+   return 0
+  fi
 
   if ! $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS}; then
     error "Failed to start dnsmasq, reason: $?" && return 1
@@ -215,12 +221,12 @@ configureNAT() {
   fi
 
   if ! ip address add "${VM_NET_IP%.*}.1/24" broadcast "${VM_NET_IP%.*}.255" dev dockerbridge; then
-    error "Failed to add IP address!" && return 1
+    error "Failed to add IP address pool!" && return 1
   fi
 
   if [ -n "$IP6" ]; then
-    if ! ip -6 address add dev dockerbridge scope global "$VM_NET_IP6"; then
-      error "Failed to add IPv6 address"
+    if ! ip -6 address add dev dockerbridge scope global "$VM_NET_IP6/64"; then
+      error "Failed to add IPv6 address pool!"
     fi
   fi
 
@@ -270,7 +276,7 @@ configureNAT() {
     error "Failed to configure IP tables!" && return 1
   fi
 
-  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp  -j DNAT --to "$VM_NET_IP"; then
+  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$VM_NET_IP"; then
     error "Failed to configure IP tables!" && return 1
   fi
 
@@ -279,17 +285,20 @@ configureNAT() {
     iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
   fi
 
-  if [ -n "$IP6" ] && ip6tables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
+  if [ -n "$IP6" ]; then
 
-    # shellcheck disable=SC2086
-    if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p tcp${exclude} -j DNAT --to "$VM_NET_IP6"; then
-      error "Failed to configure IPv6 tables!"
+    if ip6tables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
+
+     # shellcheck disable=SC2086
+     if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p tcp${exclude} -j DNAT --to "$VM_NET_IP6:1:2"; then
+       error "Failed to configure IPv6 tables!"
+     fi
+
+     if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p udp -j DNAT --to "$VM_NET_IP6:1:2"; then
+       error "Failed to configure IPv6 tables!"
+     fi
+
     fi
-
-    if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p udp  -j DNAT --to "$VM_NET_IP6"; then
-      error "Failed to configure IPv6 tables!"
-    fi
-
   fi
 
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$VM_NET_TAP"
@@ -462,8 +471,8 @@ if [[ "$DEBUG" == [Yy1]* ]]; then
 fi
 
 if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
-    info "Lingering interface will be removed..."
-    ip link delete "$VM_NET_TAP" || true
+  info "Lingering interface will be removed..."
+  ip link delete "$VM_NET_TAP" || true
 fi
 
 if [[ "$DHCP" == [Yy1]* ]]; then
@@ -490,7 +499,7 @@ else
 
       closeBridge
       NETWORK="user"
-      warn "falling back to usermode networking! Performance will be bad and port mapping will not work."
+      warn "falling back to user-mode networking! Performance will be bad and port mapping will not work."
 
     fi
 
@@ -498,7 +507,7 @@ else
 
   if [[ "${NETWORK,,}" == "user"* ]]; then
 
-    # Configure for usermode networking (slirp)
+    # Configure for user-mode networking (slirp)
     configureUser || exit 24
 
   fi
