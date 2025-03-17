@@ -13,6 +13,7 @@ RUN set -eu && \
         tini \
         wget \
         7zip \
+        curl \
         ovmf \
         nginx \
         swtpm \
