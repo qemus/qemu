@@ -31,7 +31,7 @@ services:
     image: qemux/qemu
     container_name: qemu
     environment:
-      BOOT: "mint"
+      BOOT: "alpine"
     devices:
       - /dev/kvm
       - /dev/net/tun
@@ -48,7 +48,7 @@ services:
 Via Docker CLI:
 
 ```bash
-docker run -it --rm --name qemu -e "BOOT=mint" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v ${PWD:-.}/qemu:/storage --stop-timeout 120 qemux/qemu
+docker run -it --rm --name qemu -e "BOOT=alpine" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v ${PWD:-.}/qemu:/storage --stop-timeout 120 qemux/qemu
 ```
 
 Via Kubernetes:
@@ -87,7 +87,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   ```yaml
   environment:
-    BOOT: "mint"
+    BOOT: "alpine"
   ```
 
   Select from the values below:
