@@ -617,11 +617,7 @@ if [ -z "$DISK_FMT" ]; then
   if [ -f "$DISK1_FILE.qcow2" ]; then
     DISK_FMT="qcow2"
   else
-    if [[ "$BOOT" ==  *".qcow2" ]] && [ ! -f "$DISK1_FILE.img" ]; then
-      DISK_FMT="qcow2"
-    else
-      DISK_FMT="raw"
-    fi
+    DISK_FMT="raw"
   fi
 fi
 
