@@ -119,7 +119,7 @@ configureDNS() {
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
 
-  if [[ "$DEBUG" == [Yy1]* ]]; then
+  if [[ "${DEBUG_DNS:-}" == [Yy1]* ]]; then
    DNSMASQ_OPTS+=" -d"
    $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS} &
    return 0
