@@ -3,7 +3,7 @@ services:
     image: qemux/qemu
     container_name: qemu
     environment:
-      BOOT: "mint"
+      BOOT: "alpine"
     devices:
       - /dev/kvm
       - /dev/net/tun
