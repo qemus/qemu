@@ -277,11 +277,11 @@ configureNAT() {
   fi
 
   # shellcheck disable=SC2086
-  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
+  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
     error "Failed to configure IPv6 tables!"
   fi
 
-  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp  -j DNAT --to "$VM_NET_IP"; then
+  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p udp  -j DNAT --to "$VM_NET_IP"; then
     error "Failed to configure IPv6 tables!"
   fi
 
@@ -423,6 +423,11 @@ getInfo() {
 
   GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}')
   IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/)
+
+  IP6=$(ifconfig -a | grep inet6)
+  if [ -f /proc/net/if_inet6 ] && [ -n "$IP6" ]; then
+    IP6=$(ip -6 addr show scope global dynamic mngtmpaddr up|egrep -o '([0-9a-f:]+:+)+[0-9a-f]+' -m 1)
+  fi
 
   return 0
 }
