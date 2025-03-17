@@ -46,7 +46,7 @@ getURL() {
       name="CachyOS"
       version=$(pipe "https://cachyos.org/download/") || exit 65
       url=$(echo "$version" | tr '&' '\n' | grep "ISO/desktop" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
-      arm=$(echo "$version" | tr '&' '\n' | grep "ISO/handheld" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
+      arm=$(echo "$version" | tr '&' '\n' | grep "ISO/handheld" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2) ;;
     "centos" | "centosstream" | "centos-stream" )
       name="CentOS Stream"
       url="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/x86_64/iso/CentOS-Stream-10-latest-x86_64-dvd1.iso"
