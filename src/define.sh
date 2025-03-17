@@ -17,7 +17,7 @@ pipe() {
       *) error "$msg $code" ;;
     esac
 
-    exit 64
+    exit 65
 }
 
 getURL() {
