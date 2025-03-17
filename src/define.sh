@@ -2,8 +2,22 @@
 set -Eeuo pipefail
 
 pipe() {
-    curl --disable --silent --location "${1}"
-    return 0
+    local code="99"
+    msg="Failed to connect, reason: "
+
+    curl --disable --silent --max-time 10 --fail  --location "${1}" || {
+      code="$?"
+    }
+
+    case "${code,,}" in
+      "6" ) error "$msg could not resolve host!" ;;
+      "7" ) error "$msg no internet connection available!" ;;
+      "28" ) error "$msg connection timed out!" ;;
+      "99" ) return 0 ;;
+      *) error "$msg $code" ;;
+    esac
+
+    exit 64
 }
 
 getURL() {
