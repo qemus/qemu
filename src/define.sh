@@ -29,8 +29,8 @@ getURL() {
       arm="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/aarch64/iso/CentOS-Stream-10-latest-aarch64-dvd1.iso" ;;
     "debian" )
       name="Debian"
-      url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-12.9.0-amd64-gnome.iso"
-      arm="https://cdimage.debian.org/debian-cd/current/arm64/iso-dvd/debian-12.9.0-arm64-DVD-1.iso" ;;
+      url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-12.10.0-amd64-standard.iso"
+      arm="https://cdimage.debian.org/debian-cd/current/arm64/iso-dvd/debian-12.10.0-arm64-DVD-1.iso" ;;
     "endeavour" | "endeavouros" )
       name="EndeavourOS"
       url="https://mirrors.gigenet.com/endeavouros/iso/EndeavourOS_Mercury-2025.02.08.iso" ;;
