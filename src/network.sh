@@ -431,8 +431,8 @@ getInfo() {
   GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
   IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1)
 
-  IP6=$(ifconfig -a | grep inet6)
-  if [ -f /proc/net/if_inet6 ] && [ -n "$IP6" ]; then
+  IP6=""
+  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
     IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up)
     [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
   fi
