@@ -306,7 +306,7 @@ fi
 # Set password
 echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
 
-# Check if IPv6 is supported
+# shellcheck disable=SC2143
 if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
 
   sed -i "s/listen 80;/listen [::]:80 ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
