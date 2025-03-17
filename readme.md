@@ -176,13 +176,13 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I change the amount of CPU or RAM?
 
-  By default, the container will be allowed to use a maximum of 1 CPU core and 1 GB of RAM.
+  By default, the container will be allowed to use a maximum of 2 CPU cores and 2 GB of RAM.
 
   If you want to adjust this, you can specify the desired amount using the following environment variables:
 
   ```yaml
   environment:
-    RAM_SIZE: "4G"
+    RAM_SIZE: "8G"
     CPU_CORES: "4"
   ```
 
