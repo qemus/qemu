@@ -16,7 +16,7 @@ set -Eeuo pipefail
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="QEMU"}"
 : "${VM_NET_IP:="20.20.20.21"}"
-: "${VM_NET_IP6:="fdb4:ccc4:abd8::12"}"
+: "${VM_NET_IP6:="fd00::"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
