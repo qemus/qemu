@@ -106,7 +106,7 @@ configureDHCP() {
 configureDNS() {
 
   # dnsmasq configuration:
-  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite --dhcp-option=option:netmask,255.255.255.0"
+  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP --dhcp-range=$VM_NET_IP6,$VM_NET_IP6 --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite --dhcp-option=option:netmask,255.255.255.0"
 
   # Create lease file for faster resolve
   echo "0 $VM_NET_MAC $VM_NET_IP $VM_NET_HOST 01:$VM_NET_MAC" > /var/lib/misc/dnsmasq.leases
