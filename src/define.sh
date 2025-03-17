@@ -70,6 +70,9 @@ getURL() {
     "kubuntu" )
       name="Kubuntu"
       url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso" ;;
+    "lmde" )
+      name="Linux Mint Debian Edition"
+      url="https://mirror.rackspace.com/linuxmint/iso/debian/lmde-6-cinnamon-64bit.iso" ;;
     "macos" | "osx" )
       name="macOS"
       error "To install $name use: https://github.com/dockur/macos" && return 1 ;;
