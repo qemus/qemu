@@ -30,12 +30,14 @@ getURL() {
   case "${id,,}" in
     "alma" | "almalinux" | "alma-linux" )
       name="AlmaLinux"
-      url="https://repo.almalinux.org/almalinux/9/live/x86_64/AlmaLinux-9.5-x86_64-Live-GNOME.iso"
-      arm="https://repo.almalinux.org/almalinux/9/live/aarch64/AlmaLinux-9.5-aarch64-Live-GNOME.iso" ;;
+      url="https://repo.almalinux.org/almalinux/9/live/x86_64/AlmaLinux-9-latest-x86_64-Live-GNOME.iso"
+      arm="https://repo.almalinux.org/almalinux/9/live/aarch64/AlmaLinux-9-latest-aarch64-Live-GNOME.iso" ;;
     "alpine" | "alpinelinux" | "alpine-linux" )
       name="Alpine Linux"
-      url="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/x86_64/alpine-virt-3.19.1-x86_64.iso"
-      arm="https://dl-cdn.alpinelinux.org/alpine/v3.19/releases/aarch64/alpine-virt-3.19.1-aarch64.iso" ;;
+      version=$(pipe "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml") || exit 65
+      version=$(echo "$version" | awk '/"Xen"/{found=0} {if(found) print} /"Virtual"/{found=1}' | grep 'version:' | awk '{print $2}')
+      url="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/alpine-virt-$version-x86_64.iso"
+      arm="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/alpine-virt-$version-aarch64.iso" ;;
     "arch" | "archlinux" | "arch-linux" )
       name="Arch Linux"
       url="https://geo.mirror.pkgbuild.com/iso/2025.03.01/archlinux-x86_64.iso" ;;
