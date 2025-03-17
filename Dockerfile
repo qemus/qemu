@@ -51,7 +51,7 @@ COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/sites-enabled/web.conf
 
 VOLUME /storage
-EXPOSE 22 5900 8006
+EXPOSE 22 80 5900
 
 ENV CPU_CORES="1"
 ENV RAM_SIZE="1G"
