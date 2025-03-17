@@ -272,6 +272,19 @@ configureNAT() {
     iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
   fi
 
+  if ! ip6tables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
+    error "$tables" && return 1
+  fi
+
+  # shellcheck disable=SC2086
+  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
+    error "Failed to configure IPv6 tables!"
+  fi
+
+  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp  -j DNAT --to "$VM_NET_IP"; then
+    error "Failed to configure IPv6 tables!"
+  fi
+
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$VM_NET_TAP"
 
   if [ -c /dev/vhost-net ]; then
