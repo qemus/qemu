@@ -24,8 +24,9 @@ getURL() {
   local id="${1/ /}"
   local ret="$2"
   local url=""
-  local arm=
+  local arm=""
   local name=""
+  local version=""
 
   case "${id,,}" in
     "alma" | "almalinux" | "alma-linux" )
@@ -40,10 +41,12 @@ getURL() {
       arm="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/alpine-virt-$version-aarch64.iso" ;;
     "arch" | "archlinux" | "arch-linux" )
       name="Arch Linux"
-      url="https://geo.mirror.pkgbuild.com/iso/2025.03.01/archlinux-x86_64.iso" ;;
+      url="https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso" ;;
     "cachy" | "cachyos" )
       name="CachyOS"
-      url="https://cdn77.cachyos.org/ISO/desktop/250202/cachyos-desktop-linux-250202.iso" ;;
+      version=$(pipe "https://cachyos.org/download/") || exit 65
+      url=$(echo "$version" | tr '&' '\n' | grep "ISO/desktop" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
+      arm=$(echo "$version" | tr '&' '\n' | grep "ISO/handheld" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
     "centos" | "centosstream" | "centos-stream" )
       name="CentOS Stream"
       url="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/x86_64/iso/CentOS-Stream-10-latest-x86_64-dvd1.iso"
