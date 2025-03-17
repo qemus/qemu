@@ -16,6 +16,7 @@ set -Eeuo pipefail
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="QEMU"}"
 : "${VM_NET_IP:="20.20.20.21"}"
+: "${VM_NET_IP6:="fdb4:ccc4:abd8::12"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
@@ -49,7 +50,7 @@ configureDHCP() {
       error "Cannot create macvtap interface. Please make sure that the network type of the container is 'macvlan' and not 'ipvlan'."
       return 1 ;;
     "RTNETLINK answers: Operation not permitted"* )
-      error "No permission to create macvtap interface. Please make sure that your host kernel supports it and that the NET_ADMIN capability is set." 
+      error "No permission to create macvtap interface. Please make sure that your host kernel supports it and that the NET_ADMIN capability is set."
       return 1 ;;
     *)
       [ -n "$msg" ] && echo "$msg" >&2
@@ -217,6 +218,12 @@ configureNAT() {
     error "Failed to add IP address!" && return 1
   fi
 
+  if [ -n "$IP6" ]; then
+    if ! ip -6 address add dev dockerbridge scope global "$VM_NET_IP6"; then
+      error "Failed to add IPv6 address"
+    fi
+  fi
+
   while ! ip link set dockerbridge up; do
     info "Waiting for IP address to become available..."
     sleep 2
@@ -272,17 +279,17 @@ configureNAT() {
     iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
   fi
 
-  if ! ip6tables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
-    error "$tables" && return 1
-  fi
+  if [ -n "$IP6" ] && ip6tables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
 
-  # shellcheck disable=SC2086
-  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
-    error "Failed to configure IPv6 tables!"
-  fi
+    # shellcheck disable=SC2086
+    if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p tcp${exclude} -j DNAT --to "$VM_NET_IP6"; then
+      error "Failed to configure IPv6 tables!"
+    fi
 
-  if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p udp  -j DNAT --to "$VM_NET_IP"; then
-    error "Failed to configure IPv6 tables!"
+    if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p udp  -j DNAT --to "$VM_NET_IP6"; then
+      error "Failed to configure IPv6 tables!"
+    fi
+
   fi
 
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$VM_NET_TAP"
@@ -421,12 +428,13 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}')
-  IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/)
+  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
+  IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1)
 
   IP6=$(ifconfig -a | grep inet6)
   if [ -f /proc/net/if_inet6 ] && [ -n "$IP6" ]; then
-    IP6=$(ip -6 addr show scope global dynamic mngtmpaddr up|egrep -o '([0-9a-f:]+:+)+[0-9a-f]+' -m 1)
+    IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up)
+    [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
   fi
 
   return 0
