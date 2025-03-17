@@ -53,7 +53,7 @@ COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/sites-enabled/web.conf
 VOLUME /storage
 EXPOSE 22 80 5900
 
-ENV CPU_CORES="1"
+ENV CPU_CORES="2"
 ENV RAM_SIZE="2G"
 ENV DISK_SIZE="16G"
 ENV BOOT="http://example.com/image.iso"
