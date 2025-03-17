@@ -16,7 +16,6 @@ set -Eeuo pipefail
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="QEMU"}"
 : "${VM_NET_IP:="20.20.20.21"}"
-: "${VM_NET_IP6:="::fe13:1"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
@@ -106,14 +105,14 @@ configureDHCP() {
 configureDNS() {
 
   # dnsmasq configuration:
-  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP --dhcp-range=$VM_NET_IP6:1:2,$VM_NET_IP6:1:2,constructor:dockerbridge --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite --dhcp-option=option:netmask,255.255.255.0"
+  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite --dhcp-option=option:netmask,255.255.255.0"
 
   # Create lease file for faster resolve
   echo "0 $VM_NET_MAC $VM_NET_IP $VM_NET_HOST 01:$VM_NET_MAC" > /var/lib/misc/dnsmasq.leases
   chmod 644 /var/lib/misc/dnsmasq.leases
 
   # Set DNS server and gateway
-  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1 --dhcp-option=option:router,${VM_NET_IP%.*}.1 --dhcp-option=option6:dns-server,[::] --enable-ra"
+  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1 --dhcp-option=option:router,${VM_NET_IP%.*}.1"
 
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/${VM_NET_IP%.*}.1"
@@ -224,12 +223,6 @@ configureNAT() {
     error "Failed to add IP address pool!" && return 1
   fi
 
-  if [ -n "$IP6" ]; then
-    if ! ip -6 address add dev dockerbridge scope global "$VM_NET_IP6/64"; then
-      error "Failed to add IPv6 address pool!"
-    fi
-  fi
-
   while ! ip link set dockerbridge up; do
     info "Waiting for IP address to become available..."
     sleep 2
@@ -283,22 +276,6 @@ configureNAT() {
   if (( KERNEL > 4 )); then
     # Hack for guest VMs complaining about "bad udp checksums in 5 packets"
     iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
-  fi
-
-  if [ -n "$IP6" ]; then
-
-    if ip6tables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
-
-     # shellcheck disable=SC2086
-     if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p tcp${exclude} -j DNAT --to "$VM_NET_IP6:1:2"; then
-       error "Failed to configure IPv6 tables!"
-     fi
-
-     if ! ip6tables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP6" -p udp -j DNAT --to "$VM_NET_IP6:1:2"; then
-       error "Failed to configure IPv6 tables!"
-     fi
-
-    fi
   fi
 
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$VM_NET_TAP"
