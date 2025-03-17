@@ -69,10 +69,6 @@ CPU="${CPU// 8 Core/}"
 CPU="${CPU// 16 Core/}"
 CPU="${CPU// 32 Core/}"
 CPU="${CPU// 64 Core/}"
-CPU="${CPU//12th Gen /}"
-CPU="${CPU//13th Gen /}"
-CPU="${CPU//14th Gen /}"
-CPU="${CPU//15th Gen /}"
 CPU="${CPU// Processor/}"
 CPU="${CPU// Quad core/}"
 CPU="${CPU// Core TM/ Core}"
@@ -309,6 +305,20 @@ fi
 
 # Set password
 echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
+
+ipv6=""
+
+if [ -n "$ipv6" ]; then
+
+  sed -i "s/listen 80/listen [::]:80 ipv6only=off/g" /etc/nginx/sites-enabled/web.conf
+  sed -i "s/listen 8006 default_server/listen [::]:8006 default_server ipv6only=off/g" /etc/nginx/sites-enabled/web.conf
+
+else
+
+  sed -i "s/listen [::]:80 ipv6only=off/listen 80/g" /etc/nginx/sites-enabled/web.conf
+  sed -i "s/listen [::]:8006 default_server ipv6only=off/listen 8006 default_server/g" /etc/nginx/sites-enabled/web.conf
+
+fi
 
 # Start webserver
 cp -r /var/www/* /run/shm
