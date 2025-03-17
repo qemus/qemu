@@ -174,7 +174,9 @@ convertImage() {
       cur_size=$(stat -c%s "$tmp_file")
       cur_gb=$(formatBytes "$cur_size")
       if ! fallocate -l "$cur_size" "$tmp_file"; then
-        error "Failed to allocate $cur_gb for image!"
+        if ! fallocate -x -l "$cur_size" "$tmp_file"; then
+          error "Failed to allocate $cur_gb for image!"
+        fi
       fi
     fi
   fi
