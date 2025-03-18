@@ -168,7 +168,11 @@ getURL() {
     "tails" )
       name="Tails"
       if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://tails.net/install/v2/Tails/amd64/stable/latest.json") || exit 65
+        version=$(echo "$body" | jq -r '.installations[0]."installation-paths"[]|select(.type=="iso")|."target-files"[0].url')
+        error "$version"
         url="https://download.tails.net/tails/stable/tails-amd64-6.13/tails-amd64-6.13.img"
+        error "$url"
       fi ;;
     "ubuntu" | "ubuntu-desktop" )
       name="Ubuntu Desktop"
