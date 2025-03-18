@@ -59,7 +59,11 @@ getURL() {
       arm="https://cdimage.debian.org/debian-cd/current/arm64/iso-dvd/debian-$version-arm64-DVD-1.iso" ;;
     "endeavour" | "endeavouros" )
       name="EndeavourOS"
-      url="https://mirrors.gigenet.com/endeavouros/iso/EndeavourOS_Mercury-2025.02.08.iso" ;;
+      version=$(pipe "https://mirror.alpix.eu/endeavouros/iso/") || exit 65
+      version="$(echo "$version" | grep -o '<a href="[^"]*.iso">' | sed 's/^<a href="//;s/.iso">.*//' | grep -v 'x86_64' | LC_ALL="en_US.UTF-8" sort -Mr | cut -c 13- | head -n 5 | tr '\n' ' ')"
+       # ISO="$(echo "${ENDEAVOUR_RELEASES}" | grep -i "${RELEASE}").iso"
+    
+      url="https://mirror.alpix.eu/endeavouros/iso/$version" ;;
     "fedora" | "fedoralinux" | "fedora-linux" )
       name="Fedora Linux"
       url="https://download.fedoraproject.org/pub/fedora/linux/releases/41/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-41-1.4.iso"
