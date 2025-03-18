@@ -81,11 +81,11 @@ getURL() {
       name="Gentoo Linux"
       if [[ "$ret" == "url" ]]; then
         if [[ "${ARCH,,}" != "arm64" ]]; then
-          body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/amd64/autobuilds/latest-iso.txt")
+          body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/amd64/autobuilds/latest-iso.txt") || exit 65
           version=$(echo "$body" | grep livegui | cut -d' ' -f1)
           url="https://distfiles.gentoo.org/releases/amd64/autobuilds/$version"
         else
-          body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/arm64/autobuilds/latest-qcow2.txt")
+          body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/arm64/autobuilds/latest-qcow2.txt")  || exit 65
           version=$(echo "$body" | grep cloudinit | cut -d' ' -f1)
           arm="https://distfiles.gentoo.org/releases/arm64/autobuilds/$version"
         fi
@@ -93,7 +93,12 @@ getURL() {
     "kali" | "kalilinux" | "kali-linux" )
       name="Kali Linux"
       if [[ "$ret" == "url" ]]; then
+      URL=""
+        body=$(pipe "https://cdimage.kali.org/current/?C=M;O=D") || exit 65
+        version=$(echo "$body" | grep -o ">kali-linux-.*-live-amd64.iso" | head -n 1 | cut -c 2-)
+        error $version
         url="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-amd64.iso"
+        error $url
         arm="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-arm64.iso"
       fi ;;
     "kubuntu" )
