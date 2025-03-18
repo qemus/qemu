@@ -59,7 +59,7 @@ getURL() {
       name="CentOS Stream"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://linuxsoft.cern.ch/centos-stream/") || exit 65
-        version=$(echo "$body" | grep "\-stream" | cut -d'"' -f 6 | cut -d'-' -f 1)
+        version=$(echo "$body" | grep "\-stream" | cut -d'"' -f 6 | cut -d'-' -f 1 | head -n 1)
         url="https://mirrors.xtom.de/centos-stream/$version-stream/BaseOS/x86_64/iso/CentOS-Stream-$version-latest-x86_64-dvd1.iso"
         arm="https://mirrors.xtom.de/centos-stream/$version-stream/BaseOS/aarch64/iso/CentOS-Stream-$version-latest-aarch64-dvd1.iso"
       fi ;;
