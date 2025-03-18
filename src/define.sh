@@ -198,7 +198,7 @@ getURL() {
       echo "$name"
       ;;
     "url" )
-  
+
       if [[ "${ARCH,,}" != "arm64" ]]; then
         if [ -n "$name" ] && [ -z "$url" ]; then
           error "No image for $name available!"
@@ -210,7 +210,7 @@ getURL() {
           return 1
         fi
       fi
-  
+
       if [[ "${ARCH,,}" != "arm64" ]]; then
         echo "$url"
       else
