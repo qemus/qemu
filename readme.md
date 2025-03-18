@@ -38,7 +38,7 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - 8006:80
+      - 8006:8006
     volumes:
       - ./qemu:/storage
     restart: always
@@ -48,7 +48,7 @@ services:
 Via Docker CLI:
 
 ```bash
-docker run -it --rm --name qemu -e "BOOT=alpine" -p 8006:80 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v ${PWD:-.}/qemu:/storage --stop-timeout 120 qemux/qemu
+docker run -it --rm --name qemu -e "BOOT=alpine" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v ${PWD:-.}/qemu:/storage --stop-timeout 120 qemux/qemu
 ```
 
 Via Kubernetes:
