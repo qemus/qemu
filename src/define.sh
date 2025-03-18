@@ -80,7 +80,11 @@ getURL() {
     "gentoo" | "gentoolinux" | "gentoo-linux" )
       name="Gentoo Linux"
       if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/amd64/autobuilds/latest-iso.txt" | grep livegui | cut -d' ' -f1)
+        error "$body"
+        
         url="https://distfiles.gentoo.org/releases/amd64/autobuilds/20250309T170330Z/livegui-amd64-20250309T170330Z.iso"
+        error "$url"
         arm="https://distfiles.gentoo.org/releases/arm64/autobuilds/20250309T234826Z/di-arm64-cloudinit-20250309T234826Z.qcow2"
       fi ;;
     "kali" | "kalilinux" | "kali-linux" )
