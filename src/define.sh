@@ -32,114 +32,145 @@ getURL() {
   case "${id,,}" in
     "alma" | "almalinux" | "alma-linux" )
       name="AlmaLinux"
-      url="https://repo.almalinux.org/almalinux/9/live/x86_64/AlmaLinux-9-latest-x86_64-Live-GNOME.iso"
-      arm="https://repo.almalinux.org/almalinux/9/live/aarch64/AlmaLinux-9-latest-aarch64-Live-GNOME.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://repo.almalinux.org/almalinux/9/live/x86_64/AlmaLinux-9-latest-x86_64-Live-GNOME.iso"
+        arm="https://repo.almalinux.org/almalinux/9/live/aarch64/AlmaLinux-9-latest-aarch64-Live-GNOME.iso"
+      fi ;;
     "alpine" | "alpinelinux" | "alpine-linux" )
       name="Alpine Linux"
-      body=$(pipe "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml") || exit 65
-      version=$(echo "$body" | awk '/"Xen"/{found=0} {if(found) print} /"Virtual"/{found=1}' | grep 'version:' | awk '{print $2}')
-      url="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/alpine-virt-$version-x86_64.iso"
-      arm="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/alpine-virt-$version-aarch64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml") || exit 65      version=$(echo "$body" | awk '/"Xen"/{found=0} {if(found) print} /"Virtual"/{found=1}' | grep 'version:' | awk '{print $2}')
+        url="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/alpine-virt-$version-x86_64.iso"
+        arm="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/alpine-virt-$version-aarch64.iso"
+      fi ;;
     "arch" | "archlinux" | "arch-linux" )
       name="Arch Linux"
-      url="https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso"
+      fi ;;
     "cachy" | "cachyos" )
       name="CachyOS"
-      body=$(pipe "https://cachyos.org/download/") || exit 65
-      url=$(echo "$body" | tr '&' '\n' | grep "ISO/desktop" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
-      arm=$(echo "$body" | tr '&' '\n' | grep "ISO/handheld" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2) ;;
+      if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://cachyos.org/download/") || exit 65
+        url=$(echo "$body" | tr '&' '\n' | grep "ISO/desktop" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
+        arm=$(echo "$body" | tr '&' '\n' | grep "ISO/handheld" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
+      fi ;;
     "centos" | "centosstream" | "centos-stream" )
       name="CentOS Stream"
-      url="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/x86_64/iso/CentOS-Stream-10-latest-x86_64-dvd1.iso"
-      arm="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/aarch64/iso/CentOS-Stream-10-latest-aarch64-dvd1.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/x86_64/iso/CentOS-Stream-10-latest-x86_64-dvd1.iso"
+        arm="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/aarch64/iso/CentOS-Stream-10-latest-aarch64-dvd1.iso"
+      fi ;;
     "debian" )
       name="Debian"
-      body=$(pipe "https://cdimage.debian.org/debian-cd/") || exit 65
-      version=$(echo "$body" | grep '\.[0-9]/' | cut -d'>' -f 9 | cut -d'/' -f 1)
-      url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-$version-amd64-standard.iso"
-      arm="https://cdimage.debian.org/debian-cd/current/arm64/iso-dvd/debian-$version-arm64-DVD-1.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://cdimage.debian.org/debian-cd/") || exit 65
+        version=$(echo "$body" | grep '\.[0-9]/' | cut -d'>' -f 9 | cut -d'/' -f 1)
+        url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-$version-amd64-standard.iso"
+        arm="https://cdimage.debian.org/debian-cd/current/arm64/iso-dvd/debian-$version-arm64-DVD-1.iso"
+      fi ;;
     "fedora" | "fedoralinux" | "fedora-linux" )
       name="Fedora Linux"
-      body=$(pipe "https://getfedora.org/releases.json") || exit 65
-      version=$(echo "$body" | jq -r 'map(.version) | unique | .[]' | sed 's/ /_/g' | sort -r)
-      version=""
-      test=$(echo "$body" | jq -r "map(select(.arch==\"x86_64\" and .version==\"${version%% *}\" and .variant==\"Live\") | map(.subvariant) | unique | .[]")
-      url="https://download.fedoraproject.org/pub/fedora/linux/releases/41/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-41-1.4.iso"
-      arm="https://eu.edge.kernel.org/fedora/releases/41/Workstation/aarch64/images/Fedora-Workstation-41-1.4.aarch64.raw.xz" ;;
+      if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://getfedora.org/releases.json") || exit 65
+        version=$(echo "$body" | jq -r 'map(.version) | unique | .[]' | sed 's/ /_/g' | sort -r | head -n 1)
+        url=$(echo "$body" | jq -r "map(select(.arch==\"x86_64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link")
+        arm=$(echo "$body" | jq -r "map(select(.arch==\"aarch64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link")
+      fi ;;
     "gentoo" | "gentoolinux" | "gentoo-linux" )
       name="Gentoo Linux"
-      url="https://distfiles.gentoo.org/releases/amd64/autobuilds/20250309T170330Z/livegui-amd64-20250309T170330Z.iso"
-      arm="https://distfiles.gentoo.org/releases/arm64/autobuilds/20250309T234826Z/di-arm64-cloudinit-20250309T234826Z.qcow2" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://distfiles.gentoo.org/releases/amd64/autobuilds/20250309T170330Z/livegui-amd64-20250309T170330Z.iso"
+        arm="https://distfiles.gentoo.org/releases/arm64/autobuilds/20250309T234826Z/di-arm64-cloudinit-20250309T234826Z.qcow2"
+      fi ;;
     "kali" | "kalilinux" | "kali-linux" )
       name="Kali Linux"
-      url="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-amd64.iso"
-      arm="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-arm64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-amd64.iso"
+        arm="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-arm64.iso"
+      fi ;;
     "kubuntu" )
       name="Kubuntu"
-      url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso"
+      fi ;;
     "lmde" )
       name="Linux Mint Debian Edition"
-      url="https://mirror.rackspace.com/linuxmint/iso/debian/lmde-6-cinnamon-64bit.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://mirror.rackspace.com/linuxmint/iso/debian/lmde-6-cinnamon-64bit.iso"
+      fi ;;
     "macos" | "osx" )
       name="macOS"
       error "To install $name use: https://github.com/dockur/macos" && return 1 ;;
     "mint" | "linuxmint" | "linux-mint" )
       name="Linux Mint"
-      url="https://mirrors.layeronline.com/linuxmint/stable/22.1/linuxmint-22.1-cinnamon-64bit.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://mirrors.layeronline.com/linuxmint/stable/22.1/linuxmint-22.1-cinnamon-64bit.iso"
+      fi ;;
     "manjaro" )
       name="Manjaro"
-      url="https://download.manjaro.org/kde/24.2.1/manjaro-kde-24.2.1-241216-linux612.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://download.manjaro.org/kde/24.2.1/manjaro-kde-24.2.1-241216-linux612.iso"
+      fi ;;
     "mx" | "mxlinux" | "mx-linux" )
       name="MX Linux"
-      url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-23.5_x64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-23.5_x64.iso"
+      fi ;;
     "nixos" )
       name="NixOS"
-      url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso"
-      arm="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-aarch64-linux.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso"
+        arm="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-aarch64-linux.iso"
+      fi ;;
     "opensuse" | "open-suse" | "suse" )
       name="OpenSUSE"
-      url="https://download.opensuse.org/distribution/leap/15.0/live/openSUSE-Leap-15.0-GNOME-Live-x86_64-Current.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://download.opensuse.org/distribution/leap/15.0/live/openSUSE-Leap-15.0-GNOME-Live-x86_64-Current.iso"
+      fi ;;
     "oracle" | "oraclelinux" | "oracle-linux" )
       name="Oracle Linux"
-      url="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/x86_64/OracleLinux-R9-U5-x86_64-boot.iso"
-      arm="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/aarch64/OracleLinux-R9-U5-aarch64-boot-uek.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/x86_64/OracleLinux-R9-U5-x86_64-boot.iso"
+        arm="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/aarch64/OracleLinux-R9-U5-aarch64-boot-uek.iso"
+      fi ;;
     "rocky" | "rockylinux" | "rocky-linux" )
       name="Rocky Linux"
-      url="https://dl.rockylinux.org/pub/rocky/9/live/x86_64/Rocky-9-Workstation-x86_64-latest.iso"
-      arm="https://dl.rockylinux.org/pub/rocky/9/live/aarch64/Rocky-9-Workstation-aarch64-latest.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://dl.rockylinux.org/pub/rocky/9/live/x86_64/Rocky-9-Workstation-x86_64-latest.iso"
+        arm="https://dl.rockylinux.org/pub/rocky/9/live/aarch64/Rocky-9-Workstation-aarch64-latest.iso"
+      fi ;;
     "slack" | "slackware" )
       name="Slackware"
-      url="https://slackware.nl/slackware-live/slackware64-15.0-live/slackware64-live-15.0.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://slackware.nl/slackware-live/slackware64-15.0-live/slackware64-live-15.0.iso"
+      fi ;;
     "tails" )
       name="Tails"
-      url="https://download.tails.net/tails/stable/tails-amd64-6.13/tails-amd64-6.13.img" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://download.tails.net/tails/stable/tails-amd64-6.13/tails-amd64-6.13.img"
+      fi ;;
     "ubuntu" | "ubuntu-desktop" )
       name="Ubuntu Desktop"
-      url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-desktop-amd64.iso"
-      arm="https://cdimage.ubuntu.com/ubuntu/releases/24.10/release/ubuntu-24.10-desktop-arm64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-desktop-amd64.iso"
+        arm="https://cdimage.ubuntu.com/ubuntu/releases/24.10/release/ubuntu-24.10-desktop-arm64.iso"
+      fi ;;
     "ubuntus" | "ubuntu-server")
       name="Ubuntu Server"
-      url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso"
-      arm="https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.2-live-server-arm64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso"
+        arm="https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.2-live-server-arm64.iso"
+      fi ;;
     "windows" )
       name="Windows"
       error "To install $name use: https://github.com/dockur/windows" && return 1 ;;
     "xubuntu" )
       name="Xubuntu"
-      url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso" ;;
+      if [[ "$ret" == "url" ]]; then
+        url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso"
+      fi ;;
   esac
-
-  if [[ "${ARCH,,}" != "arm64" ]]; then
-    if [ -n "$name" ] && [ -z "$url" ]; then
-      error "No image for $name available!"
-      return 1
-    fi
-  else
-    if [ -n "$name" ] && [ -z "$arm" ]; then
-      error "No image for $name is available for ARM64 yet! "
-      return 1
-    fi
-  fi
 
   case "${ret,,}" in
     "test" )
@@ -147,7 +178,20 @@ getURL() {
     "name" )
       echo "$name"
       ;;
-    *)
+    "url" )
+  
+      if [[ "${ARCH,,}" != "arm64" ]]; then
+        if [ -n "$name" ] && [ -z "$url" ]; then
+          error "No image for $name available!"
+          return 1
+        fi
+      else
+        if [ -n "$name" ] && [ -z "$arm" ]; then
+          error "No image for $name is available for ARM64 yet! "
+          return 1
+        fi
+      fi
+  
       if [[ "${ARCH,,}" != "arm64" ]]; then
         echo "$url"
       else
