@@ -162,7 +162,7 @@ getURL() {
     "slack" | "slackware" )
       name="Slackware"
       if [[ "$ret" == "url" ]]; then
-        url="https://slackware.nl/slackware-live/slackware64-15.0-live/slackware64-live-15.0.iso"
+        url="https://slackware.nl/slackware-live/slackware64-current-live/slackware64-live-current.iso"
       fi ;;
     "tails" )
       name="Tails"
