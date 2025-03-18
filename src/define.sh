@@ -26,6 +26,7 @@ getURL() {
   local url=""
   local arm=""
   local name=""
+  local body=""
   local version=""
 
   case "${id,,}" in
@@ -35,8 +36,8 @@ getURL() {
       arm="https://repo.almalinux.org/almalinux/9/live/aarch64/AlmaLinux-9-latest-aarch64-Live-GNOME.iso" ;;
     "alpine" | "alpinelinux" | "alpine-linux" )
       name="Alpine Linux"
-      version=$(pipe "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml") || exit 65
-      version=$(echo "$version" | awk '/"Xen"/{found=0} {if(found) print} /"Virtual"/{found=1}' | grep 'version:' | awk '{print $2}')
+      body=$(pipe "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml") || exit 65
+      version=$(echo "$body" | awk '/"Xen"/{found=0} {if(found) print} /"Virtual"/{found=1}' | grep 'version:' | awk '{print $2}')
       url="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/alpine-virt-$version-x86_64.iso"
       arm="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/alpine-virt-$version-aarch64.iso" ;;
     "arch" | "archlinux" | "arch-linux" )
@@ -44,23 +45,25 @@ getURL() {
       url="https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso" ;;
     "cachy" | "cachyos" )
       name="CachyOS"
-      version=$(pipe "https://cachyos.org/download/") || exit 65
-      url=$(echo "$version" | tr '&' '\n' | grep "ISO/desktop" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
-      arm=$(echo "$version" | tr '&' '\n' | grep "ISO/handheld" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2) ;;
+      body=$(pipe "https://cachyos.org/download/") || exit 65
+      url=$(echo "$body" | tr '&' '\n' | grep "ISO/desktop" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2)
+      arm=$(echo "$body" | tr '&' '\n' | grep "ISO/handheld" | grep -v 'iso.sha' | grep -v 'iso.sig' | cut -d';' -f2) ;;
     "centos" | "centosstream" | "centos-stream" )
       name="CentOS Stream"
       url="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/x86_64/iso/CentOS-Stream-10-latest-x86_64-dvd1.iso"
       arm="https://mirrors.xtom.de/centos-stream/10-stream/BaseOS/aarch64/iso/CentOS-Stream-10-latest-aarch64-dvd1.iso" ;;
     "debian" )
       name="Debian"
-      version=$(pipe "https://cdimage.debian.org/debian-cd/") || exit 65
-      version=$(echo "$version" | grep '\.[0-9]/' | cut -d'>' -f 9 | cut -d'/' -f 1)
+      body=$(pipe "https://cdimage.debian.org/debian-cd/") || exit 65
+      version=$(echo "$body" | grep '\.[0-9]/' | cut -d'>' -f 9 | cut -d'/' -f 1)
       url="https://cdimage.debian.org/debian-cd/current-live/amd64/iso-hybrid/debian-live-$version-amd64-standard.iso"
       arm="https://cdimage.debian.org/debian-cd/current/arm64/iso-dvd/debian-$version-arm64-DVD-1.iso" ;;
     "fedora" | "fedoralinux" | "fedora-linux" )
       name="Fedora Linux"
-      version=$(pipe "https://getfedora.org/releases.json") || exit 65
-      version=$(echo "$version" | jq -r 'map(.version) | unique | .[]' | sed 's/ /_/g' | sort -r)
+      body=$(pipe "https://getfedora.org/releases.json") || exit 65
+      version=$(echo "$body" | jq -r 'map(.version) | unique | .[]' | sed 's/ /_/g' | sort -r)
+      version=""
+      test=$(echo "$body" | jq -r "map(select(.arch==\"x86_64\" and .version==\"${version%% *}\" and .variant==\"Live\") | map(.subvariant) | unique | .[]")
       url="https://download.fedoraproject.org/pub/fedora/linux/releases/41/Workstation/x86_64/iso/Fedora-Workstation-Live-x86_64-41-1.4.iso"
       arm="https://eu.edge.kernel.org/fedora/releases/41/Workstation/aarch64/images/Fedora-Workstation-41-1.4.aarch64.raw.xz" ;;
     "gentoo" | "gentoolinux" | "gentoo-linux" )
