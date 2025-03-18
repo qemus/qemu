@@ -137,17 +137,16 @@ getURL() {
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://nix-channels.s3.amazonaws.com/?delimiter=/") || exit 65
         version=$(echo "$body" | grep -o -E 'nixos-[[:digit:]]+\.[[:digit:]]+' | cut -d- -f2 | sort -nru | head -n 1)
-        error "$version"
-        url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso"
-        arm="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-aarch64-linux.iso"
+        url="https://channels.nixos.org/nixos-$version/latest-nixos-gnome-x86_64-linux.iso"
+        arm="https://channels.nixos.org/nixos-$version/latest-nixos-gnome-aarch64-linux.iso"
       fi ;;
     "opensuse" | "open-suse" | "suse" )
       name="OpenSUSE"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://download.opensuse.org/distribution/leap/") || exit 65
-        version=$(echo "$body" | grep 'class="name"' | cut -d '/' -f2 | grep -v 42 | sort -r) 
+        version=$(echo "$body" | grep 'class="name"' | cut -d '/' -f2 | grep -v 42 | sort -r | head -n 1) 
         error "$version"
-        url="https://download.opensuse.org/distribution/leap/15.0/live/openSUSE-Leap-15.0-GNOME-Live-x86_64-Current.iso"
+        url="https://download.opensuse.org/distribution/leap/$version/live/openSUSE-Leap-$version-GNOME-Live-x86_64-Current.iso"
       fi ;;
     "oracle" | "oraclelinux" | "oracle-linux" )
       name="Oracle Linux"
