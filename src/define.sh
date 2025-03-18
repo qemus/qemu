@@ -124,10 +124,7 @@ getURL() {
       name="Manjaro"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://gitlab.manjaro.org/web/iso-info/-/raw/master/file-info.json") || exit 65
-        version=$(echo "$body" | jq -r .official.plasma.image)
-        error $version
-        url="https://download.manjaro.org/kde/24.2.1/manjaro-kde-24.2.1-241216-linux612.iso"
-        error $url
+        url=$(echo "$body" | jq -r .official.plasma.image)
       fi ;;
     "mx" | "mxlinux" | "mx-linux" )
       name="MX Linux"
@@ -138,12 +135,18 @@ getURL() {
     "nixos" )
       name="NixOS"
       if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://nix-channels.s3.amazonaws.com/?delimiter=/") || exit 65
+        version=$(echo "$body" | grep -o -E 'nixos-[[:digit:]]+\.[[:digit:]]+' | cut -d- -f2 | sort -nru | head -n 1)
+        error "$version"
         url="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-x86_64-linux.iso"
         arm="https://channels.nixos.org/nixos-24.11/latest-nixos-gnome-aarch64-linux.iso"
       fi ;;
     "opensuse" | "open-suse" | "suse" )
       name="OpenSUSE"
       if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://download.opensuse.org/distribution/leap/") || exit 65
+        version=$(echo "$body" | grep 'class="name"' | cut -d '/' -f2 | grep -v 42 | sort -r) 
+        error "$version"
         url="https://download.opensuse.org/distribution/leap/15.0/live/openSUSE-Leap-15.0-GNOME-Live-x86_64-Current.iso"
       fi ;;
     "oracle" | "oraclelinux" | "oracle-linux" )
