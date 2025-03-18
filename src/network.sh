@@ -372,6 +372,10 @@ getInfo() {
     error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 27
   fi
 
+  if [[ "$VM_NET_IP" == *".0" ]] || [[ "$VM_NET_IP" == *".1" ]] || [[ "$VM_NET_IP" == *".2" ]]; then
+    error "Invalid VM_NET_IP, must end higher than .2" && exit 27
+  fi
+
   if [ -z "$MTU" ]; then
     MTU=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
   fi
