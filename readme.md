@@ -98,9 +98,8 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `alpine`   | Alpine Linux    | 60 MB    |
   | `arch`     | Arch Linux      | 1.2 GB   |
   | `cachy`    | CachyOS         | 2.6 GB   |
-  | `centos`   | CentOS Stream   | 7.0 GB   |
+  | `centos`   | CentOS          | 7.0 GB   |
   | `debian`   | Debian          | 3.3 GB   |
-  | `endeavour`| EndeavourOS     | 3.0 GB   |
   | `fedora`   | Fedora          | 2.3 GB   |
   | `gentoo`   | Gentoo          | 3.6 GB   |
   | `kali`     | Kali Linux      | 3.8 GB   |
