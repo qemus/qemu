@@ -145,8 +145,7 @@ getURL() {
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://download.opensuse.org/distribution/leap/") || exit 65
         version=$(echo "$body" | grep 'class="name"' | cut -d '/' -f2 | grep -v 42 | sort -r | head -n 1) 
-        error "$version"
-        url="https://download.opensuse.org/distribution/leap/$version/live/openSUSE-Leap-$version-GNOME-Live-x86_64-Current.iso"
+        url="https://download.opensuse.org/distribution/leap/$version/iso/openSUSE-Leap-$version-DVD-x86_64-Current.iso""
       fi ;;
     "oracle" | "oraclelinux" | "oracle-linux" )
       name="Oracle Linux"
@@ -169,10 +168,7 @@ getURL() {
       name="Tails"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://tails.net/install/v2/Tails/amd64/stable/latest.json") || exit 65
-        version=$(echo "$body" | jq -r '.installations[0]."installation-paths"[]|select(.type=="iso")|."target-files"[0].url')
-        error "$version"
-        url="https://download.tails.net/tails/stable/tails-amd64-6.13/tails-amd64-6.13.img"
-        error "$url"
+        url=$(echo "$body" | jq -r '.installations[0]."installation-paths"[]|select(.type=="iso")|."target-files"[0].url')
       fi ;;
     "ubuntu" | "ubuntu-desktop" )
       name="Ubuntu Desktop"
