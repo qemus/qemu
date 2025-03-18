@@ -95,27 +95,27 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | **Value**  | **Operating System** | **Size** |
   |---|---|---|
   | `alma`     | Alma Linux      | 2.2 GB  |
-  | `alpine`   | Alpine Linux    | 60 MB    |
-  | `arch`     | Arch Linux      | 1.2 GB   |
-  | `cachy`    | CachyOS         | 2.6 GB   |
-  | `centos`   | CentOS          | 7.0 GB   |
-  | `debian`   | Debian          | 3.3 GB   |
-  | `fedora`   | Fedora          | 2.3 GB   |
-  | `gentoo`   | Gentoo          | 3.6 GB   |
-  | `kali`     | Kali Linux      | 3.8 GB   |
-  | `kubuntu`  | Kubuntu         | 4.4 GB   |
-  | `mint`     | Linux Mint      | 2.8 GB   |
-  | `manjaro`  | Manjaro         | 4.1 GB   |
-  | `mx`       | MX Linux        | 2.2 GB   |
-  | `nixos`    | NixOS           | 2.4 GB   |
-  | `suse`.    | OpenSUSE        | 1.0 GB   |
-  | `oracle`   | Oracle Linux    | 1.1 GB   |
-  | `rocky`    | Rocky Linux     | 2.1 GB   |
-  | `slack`    | Slackware       | 3.7 GB   |
-  | `tails`    | Tails           | 1.5 GB   |
-  | `ubuntu`   | Ubuntu Desktop  | 6.0 GB   |
-  | `ubuntus`  | Ubuntu Server   | 3.0 GB   |
-  | `xubuntu`  | Xubuntu         | 4.0 GB   |
+  | `alpine`   | Alpine Linux    | 60 MB   |
+  | `arch`     | Arch Linux      | 1.2 GB  |
+  | `cachy`    | CachyOS         | 2.6 GB  |
+  | `centos`   | CentOS          | 7.0 GB  |
+  | `debian`   | Debian          | 3.3 GB  |
+  | `fedora`   | Fedora          | 2.3 GB  |
+  | `gentoo`   | Gentoo          | 3.6 GB  |
+  | `kali`     | Kali Linux      | 3.8 GB  |
+  | `kubuntu`  | Kubuntu         | 4.4 GB  |
+  | `mint`     | Linux Mint      | 2.8 GB  |
+  | `manjaro`  | Manjaro         | 4.1 GB  |
+  | `mx`       | MX Linux        | 2.2 GB  |
+  | `nixos`    | NixOS           | 2.4 GB  |
+  | `suse`     | OpenSUSE        | 1.0 GB  |
+  | `oracle`   | Oracle Linux    | 1.1 GB  |
+  | `rocky`    | Rocky Linux     | 2.1 GB  |
+  | `slack`    | Slackware       | 3.7 GB  |
+  | `tails`    | Tails           | 1.5 GB  |
+  | `ubuntu`   | Ubuntu Desktop  | 6.0 GB  |
+  | `ubuntus`  | Ubuntu Server   | 3.0 GB  |
+  | `xubuntu`  | Xubuntu         | 4.0 GB  |
   
 ### How can I use my own image?
 
