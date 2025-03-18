@@ -39,7 +39,8 @@ getURL() {
     "alpine" | "alpinelinux" | "alpine-linux" )
       name="Alpine Linux"
       if [[ "$ret" == "url" ]]; then
-        body=$(pipe "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml") || exit 65      version=$(echo "$body" | awk '/"Xen"/{found=0} {if(found) print} /"Virtual"/{found=1}' | grep 'version:' | awk '{print $2}')
+        body=$(pipe "https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/latest-releases.yaml") || exit 65
+        version=$(echo "$body" | awk '/"Xen"/{found=0} {if(found) print} /"Virtual"/{found=1}' | grep 'version:' | awk '{print $2}')
         url="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/x86_64/alpine-virt-$version-x86_64.iso"
         arm="https://dl-cdn.alpinelinux.org/alpine/latest-stable/releases/aarch64/alpine-virt-$version-aarch64.iso"
       fi ;;
@@ -131,7 +132,8 @@ getURL() {
     "mx" | "mxlinux" | "mx-linux" )
       name="MX Linux"
       if [[ "$ret" == "url" ]]; then
-        url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-23.5_x64.iso"
+        version=$(curl --disable -Ils "https://sourceforge.net/projects/mx-linux/files/latest/download" | grep -i 'location:' | cut -d? -f1 | cut -d_ -f1 | cut -d- -f3) || exit 65
+        url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-${version}_x64.iso"
       fi ;;
     "nixos" )
       name="NixOS"
