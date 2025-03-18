@@ -444,7 +444,7 @@ if [[ "$DEBUG" == [Yy1]* ]]; then
   line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
   [[ "$MTU" != "0" ]] && [[ "$MTU" != "$mtu" ]] && line+=" ($MTU)"
   info "$line"
-  if [ -f /etc/resolv.conf ];
+  if [ -f /etc/resolv.conf ]; then
     nameservers=$(grep '^nameserver*' /etc/resolv.conf | head -c -1 | sed 's/nameserver //g;' | sed -z 's/\n/, /g')
     [ -n "$nameservers" ] && info "Nameservers: $nameservers"
   fi
