@@ -369,11 +369,13 @@ getInfo() {
 
   if [ ! -d "/sys/class/net/$VM_NET_DEV" ]; then
     error "Network interface '$VM_NET_DEV' does not exist inside the container!"
-    error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 27
+    error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 26
   fi
+  
+  BASE_IP="${VM_NET_IP%.*}."
 
-  if [[ "$VM_NET_IP" == *".0" ]] || [[ "$VM_NET_IP" == *".1" ]] || [[ "$VM_NET_IP" == *".2" ]]; then
-    error "Invalid VM_NET_IP, must end higher than .2" && exit 27
+  if [ "${VM_NET_IP/$BASE_IP/}" -lt "3" ]; then
+    error "Invalid VM_NET_IP, must end in a higher number than .3" && exit 27
   fi
 
   if [ -z "$MTU" ]; then
