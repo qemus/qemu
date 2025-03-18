@@ -93,13 +93,11 @@ getURL() {
     "kali" | "kalilinux" | "kali-linux" )
       name="Kali Linux"
       if [[ "$ret" == "url" ]]; then
-      URL=""
         body=$(pipe "https://cdimage.kali.org/current/?C=M;O=D") || exit 65
         version=$(echo "$body" | grep -o ">kali-linux-.*-live-amd64.iso" | head -n 1 | cut -c 2-)
-        error $version
-        url="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-amd64.iso"
-        error $url
-        arm="https://cdimage.kali.org/kali-2024.4/kali-linux-2024.4-live-arm64.iso"
+        url="https://cdimage.kali.org/current/$version"
+        version=$(echo "$body" | grep -o ">kali-linux-.*-live-arm64.iso" | head -n 1 | cut -c 2-)
+        arm="https://cdimage.kali.org/current/$version"
       fi ;;
     "kubuntu" )
       name="Kubuntu"
