@@ -108,7 +108,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `manjaro`  | Manjaro         | 4.1 GB   |
   | `mx`       | MX Linux        | 2.2 GB   |
   | `nixos`    | NixOS           | 2.4 GB   |
-  | `opensuse` | OpenSUSE        | 1.0 GB   |
+  | `suse`.    | OpenSUSE        | 1.0 GB   |
   | `oracle`   | Oracle Linux    | 1.1 GB   |
   | `rocky`    | Rocky Linux     | 2.1 GB   |
   | `slack`    | Slackware       | 3.7 GB   |
