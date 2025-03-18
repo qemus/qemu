@@ -173,8 +173,6 @@ getURL() {
   esac
 
   case "${ret,,}" in
-    "test" )
-      ;;
     "name" )
       echo "$name"
       ;;
