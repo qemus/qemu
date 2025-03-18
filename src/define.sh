@@ -122,7 +122,11 @@ getURL() {
     "manjaro" )
       name="Manjaro"
       if [[ "$ret" == "url" ]]; then
+        body=$(pipe "https://gitlab.manjaro.org/web/iso-info/-/raw/master/file-info.json") || exit 65
+        version=$(echo "$body" | jq -r .official.plasma.image)
+        error $version
         url="https://download.manjaro.org/kde/24.2.1/manjaro-kde-24.2.1-241216-linux612.iso"
+        error $url
       fi ;;
     "mx" | "mxlinux" | "mx-linux" )
       name="MX Linux"
