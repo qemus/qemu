@@ -114,11 +114,11 @@ configureDNS() {
   # Set DHCP range and host
   DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP"
   DNSMASQ_OPTS+=" --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite"
-  DNSMASQ_OPTS+=" --dhcp-option=option:netmask,255.255.255.0"
 
   # Set DNS server and gateway
-  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1"
+  DNSMASQ_OPTS+=" --dhcp-option=option:netmask,255.255.255.0"
   DNSMASQ_OPTS+=" --dhcp-option=option:router,${VM_NET_IP%.*}.1"
+  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1"
 
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/${VM_NET_IP%.*}.1"
