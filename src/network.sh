@@ -14,7 +14,7 @@ set -Eeuo pipefail
 : "${VM_NET_DEV:=""}"
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
-: "${VM_NET_HOST:="QEMU"}"
+: "${VM_NET_HOST:="$APP"}"
 : "${VM_NET_IP:="20.20.20.21"}"
 
 : "${DNSMASQ_OPTS:=""}"
@@ -178,7 +178,7 @@ getHostPorts() {
 
 configureUser() {
 
-  NET_OPTS="-netdev user,id=hostnet0,host=${VM_NET_IP%.*}.2,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,hostname=$VM_NET_HOST"
+  NET_OPTS="-netdev user,id=hostnet0,host=${VM_NET_IP%.*}.1,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,hostname=$VM_NET_HOST"
 
   local forward
   forward=$(getUserPorts "$USER_PORTS")
