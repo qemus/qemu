@@ -83,7 +83,7 @@ getURL() {
     "gentoo" | "gentoolinux" | "gentoo-linux" )
       name="Gentoo Linux"
       if [[ "$ret" == "url" ]]; then
-        if [[ "${ARCH,,}" != "arm64" ]]; then
+        if [[ "${MACHINE,,}" != "virt" ]]; then
           body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/amd64/autobuilds/latest-iso.txt") || exit 65
           version=$(echo "$body" | grep livegui | cut -d' ' -f1)
           url="https://distfiles.gentoo.org/releases/amd64/autobuilds/$version"
@@ -199,7 +199,7 @@ getURL() {
       ;;
     "url" )
 
-      if [[ "${ARCH,,}" != "arm64" ]]; then
+      if [[ "${MACHINE,,}" != "virt" ]]; then
         if [ -n "$name" ] && [ -z "$url" ]; then
           error "No image for $name available!"
           return 1
@@ -211,7 +211,7 @@ getURL() {
         fi
       fi
 
-      if [[ "${ARCH,,}" != "arm64" ]]; then
+      if [[ "${MACHINE,,}" != "virt" ]]; then
         echo "$url"
       else
         echo "$arm"
