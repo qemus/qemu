@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 : "${APP:="QEMU"}"
-: "${PLATFORM:="amd64"}"
+: "${PLATFORM:="x64"}"
 : "${SUPPORT:="https://github.com/qemus/qemu"}"
 
 cd /run
