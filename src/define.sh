@@ -76,7 +76,7 @@ getURL() {
       name="Fedora Linux"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://getfedora.org/releases.json") || exit 65
-        version=$(echo "$body" | jq -r 'map(.version) | unique | .[]' | sed 's/ /_/g' | sort -r | head -n 1)
+        version=$(echo "$body" | jq -r 'map(.version) | unique | .[]' | sed 's/ /_/g' | sed '/_Beta/d' | sort -r | head -n 1)
         url=$(echo "$body" | jq -r "map(select(.arch==\"x86_64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link")
         arm=$(echo "$body" | jq -r "map(select(.arch==\"aarch64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link")
       fi ;;
