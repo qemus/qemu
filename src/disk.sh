@@ -556,7 +556,7 @@ case "${DISK_TYPE,,}" in
   * ) error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
-if [[ "${MACHINE,,}" != "virt" ]]; then
+if [[ "${PLATFORM,,}" != "arm64" ]]; then
   FALLBACK="ide"
 else
   FALLBACK="usb"
