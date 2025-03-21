@@ -143,9 +143,9 @@ getUserPorts() {
   local args=""
   local list=$1
   local ssh="22"
-  local rdp="3389"
 
-  [ -z "$list" ] && list="$ssh,$rdp" || list+=",$ssh,$rdp"
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
+  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
 
   list="${list//,/ }"
   list="${list## }"
