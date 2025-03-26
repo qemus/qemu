@@ -20,7 +20,10 @@ MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},d
 
 if [ -s "/sys/class/dmi/id/product_serial" ]; then
   BIOS_SERIAL=$(</sys/class/dmi/id/product_serial)
-  MAC_OPTS+=" -smbios type=1,serial=$BIOS_SERIAL"
+  BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
+  if [ -n "$BIOS_SERIAL" ]; then
+    MAC_OPTS+=" -smbios type=1,serial=$BIOS_SERIAL"
+  fi
 fi
 
 if [[ "${MACHINE,,}" != "pc-i440fx-2"* ]]; then
