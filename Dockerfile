@@ -27,6 +27,7 @@ RUN set -eu && \
         xz-utils \
         net-tools \
         e2fsprogs \
+        dmidecode \
         qemu-utils \
         iputils-ping \
         genisoimage \
