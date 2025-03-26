@@ -18,7 +18,7 @@ MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on"
 MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
 
-if [ ! -s "/sys/class/dmi/id/product_serial" ]; then
+if [ -s "/sys/class/dmi/id/product_serial" ]; then
   BIOS_SERIAL=$(</sys/class/dmi/id/product_serial)
   MAC_OPTS+=" -smbios type=1,serial=$BIOS_SERIAL"
 fi
