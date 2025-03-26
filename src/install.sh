@@ -202,7 +202,7 @@ findFile() {
   local fname="boot.$ext"
 
   if [ -d "/$fname" ]; then
-    error "The file /$fname does not exist, please check that you mapped it to a valid path!" && exit 37
+    error "The file /$fname does not exist, please make sure that you mapped it to a valid path!" && exit 37
   fi
 
   file=$(find / -maxdepth 1 -type f -iname "$fname" | head -n 1)
