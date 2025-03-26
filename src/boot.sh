@@ -114,6 +114,13 @@ else
   esac
 fi
 
+SM_BIOS="/run/shm/bios.bin"
+rm -f "$SM_BIOS"
+
+if ! dmidecode --dump-bin "$SM_BIOS" >/dev/null; then
+  SM_BIOS=""
+fi
+
 if [[ "$TPM" == [Yy1]* ]]; then
 
   rm -f /var/run/tpm.pid
