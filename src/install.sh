@@ -202,7 +202,7 @@ findFile() {
   local fname="boot.$ext"
 
   if [ -d "/$fname" ]; then
-    warn "The file /$fname has an invalid path!"
+    warn "The file /$fname has an invalid path!" && exit 37
   fi
 
   file=$(find / -maxdepth 1 -type f -iname "$fname" | head -n 1)
