@@ -55,6 +55,10 @@ if [[ "$KVM" != [Nn]* ]]; then
     CPU_FEATURES+=",migratable=no"
   fi
 
+  if [[ "$VMX" == [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+    CPU_FEATURES+=",-vmx"
+  fi
+
   if grep -qw "svm" <<< "$flags"; then
 
     # AMD processor
@@ -66,9 +70,6 @@ if [[ "$KVM" != [Nn]* ]]; then
   else
 
     # Intel processor
-    if [[ "$VMX" == [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-      CPU_FEATURES+=",-vmx"
-    fi
 
     vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 
