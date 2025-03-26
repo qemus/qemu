@@ -16,15 +16,9 @@ CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
 RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on"
 MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
-[ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
 
-if [ -s "/sys/class/dmi/id/product_serial" ]; then
-  BIOS_SERIAL=$(</sys/class/dmi/id/product_serial)
-  BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
-  if [ -n "$BIOS_SERIAL" ]; then
-    MAC_OPTS+=" -smbios type=1,serial=$BIOS_SERIAL"
-  fi
-fi
+[ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
+[ -n "$SM_BIOS" ] && MAC_OPTS+=" -smbios file=$SM_BIOS"
 
 if [[ "${MACHINE,,}" != "pc-i440fx-2"* ]]; then
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
