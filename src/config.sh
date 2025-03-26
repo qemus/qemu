@@ -5,7 +5,7 @@ set -Eeuo pipefail
 : "${HPET:="off"}"
 : "${VMPORT:="off"}"
 : "${SERIAL:="mon:stdio"}"
-: "${USB:="qemu-xhci,id=xhci"}"
+: "${USB:="qemu-xhci,id=xhci,p2=8,p3=8"}"
 : "${MONITOR:="telnet:localhost:7100,server,nowait,nodelay"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
 
