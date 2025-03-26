@@ -114,11 +114,12 @@ else
   esac
 fi
 
-SM_BIOS="/run/shm/bios.bin"
-rm -f "$SM_BIOS"
+SM_BIOS=""
+BIOS_SERIAL=$(</sys/class/dmi/id/product_serial)
+BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
 
-if ! dmidecode --dump-bin "$SM_BIOS" >/dev/null; then
-  SM_BIOS=""
+if [ -n "$BIOS_SERIAL" ]; then
+  SM_BIOS="-smbios serial=$BIOS_SERIAL"
 fi
 
 if [[ "$TPM" == [Yy1]* ]]; then
