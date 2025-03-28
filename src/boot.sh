@@ -116,7 +116,7 @@ fi
 
 SM_BIOS=""
 
-if [ -s "/sys/class/dmi/id/product_serial" ]; then
+if [ -s "/sys/class/dmi/id/product_serial" && -r "/sys/class/dmi/id/product_serial" ]; then
 
   BIOS_SERIAL=$(</sys/class/dmi/id/product_serial)
   BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
