@@ -115,10 +115,11 @@ else
 fi
 
 SM_BIOS=""
+PS="/sys/class/dmi/id/product_serial"
 
-if [ -s "/sys/class/dmi/id/product_serial" && -r "/sys/class/dmi/id/product_serial" ]; then
+if [ -s "$PS"] && [ -r "$PS" ]; then
 
-  BIOS_SERIAL=$(</sys/class/dmi/id/product_serial)
+  BIOS_SERIAL=$(<"$PS")
   BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
 
   if [ -n "$BIOS_SERIAL" ]; then
