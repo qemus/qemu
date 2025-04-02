@@ -227,8 +227,9 @@ findFile "raw" && return 0
 findFile "qcow2" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
+  BOOT="alpine"
   hasDisk && return 0
-  error "No value specified for the BOOT variable." && exit 64
+  warn "no value specified for the BOOT variable, defaulting to \"alpine\"."
 fi
 
 url=$(getURL "$BOOT" "url") || exit 34
