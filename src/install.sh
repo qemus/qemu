@@ -197,16 +197,20 @@ convertImage() {
 
 findFile() {
 
-  local file
+  local dir file
   local ext="$1"
   local fname="boot.$ext"
 
-  if [ -d "/$fname" ]; then
-    error "The file /$fname does not exist, please make sure that you mapped it to a valid path!" && exit 37
+  dir=$(find / -maxdepth 1 -type d -iname "$fname" | head -n 1)
+  [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" | head -n 1)
+  
+  if [ -d "$dir" ]; then
+    error "The bind $dir maps to a file that does not exist!" && exit 37
   fi
 
   file=$(find / -maxdepth 1 -type f -iname "$fname" | head -n 1)
   [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "$fname" | head -n 1)
+
   detectType "$file" && return 0
 
   return 1
