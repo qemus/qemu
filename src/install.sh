@@ -44,7 +44,7 @@ detectType() {
 
   if [ -n "$dir" ]; then
     dir=$(echo "${dir^^}" | grep "^/EFI")
-    if [ -z "$dir" ]; then
+    if [ -z "$dir" ] && [ -z "$BOOT_MODE" ]; then
       BOOT_MODE="legacy"
     fi
   else
@@ -207,6 +207,9 @@ findFile() {
   [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" | head -n 1)
   
   if [ -d "$dir" ]; then
+    if hasDisk; then
+      BOOT="$dir" && return 0
+    fi
     error "The bind $dir maps to a file that does not exist!" && exit 37
   fi
 
