@@ -44,7 +44,10 @@ detectType() {
 
   if [ -n "$dir" ]; then
     dir=$(echo "${dir^^}" | grep "^/EFI")
-    [ -z "$dir" ] && BOOT_MODE="legacy"
+    if [ -z "$dir" ]; then
+      BOOT_MODE="legacy"
+      echo "$BOOT_MODE" > "$STORAGE/boot.mode"
+    fi
   else
     error "Failed to read ISO file, invalid format!"
   fi
@@ -215,6 +218,13 @@ findFile() {
 
   return 1
 }
+
+if [ -z "$BOOT_MODE" ]; then
+  if [ -s "$STORAGE/boot.mode" ] && [ -f "$STORAGE/boot.mode" ]; then
+    BOOT_MODE=$(<"$STORAGE/boot.mode")
+    BOOT_MODE="${BOOT_MODE//[![:print:]]/}"
+  fi
+fi
 
 findFile "iso" && return 0
 findFile "img" && return 0
