@@ -46,7 +46,6 @@ detectType() {
     dir=$(echo "${dir^^}" | grep "^/EFI")
     if [ -z "$dir" ]; then
       BOOT_MODE="legacy"
-      echo "$BOOT_MODE" > "$STORAGE/boot.mode"
     fi
   else
     error "Failed to read ISO file, invalid format!"
@@ -219,13 +218,6 @@ findFile() {
   return 1
 }
 
-if [ -z "$BOOT_MODE" ]; then
-  if [ -s "$STORAGE/boot.mode" ] && [ -f "$STORAGE/boot.mode" ]; then
-    BOOT_MODE=$(<"$STORAGE/boot.mode")
-    BOOT_MODE="${BOOT_MODE//[![:print:]]/}"
-  fi
-fi
-
 findFile "iso" && return 0
 findFile "img" && return 0
 findFile "raw" && return 0
@@ -283,8 +275,6 @@ case "${base,,}" in
 
   * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
-
-rm -f "$STORAGE/boot.mode"
 
 if ! downloadFile "$BOOT" "$base" "$name"; then
   rm -f "$STORAGE/$base.tmp" && exit 60
