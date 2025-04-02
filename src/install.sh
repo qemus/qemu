@@ -284,6 +284,8 @@ case "${base,,}" in
   * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
 
+rm -f "$STORAGE/boot.mode"
+
 if ! downloadFile "$BOOT" "$base" "$name"; then
   rm -f "$STORAGE/$base.tmp" && exit 60
 fi
