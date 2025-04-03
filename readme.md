@@ -319,12 +319,12 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I pass-through a disk?
 
-  It is possible to pass-through disk devices directly by adding them to your compose file in this way:
+  It is possible to pass-through disk devices or partitions directly by adding them to your compose file in this way:
 
   ```yaml
   devices:
     - /dev/sdb:/disk1
-    - /dev/sdc:/disk2
+    - /dev/sdc1:/disk2
   ```
 
   Use `/disk1` if you want it to become your main drive, and use `/disk2` and higher to add them as secondary drives.
