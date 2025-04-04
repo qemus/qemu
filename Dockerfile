@@ -16,7 +16,6 @@ RUN set -eu && \
         wget \
         7zip \
         curl \
-        ovmf \
         nginx \
         swtpm \
         procps \
