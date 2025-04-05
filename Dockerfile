@@ -25,6 +25,7 @@ RUN set -eu && \
         dnsmasq \
         xz-utils \
         net-tools \
+        e2fsprogs \
         qemu-utils \
         iputils-ping \
         genisoimage \
