@@ -20,18 +20,20 @@ MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},d
 [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
 [ -n "$SM_BIOS" ] && MAC_OPTS+=" $SM_BIOS"
 
-if [[ "${MACHINE,,}" != "pc-i440fx-2"* ]]; then
+if [[ "${MACHINE,,}" != "pc"* ]]; then
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
   DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=pcie.0"
   if [[ "${BOOT_MODE,,}" != "windows"* ]]; then
     DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0"
-    if [ -d "/shared" ]; then
-      DEV_OPTS+=" -fsdev local,id=fsdev0,path=/shared,security_model=none"
-      DEV_OPTS+=" -device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=shared"
-    fi
   fi
-  [ -n "$USB" ] && [[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
 fi
+
+if [ -d "/shared" ] && [[ "${BOOT_MODE,,}" != "windows"* ]]; then
+  DEV_OPTS+=" -fsdev local,id=fsdev0,path=/shared,security_model=none"
+  DEV_OPTS+=" -device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=shared"
+fi
+
+[ -n "$USB" ] && [[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
 
 ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
 ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
