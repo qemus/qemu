@@ -1,17 +1,21 @@
 services:
-  qemu:
-    image: qemux/qemu
-    container_name: qemu
+  qemu-vm:
+    build: .
+    container_name: qemu-vm
+    restart: always
     environment:
-      BOOT: "alpine"
+      BOOT: "ubuntu"
+      CPU_CORES: "4"
+      RAM_SIZE: "8G"
+      DISK_SIZE: "20G"
+    ports:
+      - "22:22"
+      - "5900:5900"
+      - "8006:8006"
+    volumes:
+      - ./storage:/storage
     devices:
-      - /dev/kvm
-      - /dev/net/tun
+      - "/dev/kvm:/dev/kvm"
+      - "/dev/net/tun:/dev/net/tun"
     cap_add:
       - NET_ADMIN
-    ports:
-      - 8006:8006
-    volumes:
-      - ./qemu:/storage
-    restart: always
-    stop_grace_period: 2m
