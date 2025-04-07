@@ -23,4 +23,7 @@ trap - ERR
 version=$(qemu-system-x86_64 --version | head -n 1 | cut -d '(' -f 1 | awk '{ print $NF }')
 info "Booting image${BOOT_DESC} using QEMU v$version..."
 
-exec qemu-system-x86_64 ${ARGS:+ $ARGS}
+exec qemu-system-x86_64 ${ARGS:+ $ARGS} | \
+sed -u -e 's/\x1B\[[=0-9;]*[a-z]//gi' \
+-e 's/failed to load Boot/skipped Boot/g' \
+-e 's/0): Not Found/0)/g' & wait $! || :
