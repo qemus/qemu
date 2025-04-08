@@ -203,8 +203,8 @@ findFile() {
   local ext="$1"
   local fname="boot.$ext"
 
-  dir=$(find / -maxdepth 1 -type d -iname "$fname" | head -n 1)
-  [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" | head -n 1)
+  dir=$(find / -maxdepth 1 -type d -iname "$fname" -print -quit)
+  [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" -print -quit)
   
   if [ -d "$dir" ]; then
     if hasDisk; then
@@ -213,8 +213,8 @@ findFile() {
     error "The bind $dir maps to a file that does not exist!" && exit 37
   fi
 
-  file=$(find / -maxdepth 1 -type f -iname "$fname" | head -n 1)
-  [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "$fname" | head -n 1)
+  file=$(find / -maxdepth 1 -type f -iname "$fname" -print -quit)
+  [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "$fname" -print -quit)
 
   detectType "$file" && return 0
 
