@@ -49,6 +49,11 @@ getURL() {
       if [[ "$ret" == "url" ]]; then
         url="https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso"
       fi ;;
+    "boss" | "boss-desktop" | "boss-linux" )
+      name="Boss 10 Desktop linux"
+      if [[ "$ret" == "url" ]]; then
+        url="https://bosslinux.in/sites/default/files/ISOImages/BOSS-10.0-DE-amd64-DVD.iso"
+      fi ;;
     "cachy" | "cachyos" )
       name="CachyOS"
       if [[ "$ret" == "url" ]]; then

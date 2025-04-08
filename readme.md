@@ -102,6 +102,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `alma`     | Alma Linux      | 2.2 GB  |
   | `alpine`   | Alpine Linux    | 60 MB   |
   | `arch`     | Arch Linux      | 1.2 GB  |
+  | `boss`     | Boss 10 Desktop | 2.5 GB  |
   | `cachy`    | CachyOS         | 2.6 GB  |
   | `centos`   | CentOS          | 7.0 GB  |
   | `debian`   | Debian          | 3.3 GB  |
