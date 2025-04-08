@@ -7,7 +7,7 @@ jobs:
     name: shellcheck
     runs-on: ubuntu-latest
     steps:
-      - 
+      -
         name: Checkout
         uses: actions/checkout@v4
       -
@@ -15,7 +15,7 @@ jobs:
         uses: ludeeus/action-shellcheck@master
         env:
           SHELLCHECK_OPTS: -x --source-path=src -e SC2001 -e SC2034 -e SC2064 -e SC2317 -e SC2153
-      - 
+      -
         name: Lint Dockerfile
         uses: hadolint/hadolint-action@v3.1.0
         with:

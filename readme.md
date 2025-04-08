@@ -85,7 +85,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   ```
 
   Select from the values below:
-  
+
   | **Value**  | **Operating System** | **Size** |
   |---|---|---|
   | `alma`     | Alma Linux      | 2.2 GB  |
@@ -110,7 +110,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `ubuntu`   | Ubuntu Desktop  | 6.0 GB  |
   | `ubuntus`  | Ubuntu Server   | 3.0 GB  |
   | `xubuntu`  | Xubuntu         | 4.0 GB  |
-  
+
 ### How can I use my own image?
 
   If you want to download an operating system that is not in the list above, you can set the `BOOT` variable to the URL of the image:
@@ -121,7 +121,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   ```
 
   The `BOOT` URL accepts files in any of the following formats:
-  
+
   | **Extension** | **Format**  |
   |---|---|
   | `.img`        | Raw         |
@@ -136,7 +136,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   It will also accept files such as `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, because it will automaticly extract compressed files.
 
   Alternatively you can use a local image file directly, by binding it in your compose file:
-  
+
   ```yaml
   volumes:
     - ./example.iso:/boot.iso
@@ -163,7 +163,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   environment:
     DISK_SIZE: "128G"
   ```
-  
+
 > [!TIP]
 > This can also be used to resize the existing disk to a larger capacity without any data loss.
 
@@ -194,12 +194,12 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 ### How do I boot without UEFI?
 
   By default, the machine will boot with UEFI enabled. If your OS does not support that, you can boot with a legacy BIOS:
-  
+
   ```yaml
   environment:
     BOOT_MODE: "legacy"
   ```
-  
+
 ### How do I boot without VirtIO drivers?
 
   By default, the machine makes use of `virtio-scsi` drives for performance reasons, and even though most Linux kernels bundle the necessary driver for this device, that may not always be the case for other operating systems.
@@ -220,9 +220,9 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | **Product**  | **Linux** | **Win11** | **Win10** | **macOS** |
   |---|---|---|---|---|
   | Docker CLI        | ✅   | ✅       | ❌        | ❌ |
-  | Docker Desktop    | ❌   | ✅       | ❌        | ❌ | 
-  | Podman CLI        | ✅   | ✅       | ❌        | ❌ | 
-  | Podman Desktop    | ✅   | ✅       | ❌        | ❌ | 
+  | Docker Desktop    | ❌   | ✅       | ❌        | ❌ |
+  | Podman CLI        | ✅   | ✅       | ❌        | ❌ |
+  | Podman Desktop    | ✅   | ✅       | ❌        | ❌ |
 
   After that you can run the following commands in Linux to check your system:
 
@@ -244,7 +244,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 ### How do I expose network ports?
 
   You can expose ports just by adding them to your compose file. If you want to be able to connect to the SSH service of the machine for example, you would add it like this:
-  
+
   ```yaml
   ports:
     - 2222:22
@@ -254,7 +254,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I assign an individual IP address to the container?
 
-  By default, the container uses bridge networking, which shares the IP address with the host. 
+  By default, the container uses bridge networking, which shares the IP address with the host.
 
   If you want to assign an individual IP address to the container, you can create a macvlan network as follows:
 
@@ -265,8 +265,8 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
       --ip-range=192.168.0.100/28 \
       -o parent=eth0 vlan
   ```
-  
-  Be sure to modify these values to match your local subnet. 
+
+  Be sure to modify these values to match your local subnet.
 
   Once you have created the network, change your compose file to look as follows:
 
@@ -283,7 +283,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     vlan:
       external: true
   ```
- 
+
   An added benefit of this approach is that you won't have to perform any port mapping anymore, since all ports will be exposed by default.
 
 > [!IMPORTANT]
@@ -307,7 +307,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 ### How do I add multiple disks?
 
   To create additional disks, modify your compose file like this:
-  
+
   ```yaml
   environment:
     DISK2_SIZE: "32G"
@@ -350,7 +350,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   ```
 
   Then start the container and execute the following command in the guest:
-  
+
   ```shell
   mount -t 9p -o trans=virtio shared /mnt/example
   ```

@@ -74,7 +74,7 @@ function processInfo() {
             var path = window.location.pathname.replace(/[^/]*$/, '').replace(/\/$/, '');
             var wsUrl = protocol + "//" + window.location.host + path + "/websockify";
             var webSocket = webSocketFactory.connect(wsUrl);
-    
+
             return true;
         }
 

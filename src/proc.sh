@@ -36,7 +36,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     KVM="N"
     if [[ "$OSTYPE" =~ ^darwin ]]; then
       warn "you are using macOS which has no KVM support, this will cause a major loss of performance."
-    else      
+    else
       kernel=$(uname -a)
       case "${kernel,,}" in
         *"microsoft"* )

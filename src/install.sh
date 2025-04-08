@@ -205,7 +205,7 @@ findFile() {
 
   dir=$(find / -maxdepth 1 -type d -iname "$fname" -print -quit)
   [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" -print -quit)
-  
+
   if [ -d "$dir" ]; then
     if hasDisk; then
       BOOT="$dir" && return 0

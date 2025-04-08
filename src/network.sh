@@ -207,7 +207,7 @@ configureNAT() {
   fi
 
   if [ ! -c /dev/net/tun ]; then
-    [[ "$PODMAN" != [Yy1]* ]] && error "$tuntap" 
+    [[ "$PODMAN" != [Yy1]* ]] && error "$tuntap"
     return 1
   fi
 
@@ -215,7 +215,7 @@ configureNAT() {
   if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
-      [[ "$PODMAN" != [Yy1]* ]] && error "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1" 
+      [[ "$PODMAN" != [Yy1]* ]] && error "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
     fi
   fi
@@ -379,7 +379,7 @@ getInfo() {
     error "Network interface '$VM_NET_DEV' does not exist inside the container!"
     error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 26
   fi
-  
+
   BASE_IP="${VM_NET_IP%.*}."
 
   if [ "${VM_NET_IP/$BASE_IP/}" -lt "3" ]; then
