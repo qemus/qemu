@@ -44,7 +44,9 @@ detectType() {
 
   if [ -n "$dir" ]; then
     dir=$(echo "${dir^^}" | grep "^/EFI")
-    [ -z "$dir" ] && BOOT_MODE="legacy"
+    if [ -z "$dir" ] && [ -z "$BOOT_MODE" ]; then
+      BOOT_MODE="legacy"
+    fi
   else
     error "Failed to read ISO file, invalid format!"
   fi
@@ -197,16 +199,23 @@ convertImage() {
 
 findFile() {
 
-  local file
+  local dir file
   local ext="$1"
   local fname="boot.$ext"
 
-  if [ -d "/$fname" ]; then
-    warn "The file /$fname has an invalid path!"
+  dir=$(find / -maxdepth 1 -type d -iname "$fname" | head -n 1)
+  [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" | head -n 1)
+  
+  if [ -d "$dir" ]; then
+    if hasDisk; then
+      BOOT="$dir" && return 0
+    fi
+    error "The bind $dir maps to a file that does not exist!" && exit 37
   fi
 
   file=$(find / -maxdepth 1 -type f -iname "$fname" | head -n 1)
   [ ! -s "$file" ] && file=$(find "$STORAGE" -maxdepth 1 -type f -iname "$fname" | head -n 1)
+
   detectType "$file" && return 0
 
   return 1
@@ -218,8 +227,9 @@ findFile "raw" && return 0
 findFile "qcow2" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
+  BOOT="alpine"
   hasDisk && return 0
-  error "No value specified for the BOOT variable." && exit 64
+  warn "no value specified for the BOOT variable, defaulting to \"alpine\"."
 fi
 
 url=$(getURL "$BOOT" "url") || exit 34

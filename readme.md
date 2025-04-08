@@ -59,18 +59,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ##### Via Github Codespaces:
 
-[`Click here to launch this container in the cloud!`](https://github.com/codespaces/new?skip_quickstart=true&machine=basicLinux32gb&repo=626637620&ref=master&devcontainer_path=.devcontainer.json)
-
-## Compatibility ⚙️
-
-| **Product**  | **Platform**   | |
-|---|---|---|
-| Docker Engine     | Linux      | ✅ |
-| Docker Desktop    | Linux      | ❌ |
-| Docker Desktop    | macOS      | ❌ |
-| Docker Desktop    | Windows 11 | ✅ |
-| Docker Desktop    | Windows 10 | ❌ |
-| Github Codespaces | Cloud      | ✅ |
+[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/qemus/qemu)
 
 ## FAQ 💬
 
@@ -227,9 +216,16 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I verify if my system supports KVM?
 
-  Only Linux and Windows 11 support KVM virtualization, macOS and Windows 10 do not unfortunately.
-  
-  You can run the following commands in Linux to check your system:
+  First check if your software is compatible using this chart:
+
+  | **Product**  | **Linux** | **Win11** | **Win10** | **macOS** |
+  |---|---|---|---|---|
+  | Docker CLI        | ✅   | ✅       | ❌        | ❌ |
+  | Docker Desktop    | ❌   | ✅       | ❌        | ❌ | 
+  | Podman CLI        | ✅   | ✅       | ❌        | ❌ | 
+  | Podman Desktop    | ✅   | ✅       | ❌        | ❌ | 
+
+  After that you can run the following commands in Linux to check your system:
 
   ```bash
   sudo apt install cpu-checker
@@ -244,11 +240,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   - you are not using a cloud provider, as most of them do not allow nested virtualization for their VPS's.
 
-  If you do not receive any error from `kvm-ok` but the container still complains about KVM, please check whether:
-
-  - you are not using "Docker Desktop for Linux" as it does not support KVM, instead make use of Docker Engine directly.
- 
-  - it could help to add `privileged: true` to your compose file (or `sudo` to your `docker run` command), to rule out any permission issue.
+  If you did not receive any error from `kvm-ok` but the container still complains about a missing KVM device, it could help to add `privileged: true` to your compose file (or `sudo` to your `docker` command) to rule out any permission issue.
 
 ### How do I expose network ports?
 
@@ -328,12 +320,12 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I pass-through a disk?
 
-  It is possible to pass-through disk devices directly by adding them to your compose file in this way:
+  It is possible to pass-through disk devices or partitions directly by adding them to your compose file in this way:
 
   ```yaml
   devices:
     - /dev/sdb:/disk1
-    - /dev/sdc:/disk2
+    - /dev/sdc1:/disk2
   ```
 
   Use `/disk1` if you want it to become your main drive, and use `/disk2` and higher to add them as secondary drives.

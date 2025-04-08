@@ -143,9 +143,9 @@ getUserPorts() {
   local args=""
   local list=$1
   local ssh="22"
-  local rdp="3389"
 
-  [ -z "$list" ] && list="$ssh,$rdp" || list+=",$ssh,$rdp"
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
+  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
 
   list="${list//,/ }"
   list="${list## }"
@@ -207,14 +207,16 @@ configureNAT() {
   fi
 
   if [ ! -c /dev/net/tun ]; then
-    error "$tuntap" && return 1
+    [[ "$PODMAN" != [Yy1]* ]] && error "$tuntap" 
+    return 1
   fi
 
   # Check port forwarding flag
   if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
-      error "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1" && return 1
+      [[ "$PODMAN" != [Yy1]* ]] && error "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1" 
+      return 1
     fi
   fi
 
@@ -340,17 +342,17 @@ closeNetwork() {
 
 checkOS() {
 
-  local name
+  local kernel
   local os=""
   local if="macvlan"
-  name=$(uname -a)
+  kernel=$(uname -a)
 
-  [[ "${name,,}" == *"darwin"* ]] && os="Docker Desktop for macOS"
-  [[ "${name,,}" == *"microsoft"* ]] && os="Docker Desktop for Windows"
+  [[ "${kernel,,}" == *"darwin"* ]] && os="Docker Desktop for macOS"
+  [[ "${kernel,,}" == *"microsoft"* ]] && os="Docker Desktop for Windows"
 
   if [[ "$DHCP" == [Yy1]* ]]; then
     if="macvtap"
-    [[ "${name,,}" == *"synology"* ]] && os="Synology Container Manager"
+    [[ "${kernel,,}" == *"synology"* ]] && os="Synology Container Manager"
   fi
 
   if [ -n "$os" ]; then
@@ -407,6 +409,7 @@ getInfo() {
   if [ -z "$MAC" ]; then
     local file="$STORAGE/$PROCESS.mac"
     [ -s "$file" ] && MAC=$(<"$file")
+    MAC="${MAC//[![:print:]]/}"
     if [ -z "$MAC" ]; then
       # Generate MAC address based on Docker container ID in hostname
       MAC=$(echo "$HOST" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
@@ -435,6 +438,8 @@ getInfo() {
     IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up)
     [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
   fi
+
+  [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
 
   return 0
 }
@@ -493,10 +498,10 @@ else
       closeBridge
       NETWORK="user"
       msg="falling back to user-mode networking!"
-      if [ ! -f "/run/.containerenv" ]; then
+      if [[ "$PODMAN" != [Yy1]* ]]; then
         msg="an error occured, $msg"
       else
-        msg="podman rootless mode detected, $msg"
+        msg="podman detected, $msg"
       fi
       warn "$msg"
       [ -z "$USER_PORTS" ] && info "Notice: port mapping will not work without \"USER_PORTS\" now."

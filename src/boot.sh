@@ -90,26 +90,42 @@ esac
 MSRS="/sys/module/kvm/parameters/ignore_msrs"
 if [ -e "$MSRS" ]; then
   result=$(<"$MSRS")
+  result="${result//[![:print:]]/}"
   if [[ "$result" == "0" ]] || [[ "${result^^}" == "N" ]]; then
     echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
 fi
 
 CLOCKSOURCE="tsc"
-[[ "${ARCH,,}" == "arm64" ]] && CLOCKSOURCE="arch_sys_counter﻿"
+[[ "${ARCH,,}" == "arm64" ]] && CLOCKSOURCE="arch_sys_counter"
 CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
 
 if [ ! -f "$CLOCK" ]; then
   warn "file \"$CLOCK\" cannot not found?"
 else
   result=$(<"$CLOCK")
+  result="${result//[![:print:]]/}"
   case "${result,,}" in
     "${CLOCKSOURCE,,}" ) ;;
     "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
     "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
-    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'" ;;
-    *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'" ;;
+    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+    *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
   esac
+fi
+
+SM_BIOS=""
+PS="/sys/class/dmi/id/product_serial"
+
+if [ -s "$PS" ] && [ -r "$PS" ]; then
+
+  BIOS_SERIAL=$(<"$PS")
+  BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
+
+  if [ -n "$BIOS_SERIAL" ]; then
+    SM_BIOS="-smbios type=1,serial=$BIOS_SERIAL"
+  fi
+
 fi
 
 if [[ "$TPM" == [Yy1]* ]]; then

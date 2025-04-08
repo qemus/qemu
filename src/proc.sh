@@ -20,14 +20,14 @@ if [[ "$KVM" != [Nn]* ]]; then
   KVM_ERR=""
 
   if [ ! -e /dev/kvm ]; then
-    KVM_ERR="(device file missing)"
+    KVM_ERR="(/dev/kvm is missing)"
   else
     if ! sh -c 'echo -n > /dev/kvm' &> /dev/null; then
-      KVM_ERR="(no write access)"
+      KVM_ERR="(/dev/kvm is unwriteable)"
     else
       flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
       if ! grep -qw "vmx\|svm" <<< "$flags"; then
-        KVM_ERR="(vmx/svm disabled)"
+        KVM_ERR="(not enabled in BIOS)"
       fi
     fi
   fi
@@ -36,9 +36,17 @@ if [[ "$KVM" != [Nn]* ]]; then
     KVM="N"
     if [[ "$OSTYPE" =~ ^darwin ]]; then
       warn "you are using macOS which has no KVM support, this will cause a major loss of performance."
-    else
-      error "KVM acceleration not available $KVM_ERR, this will cause a major loss of performance."
-      error "See the FAQ on how to diagnose the cause, or continue without KVM by setting KVM=N (not recommended)."
+    else      
+      kernel=$(uname -a)
+      case "${kernel,,}" in
+        *"microsoft"* )
+          error "Please bind '/dev/kvm' as a volume in the optional container settings when using Docker Desktop." ;;
+        *"synology"* )
+          error "Please make sure that Synology VMM (Virtual Machine Manager) is installed and that '/dev/kvm' is binded to this container." ;;
+        *)
+          error "KVM acceleration is not available $KVM_ERR, this will cause a major loss of performance."
+          error "See the FAQ for possible causes, or continue without it by adding KVM: \"N\" (not recommended)." ;;
+      esac
       [[ "$DEBUG" != [Yy1]* ]] && exit 88
     fi
   fi
@@ -55,6 +63,10 @@ if [[ "$KVM" != [Nn]* ]]; then
     CPU_FEATURES+=",migratable=no"
   fi
 
+  if [[ "$VMX" == [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+    CPU_FEATURES+=",-vmx"
+  fi
+
   if grep -qw "svm" <<< "$flags"; then
 
     # AMD processor
@@ -66,9 +78,6 @@ if [[ "$KVM" != [Nn]* ]]; then
   else
 
     # Intel processor
-    if [[ "$VMX" == [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-      CPU_FEATURES+=",-vmx"
-    fi
 
     vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 

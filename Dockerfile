@@ -16,7 +16,7 @@ RUN set -eu && \
         wget \
         7zip \
         curl \
-        ovmf \
+        fdisk \
         nginx \
         swtpm \
         procps \
@@ -31,11 +31,12 @@ RUN set -eu && \
         iputils-ping \
         genisoimage \
         ca-certificates \
-        netcat-openbsd \
         qemu-system-x86 && \
     apt-get clean && \
     mkdir -p /etc/qemu && \
     echo "allow br0" > /etc/qemu/bridge.conf && \
+    wget "https://snapshot.debian.org/archive/debian/20250128T092032Z/pool/main/e/edk2/ovmf_2024.11-5_all.deb" -O /tmp/ovmf.deb -q --timeout=10 && \
+    dpkg -i /tmp/ovmf.deb && \
     mkdir -p /usr/share/novnc && \
     wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
@@ -55,9 +56,9 @@ COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/sites-enabled/web.conf
 VOLUME /storage
 EXPOSE 22 5900 8006
 
+ENV BOOT="alpine"
 ENV CPU_CORES="2"
 ENV RAM_SIZE="2G"
 ENV DISK_SIZE="16G"
-ENV BOOT="http://example.com/image.iso"
 
 ENTRYPOINT ["/usr/bin/tini", "-s", "/run/entry.sh"]
