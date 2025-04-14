@@ -7,7 +7,12 @@ moveFile() {
   local ext="${file##*.}"
   local dest="$STORAGE/boot.$ext"
 
-  if [[ "$file" == "$dest" ]] || [[ "$file" == "/boot.$ext" ]]; then
+  if [[ "$file" == "$dest" ]]; then
+    BOOT="$file"
+    return 0
+  fi
+
+  if [[ "$file" == "/boot.$ext" ]] || [[ "$file" == "/custom.$ext" ]]; then
     BOOT="$file"
     return 0
   fi
@@ -200,8 +205,9 @@ convertImage() {
 findFile() {
 
   local dir file
-  local ext="$1"
-  local fname="boot.$ext"
+  local base="$1"
+  local ext="$2"
+  local fname="${base}.${ext}"
 
   dir=$(find / -maxdepth 1 -type d -iname "$fname" -print -quit)
   [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" -print -quit)
@@ -221,10 +227,11 @@ findFile() {
   return 1
 }
 
-findFile "iso" && return 0
-findFile "img" && return 0
-findFile "raw" && return 0
-findFile "qcow2" && return 0
+findFile "boot" "iso" && return 0
+findFile "boot" "img" && return 0
+findFile "boot" "raw" && return 0
+findFile "boot" "qcow2" && return 0
+findFile "custom" "iso" && return 0
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   BOOT="alpine"
