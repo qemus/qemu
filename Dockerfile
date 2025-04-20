@@ -13,10 +13,9 @@ RUN set -eu && \
         bc \
         jq \
         tini \
-        curl \
-        7zip \
         wget \
-        wget2 \
+        7zip \
+        curl \
         fdisk \
         nginx \
         swtpm \
