@@ -32,6 +32,12 @@ if [[ "$GPU" != [Yy1]* ]] || [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
+CPU_VENDOR=$(lscpu | awk '/Vendor ID/{print $3}')
+
+if [[ "$CPU_VENDOR" != "GenuineIntel" ]]; then
+  return 0
+fi
+
 [[ "${VGA,,}" == "virtio" ]] && VGA="virtio-vga-gl"
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
