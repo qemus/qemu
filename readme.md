@@ -43,6 +43,7 @@ services:
       - ./qemu:/storage
     restart: always
     stop_grace_period: 2m
+    tty: true
 ```
 
 ##### Via Docker CLI:
