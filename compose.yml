@@ -3,7 +3,10 @@ services:
     image: qemux/qemu
     container_name: qemu
     environment:
-      BOOT: "alpine"
+      BOOT: "ubuntu"
+      RAM_SIZE: "8G"
+      CPU_CORES: "8"
+      DISK_SIZE: "995G"
     devices:
       - /dev/kvm
       - /dev/net/tun
