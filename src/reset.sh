@@ -70,6 +70,10 @@ if [ ! -d "$STORAGE" ]; then
   error "Storage folder ($STORAGE) not found!" && exit 13
 fi
 
+if [ ! -w "$STORAGE" ]; then
+  error "Storage folder ($STORAGE) is not writeable!" && exit 13
+fi
+
 # Read memory
 RAM_SPARE=500000000
 RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
@@ -96,7 +100,8 @@ FS=$(echo "$FS" | sed 's/[)(]//g')
 SPACE=$(df --output=avail -B 1 "$STORAGE" | tail -n 1)
 SPACE_GB=$(formatBytes "$SPACE" "down")
 AVAIL_MEM=$(formatBytes "$RAM_AVAIL" "down")
-TOTAL_MEM=$(formatBytes "$RAM_TOTAL" "up")
+TO
+TAL_MEM=$(formatBytes "$RAM_TOTAL" "up")
 
 echo "❯ CPU: ${CPU} | RAM: ${AVAIL_MEM/ GB/}/$TOTAL_MEM | DISK: $SPACE_GB (${FS}) | KERNEL: ${SYS}..."
 echo
