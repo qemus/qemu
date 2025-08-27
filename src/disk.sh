@@ -633,6 +633,8 @@ DISK1_FILE="$STORAGE/${DISK_NAME}"
 DISK2_FILE="/storage2/${DISK_NAME}2"
 DISK3_FILE="/storage3/${DISK_NAME}3"
 DISK4_FILE="/storage4/${DISK_NAME}4"
+DISK5_FILE="/storage5/${DISK_NAME}5"
+DISK6_FILE="/storage6/${DISK_NAME}6"
 
 if [ -z "$DISK_FMT" ]; then
   if [ -f "$DISK1_FILE.qcow2" ]; then
@@ -657,22 +659,31 @@ fi
 : "${DISK2_SIZE:=""}"
 : "${DISK3_SIZE:=""}"
 : "${DISK4_SIZE:=""}"
+: "${DISK5_SIZE:=""}"
+: "${DISK6_SIZE:=""}"
 
 : "${DEVICE:=""}"        # Docker variables to passthrough a block device, like /dev/vdc1.
 : "${DEVICE2:=""}"
 : "${DEVICE3:=""}"
 : "${DEVICE4:=""}"
+: "${DEVICE5:=""}"
+: "${DEVICE6:=""}"
 
 [ -z "$DEVICE" ] && [ -b "/disk" ] && DEVICE="/disk"
 [ -z "$DEVICE" ] && [ -b "/disk1" ] && DEVICE="/disk1"
 [ -z "$DEVICE2" ] && [ -b "/disk2" ] && DEVICE2="/disk2"
 [ -z "$DEVICE3" ] && [ -b "/disk3" ] && DEVICE3="/disk3"
 [ -z "$DEVICE4" ] && [ -b "/disk4" ] && DEVICE4="/disk4"
+[ -z "$DEVICE5" ] && [ -b "/disk5" ] && DEVICE5="/disk5"
+[ -z "$DEVICE6" ] && [ -b "/disk6" ] && DEVICE6="/disk6"
 
 [ -z "$DEVICE" ] && [ -b "/dev/disk1" ] && DEVICE="/dev/disk1"
 [ -z "$DEVICE2" ] && [ -b "/dev/disk2" ] && DEVICE2="/dev/disk2"
 [ -z "$DEVICE3" ] && [ -b "/dev/disk3" ] && DEVICE3="/dev/disk3"
 [ -z "$DEVICE4" ] && [ -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
+[ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE4="/dev/disk5"
+[ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE4="/dev/disk6"
+
 
 if [ -n "$DEVICE" ]; then
   addDevice "$DEVICE" "$DISK_TYPE" "3" "0xa" || exit $?
@@ -696,6 +707,18 @@ if [ -n "$DEVICE4" ]; then
   addDevice "$DEVICE4" "$DISK_TYPE" "6" "0xd" || exit $?
 else
   addDisk "$DISK4_FILE" "$DISK_TYPE" "disk4" "$DISK4_SIZE" "6" "0xd" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+fi
+
+if [ -n "$DEVICE5" ]; then
+  addDevice "$DEVICE5" "$DISK_TYPE" "7" "0xe" || exit $?
+else
+  addDisk "$DISK5_FILE" "$DISK_TYPE" "disk5" "$DISK5_SIZE" "7" "0xe" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+fi
+
+if [ -n "$DEVICE6" ]; then
+  addDevice "$DEVICE6" "$DISK_TYPE" "8" "0xf" || exit $?
+else
+  addDisk "$DISK6_FILE" "$DISK_TYPE" "disk6" "$DISK6_SIZE" "8" "0xf" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
 DISK_OPTS+=" -object iothread,id=io2"
