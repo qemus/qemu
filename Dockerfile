@@ -1,3 +1,5 @@
+# syntax=docker/dockerfile:1
+
 FROM debian:trixie-slim
 
 ARG VERSION_ARG="0.0"
