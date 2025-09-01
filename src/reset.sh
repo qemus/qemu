@@ -100,8 +100,7 @@ FS=$(echo "$FS" | sed 's/[)(]//g')
 SPACE=$(df --output=avail -B 1 "$STORAGE" | tail -n 1)
 SPACE_GB=$(formatBytes "$SPACE" "down")
 AVAIL_MEM=$(formatBytes "$RAM_AVAIL" "down")
-TO
-TAL_MEM=$(formatBytes "$RAM_TOTAL" "up")
+TOTAL_MEM=$(formatBytes "$RAM_TOTAL" "up")
 
 echo "❯ CPU: ${CPU} | RAM: ${AVAIL_MEM/ GB/}/$TOTAL_MEM | DISK: $SPACE_GB (${FS}) | KERNEL: ${SYS}..."
 echo
