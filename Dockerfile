@@ -18,6 +18,7 @@ RUN set -eu && \
         wget \
         7zip \
         curl \
+        ovmf \
         fdisk \
         nginx \
         swtpm \
@@ -37,8 +38,6 @@ RUN set -eu && \
     apt-get clean && \
     mkdir -p /etc/qemu && \
     echo "allow br0" > /etc/qemu/bridge.conf && \
-    wget "https://snapshot.debian.org/archive/debian/20250128T092032Z/pool/main/e/edk2/ovmf_2024.11-5_all.deb" -O /tmp/ovmf.deb -q && \
-    dpkg -i /tmp/ovmf.deb && \
     mkdir -p /usr/share/novnc && \
     wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
