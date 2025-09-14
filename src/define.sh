@@ -175,7 +175,7 @@ getURL() {
       name="Ubuntu Desktop"
       if [[ "$ret" == "url" ]]; then
         url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-desktop-amd64.iso"
-        arm="https://cdimage.ubuntu.com/ubuntu/releases/24.10/release/ubuntu-24.10-desktop-arm64.iso"
+        arm="https://cdimage.ubuntu.com/ubuntu/releases/25.10/snapshot-1/ubuntu-25.10-snapshot1-desktop-arm64.iso"
       fi ;;
     "ubuntus" | "ubuntu-server")
       name="Ubuntu Server"
