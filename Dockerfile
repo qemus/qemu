@@ -33,6 +33,7 @@ RUN set -eu && \
         qemu-utils \
         iputils-ping \
         genisoimage \
+        netcat-openbsd \
         ca-certificates \
         qemu-system-x86 && \
     apt-get clean && \
