@@ -15,8 +15,6 @@ if [[ "${ARCH,,}" != "amd64" ]]; then
   warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, this will cause a major loss of performance."
 fi
 
-[[ "${ARGUMENTS,,}" == "-cpu host" ]] && KVM="Y" && ARGUMENTS=""
-
 if [[ "$KVM" != [Nn]* ]]; then
 
   KVM_ERR=""
@@ -151,16 +149,28 @@ else
 
 fi
 
-if [[ "${ARGUMENTS,,}" == "-cpu host,"* ]]; then
-  args="${ARGUMENTS:10}"
-  if [[ "$args" != *" "* ]]; then
-    ARGUMENTS=""
-    if [ -z "$CPU_FLAGS" ]; then
-      CPU_FLAGS="$args"
-    else
-      CPU_FLAGS+=",$args"
-    fi
+if [[ "$ARGUMENTS" == *"-cpu host,"* ]]; then
+
+  args="${ARGUMENTS} "
+  prefix="${args/-cpu host,*/}"
+  suffix="${args/*-cpu host,/}"
+  param="${suffix%% *}"
+  suffix="${suffix#* }"
+  args="${prefix}${suffix}"
+  ARGUMENTS="${args::-1}"
+  
+  if [ -z "$CPU_FLAGS" ]; then
+    CPU_FLAGS="$param"
+  else
+    CPU_FLAGS+=",$param"
   fi
+
+else
+
+  if [[ "$ARGUMENTS" == *"-cpu host"* ]]; then
+    ARGUMENTS="${ARGUMENTS//-cpu host/}"
+  fi
+  
 fi
 
 if [ -z "$CPU_FLAGS" ]; then
