@@ -284,7 +284,7 @@ if [[ "${BOOT}" == \"*\" || "${BOOT}" == \'*\' ]]; then
   VERSION="${BOOT:1:-1}"
 fi
 
-BOOT=`expr "$BOOT" : "^\ *\(.*[^ ]\)\ *$"`
+BOOT=$(expr "$BOOT" : "^\ *\(.*[^ ]\)\ *$")
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/"* ]]; then
 
