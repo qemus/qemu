@@ -294,11 +294,9 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/"* ]]; then
 fi
 
 folder=$(getFolder "$BOOT")
-path="$STORAGE/$folder"
+STORAGE="$STORAGE/$folder"
 
-if [ -d "$path" ]; then
-
-  STORAGE="$path"
+if [ -d "$STORAGE" ]; then
 
   findFile "boot" "iso" && return 0
   findFile "boot" "img" && return 0
@@ -337,7 +335,6 @@ if [[ "${BOOT,,}" != "http"* ]]; then
   error "Invalid BOOT value specified, \"$BOOT\" is not a valid URL!" && exit 64
 fi
 
-STORAGE="$path"
 mkdir -p "$STORAGE"
 base=$(getBase "$BOOT")
 
