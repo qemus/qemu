@@ -5,7 +5,7 @@ pipe() {
   local code="99"
   msg="Failed to connect to $1, reason:"
 
-  curl --disable --silent --max-time 10 --fail --location "${1}" || {
+  curl --disable --silent --max-time 15 --fail --location "${1}" || {
     code="$?"
   }
 
