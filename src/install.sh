@@ -1,6 +1,48 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+getBase() {
+
+  local base="$1"
+
+  base=$(basename "${base%%\?*}")
+  : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
+  base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
+
+  echo "$base"
+
+  return 0
+}
+
+getFolder() {
+
+  local result="$1"
+
+  if [[ "$result" != *"."* ]]; then
+
+    result="${result,,}"
+
+  else
+
+    local base=$(getBase "$result")
+    result="${base%.*}"
+
+    case "${base,,}" in
+
+      *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
+
+        [[ "$result" == *"."* ]] && result="${result%.*}" ;;
+
+    esac
+
+  fi
+
+  [ -z "$result" ] && result="unknown"
+  echo "$result"
+
+  return 0
+}
+
 moveFile() {
 
   local file="$1"
@@ -78,13 +120,13 @@ downloadFile() {
   fi
 
   if [ -z "$name" ]; then
-    name="$base"
     msg="Downloading image"
+    info "Downloading $base..."
   else
     msg="Downloading $name"
+    info "Downloading $name..."
   fi
 
-  info "Downloading $name..."
   html "$msg..."
 
   /run/progress.sh "$dest" "0" "$msg ([P])..." &
@@ -214,7 +256,8 @@ findFile() {
 
   if [ -d "$dir" ]; then
     if hasDisk; then
-      BOOT="$dir" && return 0
+      BOOT="none"
+      return 0
     fi
     error "The bind $dir maps to a file that does not exist!" && exit 37
   fi
@@ -233,29 +276,69 @@ findFile "boot" "raw" && return 0
 findFile "boot" "qcow2" && return 0
 findFile "custom" "iso" && return 0
 
-if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
+if hasDisk; then
+  BOOT="none"
+  return 0
+fi
+
+if [[ "${BOOT}" == \"*\" || "${BOOT}" == \'*\' ]]; then
+  VERSION="${BOOT:1:-1}"
+fi
+
+BOOT=`expr "$BOOT" : "^\ *\(.*[^ ]\)\ *$"`
+
+if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/"* ]]; then
+
   BOOT="alpine"
-  hasDisk && return 0
-  warn "no value specified for the BOOT variable, defaulting to \"alpine\"."
+  warn "no value specified for the BOOT variable, defaulting to \"${BOOT}\"."
+
+fi
+
+folder=$(getFolder "$BOOT")
+path="$STORAGE/$folder"
+
+if [ -d "$path" ]; then
+
+  STORAGE="$path"
+
+  findFile "boot" "iso" && return 0
+  findFile "boot" "img" && return 0
+  findFile "boot" "raw" && return 0
+  findFile "boot" "qcow2" && return 0
+  findFile "custom" "iso" && return 0
+
+  if hasDisk; then
+    BOOT="none"
+    return 0
+  fi
+
 fi
 
 name=$(getURL "$BOOT" "name") || exit 34
-info "Retrieving latest $name version..."
 
-url=$(getURL "$BOOT" "url") || exit 34
-[ -n "$url" ] && BOOT="$url"
+if [ -n "$name" ]; then
+
+  info "Retrieving latest $name version..."
+  url=$(getURL "$BOOT" "url") || exit 34
+
+  [ -n "$url" ] && BOOT="$url"
+
+fi
 
 if [[ "$BOOT" != *"."* ]]; then
-  error "Invalid BOOT value specified, shortcut \"$BOOT\" is not recognized!" && exit 64
+  if [ -z "$BOOT" ]; then
+    error "No BOOT value specified!"
+  else
+    error "Invalid BOOT value specified, option \"$BOOT\" is not recognized!"
+  fi
+  exit 64
 fi
 
 if [[ "${BOOT,,}" != "http"* ]]; then
   error "Invalid BOOT value specified, \"$BOOT\" is not a valid URL!" && exit 64
 fi
 
-base=$(basename "${BOOT%%\?*}")
-: "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
-base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
+base=$(getBase "$BOOT")
 
 case "${base,,}" in
 
@@ -287,6 +370,9 @@ case "${base,,}" in
 
   * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
 esac
+
+STORAGE="$path"
+mkdir -p "$STORAGE"
 
 if ! downloadFile "$BOOT" "$base" "$name"; then
   rm -f "$STORAGE/$base.tmp" && exit 60
