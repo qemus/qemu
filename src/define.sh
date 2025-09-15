@@ -31,10 +31,11 @@ getURL() {
 
   case "${id,,}" in
     "alma" | "almalinux" | "alma-linux" )
+      version="9"
       name="AlmaLinux"
       if [[ "$ret" == "url" ]]; then
-        url="https://repo.almalinux.org/almalinux/9/live/x86_64/AlmaLinux-9-latest-x86_64-Live-GNOME.iso"
-        arm="https://repo.almalinux.org/almalinux/9/live/aarch64/AlmaLinux-9-latest-aarch64-Live-GNOME.iso"
+        url="https://repo.almalinux.org/almalinux/${version}/live/x86_64/AlmaLinux-${version}-latest-x86_64-Live-GNOME.iso"
+        arm="https://repo.almalinux.org/almalinux/${version}/live/aarch64/AlmaLinux-${version}-latest-aarch64-Live-GNOME.iso"
       fi ;;
     "alpine" | "alpinelinux" | "alpine-linux" )
       name="Alpine Linux"
@@ -105,20 +106,24 @@ getURL() {
     "kubuntu" )
       name="Kubuntu"
       if [[ "$ret" == "url" ]]; then
-        url="https://cdimage.ubuntu.com/kubuntu/releases/24.10/release/kubuntu-24.10-desktop-amd64.iso"
+        body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
+        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
+        url="https://cdimage.ubuntu.com/kubuntu/releases/${version}/release/kubuntu-${version}-desktop-amd64.iso"
       fi ;;
     "lmde" )
+      version="6"
       name="Linux Mint Debian Edition"
       if [[ "$ret" == "url" ]]; then
-        url="https://mirror.rackspace.com/linuxmint/iso/debian/lmde-6-cinnamon-64bit.iso"
+        url="https://pub.linuxmint.io/debian/lmde-${version}-cinnamon-64bit.iso"
       fi ;;
     "macos" | "osx" )
       name="macOS"
       error "To install $name use: https://github.com/dockur/macos" && return 1 ;;
     "mint" | "linuxmint" | "linux-mint" )
+      version="22.2"
       name="Linux Mint"
       if [[ "$ret" == "url" ]]; then
-        url="https://mirrors.layeronline.com/linuxmint/stable/22.1/linuxmint-22.1-cinnamon-64bit.iso"
+        url="https://pub.linuxmint.io/stable/${version}/linuxmint-${version}-cinnamon-64bit.iso"
       fi ;;
     "manjaro" )
       name="Manjaro"
@@ -148,17 +153,12 @@ getURL() {
         url="https://download.opensuse.org/distribution/leap/$version/installer/iso/agama-installer-Leap.x86_64-Leap.iso"
         arm="https://download.opensuse.org/distribution/leap/$version/installer/iso/agama-installer-Leap.aarch64-Leap.iso"
       fi ;;
-    "oracle" | "oraclelinux" | "oracle-linux" )
-      name="Oracle Linux"
-      if [[ "$ret" == "url" ]]; then
-        url="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/x86_64/OracleLinux-R9-U5-x86_64-boot.iso"
-        arm="https://yum.oracle.com/ISOS/OracleLinux/OL9/u5/aarch64/OracleLinux-R9-U5-aarch64-boot-uek.iso"
-      fi ;;
     "rocky" | "rockylinux" | "rocky-linux" )
+      version="9"
       name="Rocky Linux"
       if [[ "$ret" == "url" ]]; then
-        url="https://dl.rockylinux.org/pub/rocky/9/live/x86_64/Rocky-9-Workstation-x86_64-latest.iso"
-        arm="https://dl.rockylinux.org/pub/rocky/9/live/aarch64/Rocky-9-Workstation-aarch64-latest.iso"
+        url="https://dl.rockylinux.org/pub/rocky/${version}/live/x86_64/Rocky-${version}-Workstation-x86_64-latest.iso"
+        arm="https://dl.rockylinux.org/pub/rocky/${version}/live/aarch64/Rocky-${version}-Workstation-aarch64-latest.iso"
       fi ;;
     "slack" | "slackware" )
       name="Slackware"
@@ -174,14 +174,18 @@ getURL() {
     "ubuntu" | "ubuntu-desktop" )
       name="Ubuntu Desktop"
       if [[ "$ret" == "url" ]]; then
-        url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-desktop-amd64.iso"
-        arm="https://cdimage.ubuntu.com/ubuntu/releases/25.10/snapshot-1/ubuntu-25.10-snapshot1-desktop-arm64.iso"
+        body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
+        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
+        url="https://releases.ubuntu.com/${version}ubuntu-${version}-desktop-amd64.iso"
+        arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}desktop-arm64.iso"
       fi ;;
     "ubuntus" | "ubuntu-server")
       name="Ubuntu Server"
       if [[ "$ret" == "url" ]]; then
-        url="https://releases.ubuntu.com/24.04.2/ubuntu-24.04.2-live-server-amd64.iso"
-        arm="https://cdimage.ubuntu.com/releases/24.04/release/ubuntu-24.04.2-live-server-arm64.iso"
+        body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
+        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
+        url="https://releases.ubuntu.com/${version}ubuntu-${version}-live-server-amd64.iso"
+        arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}-live-server-arm64.iso"
       fi ;;
     "windows" )
       name="Windows"
@@ -189,7 +193,9 @@ getURL() {
     "xubuntu" )
       name="Xubuntu"
       if [[ "$ret" == "url" ]]; then
-        url="https://mirror.us.leaseweb.net/ubuntu-cdimage/xubuntu/releases/24.04/release/xubuntu-24.04.2-desktop-amd64.iso"
+        body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
+        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
+        url="https://cdimages.ubuntu.com/xubuntu/releases/${version}/release/xubuntu-${version}-desktop-amd64.iso"
       fi ;;
   esac
 
