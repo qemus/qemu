@@ -170,7 +170,7 @@ else
   if [[ "$ARGUMENTS" == *"-cpu host"* ]]; then
     ARGUMENTS="${ARGUMENTS//-cpu host/}"
   fi
-  
+
 fi
 
 if [ -z "$CPU_FLAGS" ]; then
