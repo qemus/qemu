@@ -239,9 +239,11 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
   warn "no value specified for the BOOT variable, defaulting to \"alpine\"."
 fi
 
-url=$(getURL "$BOOT" "url") || exit 34
 name=$(getURL "$BOOT" "name") || exit 34
 
+echo "Retrieving latest $name version..."
+
+url=$(getURL "$BOOT" "url") || exit 34
 [ -n "$url" ] && BOOT="$url"
 
 if [[ "$BOOT" != *"."* ]]; then
