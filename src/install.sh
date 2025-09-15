@@ -109,7 +109,7 @@ downloadFile() {
   local name="$3"
   local msg rc total size progress
 
-  local dest="$STORAGE/$base.tmp"
+  local dest="$STORAGE/$base"
   rm -f "$dest"
 
   # Check if running with interactive TTY or redirected to docker log
@@ -142,7 +142,6 @@ downloadFile() {
       error "Invalid image file: is only $size ?" && return 1
     fi
     html "Download finished successfully..."
-    mv -f "$dest" "$STORAGE/$base"
     return 0
   fi
 
@@ -338,44 +337,12 @@ if [[ "${BOOT,,}" != "http"* ]]; then
   error "Invalid BOOT value specified, \"$BOOT\" is not a valid URL!" && exit 64
 fi
 
-base=$(getBase "$BOOT")
-
-case "${base,,}" in
-
-  *".iso" | *".img" | *".raw" | *".qcow2" )
-
-    detectType "$STORAGE/$base" && return 0 ;;
-
-  *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
-
-    detectType "$STORAGE/${base%.*}.img" && return 0
-    detectType "$STORAGE/${base%.*}.qcow2" && return 0 ;;
-
-  *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
-
-    case "${base%.*}" in
-
-      *".iso" | *".img" | *".raw" | *".qcow2" )
-
-        detectType "$STORAGE/${base%.*}" && return 0 ;;
-
-      *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
-
-        find="${base%.*}"
-
-        detectType "$STORAGE/${find%.*}.img" && return 0
-        detectType "$STORAGE/${find%.*}.qcow2" && return 0 ;;
-
-    esac ;;
-
-  * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
-esac
-
 STORAGE="$path"
 mkdir -p "$STORAGE"
+base=$(getBase "$BOOT")
 
 if ! downloadFile "$BOOT" "$base" "$name"; then
-  rm -f "$STORAGE/$base.tmp" && exit 60
+  rm -f "$STORAGE/$base" && exit 60
 fi
 
 case "${base,,}" in
