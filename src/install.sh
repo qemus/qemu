@@ -16,6 +16,7 @@ getBase() {
 
 getFolder() {
 
+  local base=""
   local result="$1"
 
   if [[ "$result" != *"."* ]]; then
@@ -24,7 +25,7 @@ getFolder() {
 
   else
 
-    local base=$(getBase "$result")
+    base=$(getBase "$result")
     result="${base%.*}"
 
     case "${base,,}" in
