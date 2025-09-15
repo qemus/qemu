@@ -78,7 +78,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     fi
 
     if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-      CPU_FEATURES+=",-arch_capabilities"      
+      CPU_FEATURES+=",-arch_capabilities"
     fi
 
   else
