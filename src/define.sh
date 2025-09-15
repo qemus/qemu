@@ -5,7 +5,7 @@ pipe() {
   local code="99"
   msg="Failed to connect to $1, reason:"
 
-  curl --disable --silent --max-time 10 --fail --location "${1}" || {
+  curl --disable --silent --max-time 15 --fail --location "${1}" || {
     code="$?"
   }
 
@@ -107,7 +107,7 @@ getURL() {
       name="Kubuntu"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
-        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
+        version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
         url="https://cdimage.ubuntu.com/kubuntu/releases/${version}/release/kubuntu-${version}-desktop-amd64.iso"
       fi ;;
     "lmde" )
@@ -175,16 +175,16 @@ getURL() {
       name="Ubuntu Desktop"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
-        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
-        url="https://releases.ubuntu.com/${version}ubuntu-${version}-desktop-amd64.iso"
+        version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
+        url="https://releases.ubuntu.com/${version}/ubuntu-${version}-desktop-amd64.iso"
         arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}desktop-arm64.iso"
       fi ;;
     "ubuntus" | "ubuntu-server")
       name="Ubuntu Server"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
-        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
-        url="https://releases.ubuntu.com/${version}ubuntu-${version}-live-server-amd64.iso"
+        version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
+        url="https://releases.ubuntu.com/${version}/ubuntu-${version}-live-server-amd64.iso"
         arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}-live-server-arm64.iso"
       fi ;;
     "windows" )
@@ -194,7 +194,7 @@ getURL() {
       name="Xubuntu"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
-        version=$(echo "$body" | jq '.entries | .[] | select(.status=="Current Stable Release").version')
+        version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
         url="https://cdimages.ubuntu.com/xubuntu/releases/${version}/release/xubuntu-${version}-desktop-amd64.iso"
       fi ;;
   esac

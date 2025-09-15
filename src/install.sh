@@ -1,6 +1,49 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+getBase() {
+
+  local base="$1"
+
+  base=$(basename "${base%%\?*}")
+  : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
+  base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
+
+  echo "$base"
+
+  return 0
+}
+
+getFolder() {
+
+  local base=""
+  local result="$1"
+
+  if [[ "$result" != *"."* ]]; then
+
+    result="${result,,}"
+
+  else
+
+    base=$(getBase "$result")
+    result="${base%.*}"
+
+    case "${base,,}" in
+
+      *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
+
+        [[ "$result" == *"."* ]] && result="${result%.*}" ;;
+
+    esac
+
+  fi
+
+  [ -z "$result" ] && result="unknown"
+  echo "$result"
+
+  return 0
+}
+
 moveFile() {
 
   local file="$1"
@@ -67,7 +110,7 @@ downloadFile() {
   local name="$3"
   local msg rc total size progress
 
-  local dest="$STORAGE/$base.tmp"
+  local dest="$STORAGE/$base"
   rm -f "$dest"
 
   # Check if running with interactive TTY or redirected to docker log
@@ -78,13 +121,13 @@ downloadFile() {
   fi
 
   if [ -z "$name" ]; then
-    name="$base"
     msg="Downloading image"
+    info "Downloading $base..."
   else
     msg="Downloading $name"
+    info "Downloading $name..."
   fi
 
-  info "Downloading $name..."
   html "$msg..."
 
   /run/progress.sh "$dest" "0" "$msg ([P])..." &
@@ -100,7 +143,6 @@ downloadFile() {
       error "Invalid image file: is only $size ?" && return 1
     fi
     html "Download finished successfully..."
-    mv -f "$dest" "$STORAGE/$base"
     return 0
   fi
 
@@ -214,7 +256,8 @@ findFile() {
 
   if [ -d "$dir" ]; then
     if hasDisk; then
-      BOOT="$dir" && return 0
+      BOOT="none"
+      return 0
     fi
     error "The bind $dir maps to a file that does not exist!" && exit 37
   fi
@@ -233,62 +276,71 @@ findFile "boot" "raw" && return 0
 findFile "boot" "qcow2" && return 0
 findFile "custom" "iso" && return 0
 
-if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
-  BOOT="alpine"
-  hasDisk && return 0
-  warn "no value specified for the BOOT variable, defaulting to \"alpine\"."
+if hasDisk; then
+  BOOT="none"
+  return 0
 fi
 
-url=$(getURL "$BOOT" "url") || exit 34
+if [[ "${BOOT}" == \"*\" || "${BOOT}" == \'*\' ]]; then
+  VERSION="${BOOT:1:-1}"
+fi
+
+BOOT=$(expr "$BOOT" : "^\ *\(.*[^ ]\)\ *$")
+
+if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/"* ]]; then
+
+  BOOT="alpine"
+  warn "no value specified for the BOOT variable, defaulting to \"${BOOT}\"."
+
+fi
+
+folder=$(getFolder "$BOOT")
+STORAGE="$STORAGE/$folder"
+
+if [ -d "$STORAGE" ]; then
+
+  findFile "boot" "iso" && return 0
+  findFile "boot" "img" && return 0
+  findFile "boot" "raw" && return 0
+  findFile "boot" "qcow2" && return 0
+  findFile "custom" "iso" && return 0
+
+  if hasDisk; then
+    BOOT="none"
+    return 0
+  fi
+
+fi
+
 name=$(getURL "$BOOT" "name") || exit 34
 
-[ -n "$url" ] && BOOT="$url"
+if [ -n "$name" ]; then
+
+  info "Retrieving latest $name version..."
+  url=$(getURL "$BOOT" "url") || exit 34
+
+  [ -n "$url" ] && BOOT="$url"
+
+fi
 
 if [[ "$BOOT" != *"."* ]]; then
-  error "Invalid BOOT value specified, shortcut \"$BOOT\" is not recognized!" && exit 64
+  if [ -z "$BOOT" ]; then
+    error "No BOOT value specified!"
+  else
+    error "Invalid BOOT value specified, option \"$BOOT\" is not recognized!"
+  fi
+  exit 64
 fi
 
 if [[ "${BOOT,,}" != "http"* ]]; then
   error "Invalid BOOT value specified, \"$BOOT\" is not a valid URL!" && exit 64
 fi
 
-base=$(basename "${BOOT%%\?*}")
-: "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
-base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
-
-case "${base,,}" in
-
-  *".iso" | *".img" | *".raw" | *".qcow2" )
-
-    detectType "$STORAGE/$base" && return 0 ;;
-
-  *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
-
-    detectType "$STORAGE/${base%.*}.img" && return 0
-    detectType "$STORAGE/${base%.*}.qcow2" && return 0 ;;
-
-  *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
-
-    case "${base%.*}" in
-
-      *".iso" | *".img" | *".raw" | *".qcow2" )
-
-        detectType "$STORAGE/${base%.*}" && return 0 ;;
-
-      *".vdi" | *".vmdk" | *".vhd" | *".vhdx" )
-
-        find="${base%.*}"
-
-        detectType "$STORAGE/${find%.*}.img" && return 0
-        detectType "$STORAGE/${find%.*}.qcow2" && return 0 ;;
-
-    esac ;;
-
-  * ) error "Unknown file extension, type \".${base/*./}\" is not recognized!" && exit 33 ;;
-esac
+mkdir -p "$STORAGE"
+base=$(getBase "$BOOT")
 
 if ! downloadFile "$BOOT" "$base" "$name"; then
-  rm -f "$STORAGE/$base.tmp" && exit 60
+  rm -f "$STORAGE/$base" && exit 60
 fi
 
 case "${base,,}" in
