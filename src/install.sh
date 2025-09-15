@@ -240,8 +240,7 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/image.iso" ]]; then
 fi
 
 name=$(getURL "$BOOT" "name") || exit 34
-
-echo "Retrieving latest $name version..."
+info "Retrieving latest $name version..."
 
 url=$(getURL "$BOOT" "url") || exit 34
 [ -n "$url" ] && BOOT="$url"
