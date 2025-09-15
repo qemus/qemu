@@ -158,7 +158,7 @@ if [[ "$ARGUMENTS" == *"-cpu host,"* ]]; then
   suffix="${suffix#* }"
   args="${prefix}${suffix}"
   ARGUMENTS="${args::-1}"
-  
+
   if [ -z "$CPU_FLAGS" ]; then
     CPU_FLAGS="$param"
   else
