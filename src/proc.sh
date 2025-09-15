@@ -15,6 +15,8 @@ if [[ "${ARCH,,}" != "amd64" ]]; then
   warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, this will cause a major loss of performance."
 fi
 
+[[ "${ARGUMENTS,,}" == "-cpu host" ]] && KVM="Y" && ARGUMENTS=""
+
 if [[ "$KVM" != [Nn]* ]]; then
 
   KVM_ERR=""
@@ -67,12 +69,18 @@ if [[ "$KVM" != [Nn]* ]]; then
     CPU_FEATURES+=",-vmx"
   fi
 
-  if grep -qw "svm" <<< "$flags"; then
+  vendor=$(lscpu | awk '/Vendor ID/{print $3}')
+
+  if [[ "$vendor" == "AuthenticAMD" ]]; then
 
     # AMD processor
 
     if grep -qw "tsc_scale" <<< "$flags"; then
       CPU_FEATURES+=",+invtsc"
+    fi
+
+    if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+      CPU_FEATURES+=",-arch_capabilities"      
     fi
 
   else
@@ -91,7 +99,7 @@ if [[ "$KVM" != [Nn]* ]]; then
 
     HV_FEATURES="hv_passthrough"
 
-    if grep -qw "svm" <<< "$flags"; then
+    if [[ "$vendor" == "AuthenticAMD" ]]; then
 
       # AMD processor
 
@@ -141,6 +149,18 @@ else
 
   CPU_FEATURES+=",+ssse3,+sse4.1,+sse4.2"
 
+fi
+
+if [[ "${ARGUMENTS,,}" == "-cpu host,"* ]]; then
+  args="${ARGUMENTS:10}"
+  if [[ "$args" != *" "* ]]; then
+    ARGUMENTS=""
+    if [ -z "$CPU_FLAGS" ]; then
+      CPU_FLAGS="$args"
+    else
+      CPU_FLAGS+=",$args"
+    fi
+  fi
 fi
 
 if [ -z "$CPU_FLAGS" ]; then
