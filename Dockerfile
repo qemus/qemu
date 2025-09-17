@@ -42,7 +42,7 @@ RUN set -eu && \
     mkdir -p /usr/share/novnc && \
     wget "https://github.com/novnc/noVNC/archive/refs/heads/master.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
-    cd "/tmp/noVNC-${VERSION_VNC}" && \
+    cd "/tmp/noVNC-master" && \
     mv app core vendor package.json *.html /usr/share/novnc && \
     unlink /etc/nginx/sites-enabled/default && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
