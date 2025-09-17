@@ -337,6 +337,10 @@ if [[ "${BOOT,,}" != "http"* ]]; then
 fi
 
 mkdir -p "$STORAGE"
+
+find "$STORAGE" -maxdepth 1 -type f \( -iname '*.rom' -or -iname '*.vars' \) -delete
+find "$STORAGE" -maxdepth 1 -type f \( -iname 'data.*' -or -iname 'qemu.*' \) -delete
+
 base=$(getBase "$BOOT")
 
 if ! downloadFile "$BOOT" "$base" "$name"; then
