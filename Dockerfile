@@ -40,7 +40,7 @@ RUN set -eu && \
     mkdir -p /etc/qemu && \
     echo "allow br0" > /etc/qemu/bridge.conf && \
     mkdir -p /usr/share/novnc && \
-    wget "https://github.com/novnc/noVNC/archive/refs/heads/master.zip" -O /tmp/novnc.tar.gz -q --timeout=10 && \
+    wget "https://github.com/novnc/noVNC/archive/refs/heads/master.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
     cd "/tmp/noVNC-${VERSION_VNC}" && \
     mv app core vendor package.json *.html /usr/share/novnc && \
