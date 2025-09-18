@@ -144,7 +144,9 @@ addPackage() {
   return 0
 }
 
-if [[ "${WEB:-}" == [Nn]* || ( "${DISPLAY:-}" != "" && "${DISPLAY:-}" != ":0" && "${DISPLAY:-}" != "web" ) ]] ; then
+[[ "${DISPLAY:-}" != "" && "${DISPLAY:-}" != ":0" && "${DISPLAY:-}" != "web" ]] && WEB="N"
+
+if [[ "${WEB:-}" == [Nn]* ]]; then
 
   html "Starting $APP for Docker..."
 
