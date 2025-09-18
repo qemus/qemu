@@ -334,9 +334,13 @@ closeBridge() {
 
 closeNetwork() {
 
-  # Shutdown nginx
-  nginx -s stop 2> /dev/null
-  fWait "nginx"
+  if [[ "${WEB:-}" != [Nn]* ]]; then
+
+    # Shutdown nginx
+    nginx -s stop 2> /dev/null
+    fWait "nginx"
+
+  fi
 
   [[ "$NETWORK" == [Nn]* ]] && return 0
 
