@@ -144,11 +144,10 @@ addPackage() {
   return 0
 }
 
-if [[ "${WEB:-}" == [Nn]* ]]; then
+cp -r /var/www/* /run/shm
+html "Starting $APP for Docker..."
 
-  html "Starting $APP for Docker..."
-
-else
+if [[ "${WEB:-}" != [Nn]* ]]; then
 
   user="admin"
   [ -n "${USER:-}" ] && user="${USER:-}"
@@ -178,8 +177,6 @@ else
   fi
   
   # Start webserver
-  cp -r /var/www/* /run/shm
-  html "Starting $APP for Docker..."
   nginx -e stderr
 
 fi
