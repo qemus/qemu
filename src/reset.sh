@@ -144,36 +144,44 @@ addPackage() {
   return 0
 }
 
-user="admin"
-[ -n "${USER:-}" ] && user="${USER:-}"
+if [[ "${WEB:-}" == [Nn]* ]]; then
 
-if [ -n "${PASS:-}" ]; then
-
-  sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
+  html "Starting $APP for Docker..."
 
 else
 
-  sed -i "s/auth_basic \"NoVNC\"/auth_basic off/g" /etc/nginx/sites-enabled/web.conf
+  user="admin"
+  [ -n "${USER:-}" ] && user="${USER:-}"
+  
+  if [ -n "${PASS:-}" ]; then
+  
+    sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
+  
+  else
+  
+    sed -i "s/auth_basic \"NoVNC\"/auth_basic off/g" /etc/nginx/sites-enabled/web.conf
+  
+  fi
+  
+  # Set password
+  echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
+  
+  # shellcheck disable=SC2143
+  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
+  
+    sed -i "s/listen 8006 default_server;/listen [::]:8006 default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
+  
+  else
+  
+    sed -i "s/listen [::]:8006 default_server ipv6only=off;/listen 8006 default_server;/g" /etc/nginx/sites-enabled/web.conf
+  
+  fi
+  
+  # Start webserver
+  cp -r /var/www/* /run/shm
+  html "Starting $APP for Docker..."
+  nginx -e stderr
 
 fi
-
-# Set password
-echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
-
-# shellcheck disable=SC2143
-if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
-
-  sed -i "s/listen 8006 default_server;/listen [::]:8006 default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
-
-else
-
-  sed -i "s/listen [::]:8006 default_server ipv6only=off;/listen 8006 default_server;/g" /etc/nginx/sites-enabled/web.conf
-
-fi
-
-# Start webserver
-cp -r /var/www/* /run/shm
-html "Starting $APP for Docker..."
-nginx -e stderr
 
 return 0
