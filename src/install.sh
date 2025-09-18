@@ -111,7 +111,6 @@ downloadFile() {
   local msg rc total size progress
 
   local dest="$STORAGE/$base"
-  rm -f "$dest"
 
   # Check if running with interactive TTY or redirected to docker log
   if [ -t 1 ]; then
@@ -132,7 +131,7 @@ downloadFile() {
 
   /run/progress.sh "$dest" "0" "$msg ([P])..." &
 
-  { wget "$url" -O "$dest" -q --timeout=30 --no-http-keep-alive --show-progress "$progress"; rc=$?; } || :
+  { wget "$url" -O "$dest" --continue -q --timeout=30 --no-http-keep-alive --show-progress "$progress"; rc=$?; } || :
 
   fKill "progress.sh"
 
@@ -343,9 +342,7 @@ find "$STORAGE" -maxdepth 1 -type f \( -iname 'data.*' -or -iname 'qemu.*' \) -d
 
 base=$(getBase "$BOOT")
 
-if ! downloadFile "$BOOT" "$base" "$name"; then
-  rm -f "$STORAGE/$base" && exit 60
-fi
+downloadFile "$BOOT" "$base" "$name"
 
 case "${base,,}" in
   *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
