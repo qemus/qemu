@@ -63,7 +63,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     CPU_FEATURES+=",migratable=no"
   fi
 
-  if [[ "$VMX" == [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+  if [[ "$VMX" == [Nn]* && "${BOOT_MODE,,}" == "windows"* ]]; then
     CPU_FEATURES+=",-vmx"
   fi
 
@@ -93,7 +93,7 @@ if [[ "$KVM" != [Nn]* ]]; then
 
   fi
 
-  if [[ "$HV" != [Nn]* ]] && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+  if [[ "$HV" != [Nn]* && "${BOOT_MODE,,}" == "windows"* ]]; then
 
     HV_FEATURES="hv_passthrough"
 
