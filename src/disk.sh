@@ -476,7 +476,7 @@ addDisk () {
   [ ! -d "$DIR" ] && return 0
 
   SPACE="${DISK_SPACE// /}"
-  [ -z "$SPACE" ] && SPACE="16G"
+  [ -z "$SPACE" ] && SPACE="64G"
   [ -z "${SPACE//[0-9. ]}" ] && SPACE="${SPACE}G"
   SPACE=$(echo "${SPACE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 

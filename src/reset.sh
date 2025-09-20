@@ -19,7 +19,7 @@ echo "❯ For support visit $SUPPORT"
 : "${CPU_CORES:="2"}"      # Amount of CPU cores
 : "${RAM_SIZE:="2G"}"      # Maximum RAM amount
 : "${RAM_CHECK:="Y"}"      # Check available RAM
-: "${DISK_SIZE:="16G"}"    # Initial data disk size
+: "${DISK_SIZE:="64G"}"    # Initial data disk size
 : "${BOOT_MODE:=""}"       # Boot system with UEFI
 : "${BOOT_INDEX:="9"}"     # Boot index of CD drive
 : "${STORAGE:="/storage"}" # Storage folder location
