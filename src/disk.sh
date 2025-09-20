@@ -605,7 +605,11 @@ esac
 if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
   case "${BOOT,,}" in
     *".iso" )
-        DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "$BOOT_INDEX" "0x5") ;;
+        if [[ "${HYBRID:-}" != [Yy]* ]]; then
+          DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "$BOOT_INDEX" "0x5")
+        else
+          DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "")
+        fi ;;
     *".img" | *".raw" )
         DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "") ;;
     *".qcow2" )
