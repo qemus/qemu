@@ -55,7 +55,7 @@ moveFile() {
     return 0
   fi
 
-  if [[ "$file" == "/boot.$ext" ]] || [[ "$file" == "/custom.$ext" ]]; then
+  if [[ "${file,,}" == "/boot.${ext,,}" || "${file,,}" == "/custom.${ext,,}" ]]; then
     BOOT="$file"
     return 0
   fi
@@ -71,8 +71,8 @@ moveFile() {
 
 detectType() {
 
-  local dir=""
   local file="$1"
+  local result=""
 
   [ ! -f "$file" ] && return 1
   [ ! -s "$file" ] && return 1
@@ -82,25 +82,48 @@ detectType() {
     * ) return 1 ;;
   esac
 
-  if [ -n "$BOOT_MODE" ] || [[ "${file,,}" != *".iso" ]]; then
-    ! moveFile "$file" && return 1
-    return 0
+  if [ -n "$BOOT_MODE" ] || [[ "${file,,}" == *".qcow2" ]]; then
+    moveFile "$file" && return 0
+    return 1
   fi
 
-  # Automaticly detect UEFI-compatible ISO's
-  dir=$(isoinfo -f -i "$file")
+  if [[ "${file,,}" == *".iso" ]]; then
 
-  if [ -n "$dir" ]; then
-    dir=$(echo "${dir^^}" | grep "^/EFI")
-    if [ -z "$dir" ] && [ -z "$BOOT_MODE" ]; then
+    result=$(isoinfo -f -i "$file" 2>/dev/null)
+
+    if [ -z "$result" ]; then
+      error "Failed to read ISO file, invalid format!"
+      return 1
+    fi
+
+    result=$(echo "${result^^}" | grep "^/EFI")
+
+    if [ -z "$result" ]; then
+
+      BOOT_MODE="legacy"
+
+    else
+
+      result=$(fdisk -l "$file" 2>/dev/null)
+
+      if [[ "${result^^}" == *"EFI "* ]]; then
+        HYBRID="Y"
+      fi
+
+    fi
+
+  else
+
+    result=$(fdisk -l "$file" 2>/dev/null)
+
+    if [[ "${result^^}" != *"EFI "* ]]; then
       BOOT_MODE="legacy"
     fi
-  else
-    error "Failed to read ISO file, invalid format!"
+
   fi
 
-  ! moveFile "$file" && return 1
-  return 0
+  moveFile "$file" && return 0
+  return 1
 }
 
 downloadFile() {
@@ -269,9 +292,9 @@ findFile() {
   return 1
 }
 
-findFile "boot" "iso" && return 0
 findFile "boot" "img" && return 0
 findFile "boot" "raw" && return 0
+findFile "boot" "iso" && return 0
 findFile "boot" "qcow2" && return 0
 findFile "custom" "iso" && return 0
 
@@ -298,9 +321,9 @@ STORAGE="$STORAGE/$folder"
 
 if [ -d "$STORAGE" ]; then
 
-  findFile "boot" "iso" && return 0
   findFile "boot" "img" && return 0
   findFile "boot" "raw" && return 0
+  findFile "boot" "iso" && return 0
   findFile "boot" "qcow2" && return 0
   findFile "custom" "iso" && return 0
 
@@ -349,7 +372,7 @@ if ! downloadFile "$BOOT" "$base" "$name"; then
   sleep 5
   if ! downloadFile "$BOOT" "$base" "$name"; then
     info "Retrying failed download in 5 seconds..."
-    sleep 5  
+    sleep 5
     if ! downloadFile "$BOOT" "$base" "$name"; then
       rm -f "$STORAGE/$base" && exit 60
     fi
