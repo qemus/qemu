@@ -342,7 +342,19 @@ find "$STORAGE" -maxdepth 1 -type f \( -iname 'data.*' -or -iname 'qemu.*' \) -d
 
 base=$(getBase "$BOOT")
 
-downloadFile "$BOOT" "$base" "$name"
+rm -f "$STORAGE/$base"
+
+if ! downloadFile "$BOOT" "$base" "$name"; then
+  info "Retrying failed download in 5 seconds..."
+  sleep 5
+  if ! downloadFile "$BOOT" "$base" "$name"; then
+    info "Retrying failed download in 5 seconds..."
+    sleep 5  
+    if ! downloadFile "$BOOT" "$base" "$name"; then
+      rm -f "$STORAGE/$base" && exit 60
+    fi
+  fi
+fi
 
 case "${base,,}" in
   *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
