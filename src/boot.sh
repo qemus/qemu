@@ -77,7 +77,7 @@ case "${BOOT_MODE,,}" in
       cp "$OVMF/$VARS" "$DEST.vars"
     fi
 
-    if [[ "${BOOT_MODE,,}" == "secure" ]] || [[ "${BOOT_MODE,,}" == "windows_secure" ]]; then
+    if [[ "${BOOT_MODE,,}" == "secure" || "${BOOT_MODE,,}" == "windows_secure" ]]; then
       BOOT_OPTS+=" -global driver=cfi.pflash01,property=secure,value=on"
     fi
 
@@ -91,7 +91,7 @@ MSRS="/sys/module/kvm/parameters/ignore_msrs"
 if [ -e "$MSRS" ]; then
   result=$(<"$MSRS")
   result="${result//[![:print:]]/}"
-  if [[ "$result" == "0" ]] || [[ "${result^^}" == "N" ]]; then
+  if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
     echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
 fi
