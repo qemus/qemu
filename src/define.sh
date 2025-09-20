@@ -85,11 +85,11 @@ getURL() {
       name="Gentoo Linux"
       if [[ "$ret" == "url" ]]; then
         if [[ "${PLATFORM,,}" != "arm64" ]]; then
-          body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/amd64/autobuilds/latest-iso.txt") || exit 65
+          body=$(pipe "https://distfiles.gentoo.org/releases/amd64/autobuilds/latest-iso.txt") || exit 65
           version=$(echo "$body" | grep livegui | cut -d' ' -f1)
           url="https://distfiles.gentoo.org/releases/amd64/autobuilds/$version"
         else
-          body=$(pipe "https://mirror.bytemark.co.uk/gentoo/releases/arm64/autobuilds/latest-qcow2.txt")  || exit 65
+          body=$(pipe "https://distfiles.gentoo.org/releases/arm64/autobuilds/latest-qcow2.txt")  || exit 65
           version=$(echo "$body" | grep cloudinit | cut -d' ' -f1)
           arm="https://distfiles.gentoo.org/releases/arm64/autobuilds/$version"
         fi
