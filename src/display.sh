@@ -28,7 +28,7 @@ case "${DISPLAY,,}" in
     ;;
 esac
 
-if [[ "$GPU" != [Yy1]* ]] || [[ "$ARCH" != "amd64" ]]; then
+if [[ "$GPU" != [Yy1]* || "$ARCH" != "amd64" ]]; then
   return 0
 fi
 

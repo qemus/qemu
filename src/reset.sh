@@ -107,7 +107,7 @@ echo
 
 # Check compatibilty
 
-if [[ "${FS,,}" == "ecryptfs" ]] || [[ "${FS,,}" == "tmpfs" ]]; then
+if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
   DISK_IO="threads"
   DISK_CACHE="writeback"
 fi
