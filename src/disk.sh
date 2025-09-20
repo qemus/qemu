@@ -76,7 +76,7 @@ isCow() {
 supportsDirect() {
   local FS=$1
 
-  if [[ "${FS,,}" == "ecryptfs" ]] || [[ "${FS,,}" == "tmpfs" ]]; then
+  if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
     return 1
   fi
 
@@ -550,7 +550,7 @@ addDevice () {
   physical="${physical%% *}"
 
   if [ -n "$physical" ]; then
-    if [[ "$physical" == "512" ]] || [[ "$physical" == "4096" ]]; then
+    if [[ "$physical" == "512" || "$physical" == "4096" ]]; then
       if [[ "$physical" == "4096" ]]; then
         sectors=",logical_block_size=$logical,physical_block_size=$physical"
       fi
