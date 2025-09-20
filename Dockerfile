@@ -61,6 +61,6 @@ EXPOSE 22 5900 8006
 ENV BOOT="alpine"
 ENV CPU_CORES="2"
 ENV RAM_SIZE="2G"
-ENV DISK_SIZE="16G"
+ENV DISK_SIZE="64G"
 
 ENTRYPOINT ["/usr/bin/tini", "-s", "/run/entry.sh"]
