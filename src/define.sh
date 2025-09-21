@@ -150,8 +150,8 @@ getURL() {
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://download.opensuse.org/distribution/leap/") || exit 65
         version=$(echo "$body" | grep 'class="name"' | cut -d '/' -f2 | grep -v 42 | sort -r | head -n 1)
-        url="https://download.opensuse.org/distribution/leap/$version/installer/iso/agama-installer-Leap.x86_64-Leap.iso"
-        arm="https://download.opensuse.org/distribution/leap/$version/installer/iso/agama-installer-Leap.aarch64-Leap.iso"
+        url="https://download.opensuse.org/distribution/leap/$version/installer/iso/agama-installer.x86_64-Leap_${version}.iso"
+        arm="https://download.opensuse.org/distribution/leap/$version/installer/iso/agama-installer.aarch64-Leap_${version}.iso"
       fi ;;
     "rocky" | "rockylinux" | "rocky-linux" )
       version="9"
