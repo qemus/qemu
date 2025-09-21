@@ -104,8 +104,8 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `nixos`    | NixOS           | 2.4 GB  |
   | `suse`     | OpenSUSE        | 1.0 GB  |
   | `rocky`    | Rocky Linux     | 2.1 GB  |
-  | `tails`    | Tails           | 1.5 GB  |  
   | `slack`    | Slackware       | 3.7 GB  |
+  | `tails`    | Tails           | 1.5 GB  |  
   | `ubuntu`   | Ubuntu Desktop  | 6.0 GB  |
   | `ubuntus`  | Ubuntu Server   | 3.0 GB  |
   | `xubuntu`  | Xubuntu         | 4.0 GB  |
