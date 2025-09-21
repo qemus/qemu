@@ -14,6 +14,7 @@ RUN set -eu && \
     apt-get --no-install-recommends -y install \
         bc \
         jq \
+        xxd \
         tini \
         wget \
         7zip \
