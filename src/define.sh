@@ -206,12 +206,12 @@ getURL() {
     "url" )
 
       if [[ "${PLATFORM,,}" != "arm64" ]]; then
-        if [ -n "$name" ] && [ -z "$url" ]; then
+        if [ -n "$name" && -z "$url" ]; then
           error "No image for $name available!"
           return 1
         fi
       else
-        if [ -n "$name" ] && [ -z "$arm" ]; then
+        if [ -n "$name" && -z "$arm" ]; then
           error "No image for $name is available for ARM64 yet! "
           return 1
         fi
