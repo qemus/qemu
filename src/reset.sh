@@ -171,7 +171,7 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
   echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
   
   # shellcheck disable=SC2143
-  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
+  if [ -f /proc/net/if_inet6 && -n "$(ifconfig -a | grep inet6)" ]; then
   
     sed -i "s/listen 8006 default_server;/listen [::]:8006 default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
   

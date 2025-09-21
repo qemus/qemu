@@ -602,7 +602,7 @@ case "${MEDIA_TYPE,,}" in
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
-if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
+if [ -f "$BOOT" && -s "$BOOT" ]; then
   case "${BOOT,,}" in
     *".iso" )
         if [[ "${HYBRID:-}" == [Yy]* ]]; then
@@ -620,16 +620,16 @@ if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
 fi
 
 DRIVERS="/drivers.iso"
-[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
+[ ! -f "$DRIVERS" || ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
-if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
+if [ -f "$DRIVERS" && -s "$DRIVERS" ]; then
   DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "" "0x6")
 fi
 
 RESCUE="/start.iso"
-[ ! -f "$RESCUE" ] || [ ! -s "$RESCUE" ] && RESCUE="$STORAGE/start.iso"
+[ ! -f "$RESCUE" || ! -s "$RESCUE" ] && RESCUE="$STORAGE/start.iso"
 
-if [ -f "$RESCUE" ] && [ -s "$RESCUE" ]; then
+if [ -f "$RESCUE" && -s "$RESCUE" ]; then
   DISK_OPTS+=$(addMedia "$RESCUE" "$FALLBACK" "1" "0x6")
 fi
 
@@ -673,20 +673,20 @@ fi
 : "${DEVICE5:=""}"
 : "${DEVICE6:=""}"
 
-[ -z "$DEVICE" ] && [ -b "/disk" ] && DEVICE="/disk"
-[ -z "$DEVICE" ] && [ -b "/disk1" ] && DEVICE="/disk1"
-[ -z "$DEVICE2" ] && [ -b "/disk2" ] && DEVICE2="/disk2"
-[ -z "$DEVICE3" ] && [ -b "/disk3" ] && DEVICE3="/disk3"
-[ -z "$DEVICE4" ] && [ -b "/disk4" ] && DEVICE4="/disk4"
-[ -z "$DEVICE5" ] && [ -b "/disk5" ] && DEVICE5="/disk5"
-[ -z "$DEVICE6" ] && [ -b "/disk6" ] && DEVICE6="/disk6"
+[ -z "$DEVICE" && -b "/disk" ] && DEVICE="/disk"
+[ -z "$DEVICE" && -b "/disk1" ] && DEVICE="/disk1"
+[ -z "$DEVICE2" && -b "/disk2" ] && DEVICE2="/disk2"
+[ -z "$DEVICE3" && -b "/disk3" ] && DEVICE3="/disk3"
+[ -z "$DEVICE4" && -b "/disk4" ] && DEVICE4="/disk4"
+[ -z "$DEVICE5" && -b "/disk5" ] && DEVICE5="/disk5"
+[ -z "$DEVICE6" && -b "/disk6" ] && DEVICE6="/disk6"
 
-[ -z "$DEVICE" ] && [ -b "/dev/disk1" ] && DEVICE="/dev/disk1"
-[ -z "$DEVICE2" ] && [ -b "/dev/disk2" ] && DEVICE2="/dev/disk2"
-[ -z "$DEVICE3" ] && [ -b "/dev/disk3" ] && DEVICE3="/dev/disk3"
-[ -z "$DEVICE4" ] && [ -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
-[ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE4="/dev/disk5"
-[ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE4="/dev/disk6"
+[ -z "$DEVICE" && -b "/dev/disk1" ] && DEVICE="/dev/disk1"
+[ -z "$DEVICE2" && -b "/dev/disk2" ] && DEVICE2="/dev/disk2"
+[ -z "$DEVICE3" && -b "/dev/disk3" ] && DEVICE3="/dev/disk3"
+[ -z "$DEVICE4" && -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
+[ -z "$DEVICE5" && -b "/dev/disk5" ] && DEVICE4="/dev/disk5"
+[ -z "$DEVICE6" && -b "/dev/disk6" ] && DEVICE4="/dev/disk6"
 
 
 if [ -n "$DEVICE" ]; then
