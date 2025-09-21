@@ -107,7 +107,7 @@ detectType() {
       result=$(fdisk -l "$file" 2>/dev/null)
 
       if [[ "${result^^}" == *"EFI "* ]]; then
-        HYBRID="Y"
+        if [ -z "${HYBRID:-}" ] && HYBRID="Y"
       fi
 
     fi
