@@ -114,14 +114,7 @@ detectType() {
   fi
 
   result=$(fdisk -l "$file" 2>/dev/null)
-
-  if [[ "${result^^}" != *"EFI "* ]]; then
-    BOOT_MODE="legacy"
-  fi
-
-  if [[ "${BOOT_MODE:-}" == "legacy" ]]; then
-    HYBRID="N"
-  fi
+  [[ "${result^^}" != *"EFI "* ]] && BOOT_MODE="legacy"
 
   moveFile "$file" && return 0
   return 1
