@@ -67,13 +67,13 @@ case "${BOOT_MODE,,}" in
     OVMF="/usr/share/OVMF"
     DEST="$STORAGE/${BOOT_MODE,,}"
 
-    if [ ! -s "$DEST.rom" || ! -f "$DEST.rom" ]; then
-      [ ! -s "$OVMF/$ROM" || ! -f "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
+    if [ ! -s "$DEST.rom" ] || [ ! -f "$DEST.rom" ]; then
+      [ ! -s "$OVMF/$ROM" ] || [ ! -f "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
       cp "$OVMF/$ROM" "$DEST.rom"
     fi
 
-    if [ ! -s "$DEST.vars" || ! -f "$DEST.vars" ]; then
-      [ ! -s "$OVMF/$VARS" || ! -f "$OVMF/$VARS" ]&& error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
+    if [ ! -s "$DEST.vars" ] || [ ! -f "$DEST.vars" ]; then
+      [ ! -s "$OVMF/$VARS" ] || [ ! -f "$OVMF/$VARS" ]&& error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
       cp "$OVMF/$VARS" "$DEST.vars"
     fi
 
@@ -117,7 +117,7 @@ fi
 SM_BIOS=""
 PS="/sys/class/dmi/id/product_serial"
 
-if [ -s "$PS" && -r "$PS" ]; then
+if [ -s "$PS" ] && [ -r "$PS" ]; then
 
   BIOS_SERIAL=$(<"$PS")
   BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
