@@ -89,38 +89,32 @@ detectType() {
 
   if [[ "${file,,}" == *".iso" ]]; then
 
-    result=$(isoinfo -f -i "$file" 2>/dev/null)
+    result=$(head -c 512 "$file" | tail -c 2 | xxd -p)
 
-    if [ -z "$result" ]; then
-      error "Failed to read ISO file, invalid format!"
-      return 1
+    if [[ "$result" != "0000" ]]; then
+      [ -z "${HYBRID:-}" ] && HYBRID="Y"
     fi
 
-    result=$(echo "${result^^}" | grep "^/EFI")
+    if [[ "${HYBRID:-}" != [Yy]* ]]; then
 
-    if [ -z "$result" ]; then
+      result=$(isoinfo -f -i "$file" 2>/dev/null)
 
-      BOOT_MODE="legacy"
-
-    else
-
-      result=$(fdisk -l "$file" 2>/dev/null)
-
-      if [[ "${result^^}" == *"EFI "* ]]; then
-        if [ -z "${HYBRID:-}" ] && HYBRID="Y"
+      if [ -z "$result" ]; then
+        error "Failed to read ISO file, invalid format!"
+        return 1
       fi
 
+      result=$(echo "${result^^}" | grep "^/EFI")
+      [ -z "$result" ] && BOOT_MODE="legacy"
+
+      moveFile "$file" && return 0
+      return 1
+
     fi
-
-  else
-
-    result=$(fdisk -l "$file" 2>/dev/null)
-
-    if [[ "${result^^}" != *"EFI "* ]]; then
-      BOOT_MODE="legacy"
-    fi
-
   fi
+
+  result=$(fdisk -l "$file" 2>/dev/null)
+  [[ "${result^^}" != *"EFI "* ]] && BOOT_MODE="legacy"
 
   moveFile "$file" && return 0
   return 1
@@ -340,7 +334,7 @@ if [ -n "$name" ]; then
 
   msg="Retrieving latest $name version..."
   info "$msg" && html "$msg..."
-  
+
   url=$(getURL "$BOOT" "url") || exit 34
 
   [ -n "$url" ] && BOOT="$url"
@@ -373,8 +367,8 @@ if ! downloadFile "$BOOT" "$base" "$name"; then
   info "Retrying failed download in 5 seconds..."
   sleep 5
   if ! downloadFile "$BOOT" "$base" "$name"; then
-    info "Retrying failed download in 5 seconds..."
-    sleep 5
+    info "Retrying failed download in 10 seconds..."
+    sleep 10
     if ! downloadFile "$BOOT" "$base" "$name"; then
       rm -f "$STORAGE/$base" && exit 60
     fi
