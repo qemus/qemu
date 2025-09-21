@@ -338,7 +338,9 @@ name=$(getURL "$BOOT" "name") || exit 34
 
 if [ -n "$name" ]; then
 
-  info "Retrieving latest $name version..."
+  msg="Retrieving latest $name version..."
+  info "$msg" && html "$msg..."
+  
   url=$(getURL "$BOOT" "url") || exit 34
 
   [ -n "$url" ] && BOOT="$url"
