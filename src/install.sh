@@ -120,6 +120,21 @@ detectType() {
   return 1
 }
 
+delay() {
+
+  local i
+  local delay="$1"
+  local msg="Retrying failed download in X seconds..."
+
+  for i in $(seq $delay -1 1); do
+    info "${msg/X/$i}"
+    html "${msg/X/$i}"
+    sleep 1
+  done
+
+  return 0
+}
+
 downloadFile() {
 
   local url="$1"
@@ -364,11 +379,9 @@ base=$(getBase "$BOOT")
 rm -f "$STORAGE/$base"
 
 if ! downloadFile "$BOOT" "$base" "$name"; then
-  info "Retrying failed download in 5 seconds..."
-  sleep 5
+  delay 5
   if ! downloadFile "$BOOT" "$base" "$name"; then
-    info "Retrying failed download in 10 seconds..."
-    sleep 10
+    delay 10
     if ! downloadFile "$BOOT" "$base" "$name"; then
       rm -f "$STORAGE/$base" && exit 60
     fi
