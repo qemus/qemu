@@ -8,7 +8,6 @@ set -Eeuo pipefail
 : "${VMX:="N"}"
 : "${CPU_FLAGS:=""}"
 : "${CPU_MODEL:=""}"
-: "${DEF_MODEL:="qemu64"}"
 
 if [[ "${ARCH,,}" != "amd64" ]]; then
   KVM="N"
@@ -138,14 +137,18 @@ else
 
   if [ -z "$CPU_MODEL" ]; then
     if [[ "$ARCH" == "amd64" ]]; then
-      CPU_MODEL="max"
-      CPU_FEATURES+=",migratable=no"
+     if [[ "${BOOT_MODE,,}" != "windows"* ]]
+       CPU_MODEL="max"
+       CPU_FEATURES+=",migratable=no"
+     else
+       CPU_MODEL="Skylake-Client-v4"
+       CPU_FEATURES+=",-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+     fi
     else
-      CPU_MODEL="$DEF_MODEL"
+      CPU_MODEL="qemu64"
+      CPU_FEATURES+=",+aes,+popcnt,+pni,+sse4.1,+sse4.2,+ssse3,+avx,+avx2,+bmi1,+bmi2,+f16c,+fma,+abm,+movbe,+xsave"
     fi
   fi
-
-  CPU_FEATURES+=",+ssse3,+sse4.1,+sse4.2"
 
 fi
 
