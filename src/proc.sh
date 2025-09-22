@@ -137,7 +137,7 @@ else
 
   if [ -z "$CPU_MODEL" ]; then
     if [[ "$ARCH" == "amd64" ]]; then
-     if [[ "${BOOT_MODE,,}" != "windows"* ]]
+     if [[ "${BOOT_MODE,,}" != "windows"* ]]; then
        CPU_MODEL="max"
        CPU_FEATURES+=",migratable=no"
      else
