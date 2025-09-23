@@ -145,13 +145,13 @@ else
 
          # AMD processor
          CPU_MODEL="EPYC"
-         CPU_FEATURES+="svm=off,arch_capabilities=off,-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
+         CPU_FEATURES+=",migratable=no,svm=off,arch_capabilities=off,-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
 
        else
 
          # Intel processor
          CPU_MODEL="Skylake-Client-v4"
-         CPU_FEATURES+="vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+         CPU_FEATURES+=",migratable=no,vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
 
        fi
      fi
@@ -160,7 +160,7 @@ else
 
       # Intel processor
       CPU_MODEL="Skylake-Client-v4"
-      CPU_FEATURES+="vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+      CPU_FEATURES+=",migratable=no,vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
 
     fi
   fi
