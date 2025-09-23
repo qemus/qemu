@@ -9,9 +9,13 @@ set -Eeuo pipefail
 : "${CPU_FLAGS:=""}"
 : "${CPU_MODEL:=""}"
 
-if [[ "${ARCH,,}" != "amd64" ]]; then
-  KVM="N"
-  warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, this will cause a major loss of performance."
+if [[ "$KVM" == [Nn]* ]]; then
+  warn "KVM acceleration is disabled, this will cause the machine to run about 10 times slower!"
+else
+  if [[ "${ARCH,,}" != "amd64" ]]; then
+    KVM="N"
+    warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, so the machine will run about 10 times slower."
+  fi
 fi
 
 if [[ "$KVM" != [Nn]* ]]; then
@@ -34,7 +38,7 @@ if [[ "$KVM" != [Nn]* ]]; then
   if [ -n "$KVM_ERR" ]; then
     KVM="N"
     if [[ "$OSTYPE" =~ ^darwin ]]; then
-      warn "you are using macOS which has no KVM support, this will cause a major loss of performance."
+      warn "you are using macOS which has no KVM support, so the machine will run about 10 times slower."
     else
       kernel=$(uname -a)
       case "${kernel,,}" in
@@ -43,7 +47,7 @@ if [[ "$KVM" != [Nn]* ]]; then
         *"synology"* )
           error "Please make sure that Synology VMM (Virtual Machine Manager) is installed and that '/dev/kvm' is binded to this container." ;;
         *)
-          error "KVM acceleration is not available $KVM_ERR, this will cause a major loss of performance."
+          error "KVM acceleration is not available $KVM_ERR, this will cause the machine to run about 10 times slower."
           error "See the FAQ for possible causes, or continue without it by adding KVM: \"N\" (not recommended)." ;;
       esac
       [[ "$DEBUG" != [Yy1]* ]] && exit 88
@@ -51,6 +55,8 @@ if [[ "$KVM" != [Nn]* ]]; then
   fi
 
 fi
+
+vendor=$(lscpu | awk '/Vendor ID/{print $3}')
 
 if [[ "$KVM" != [Nn]* ]]; then
 
@@ -63,15 +69,13 @@ if [[ "$KVM" != [Nn]* ]]; then
   fi
 
   if [[ "$VMX" == [Nn]* && "${BOOT_MODE,,}" == "windows"* ]]; then
+    # Prevents a crash caused by a certain Windows update
     CPU_FEATURES+=",-vmx"
   fi
-
-  vendor=$(lscpu | awk '/Vendor ID/{print $3}')
 
   if [[ "$vendor" == "AuthenticAMD" ]]; then
 
     # AMD processor
-
     if grep -qw "tsc_scale" <<< "$flags"; then
       CPU_FEATURES+=",+invtsc"
     fi
@@ -83,7 +87,6 @@ if [[ "$KVM" != [Nn]* ]]; then
   else
 
     # Intel processor
-
     vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 
     if grep -qw "tsc_scaling" <<< "$vmx"; then
@@ -92,14 +95,13 @@ if [[ "$KVM" != [Nn]* ]]; then
 
   fi
 
-  if [[ "$HV" != [Nn]* && "${BOOT_MODE,,}" == "windows"* ]]; then
+  if [[ "${BOOT_MODE,,}" == "windows"* && "$HV" != [Nn]* ]]; then
 
     HV_FEATURES="hv_passthrough"
 
     if [[ "$vendor" == "AuthenticAMD" ]]; then
 
       # AMD processor
-
       if ! grep -qw "avic" <<< "$flags"; then
         HV_FEATURES+=",-hv-avic"
       fi
@@ -109,7 +111,6 @@ if [[ "$KVM" != [Nn]* ]]; then
     else
 
       # Intel processor
-
       if ! grep -qw "apicv" <<< "$vmx"; then
         HV_FEATURES+=",-hv-apicv,-hv-evmcs"
       else
@@ -137,16 +138,34 @@ else
 
   if [ -z "$CPU_MODEL" ]; then
     if [[ "$ARCH" == "amd64" ]]; then
+
      if [[ "${BOOT_MODE,,}" != "windows"* ]]; then
+
        CPU_MODEL="max"
        CPU_FEATURES+=",migratable=no"
+
      else
-       CPU_MODEL="Skylake-Client-v4"
-       CPU_FEATURES+=",-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+       if [[ "$vendor" == "AuthenticAMD" ]]; then
+
+         # AMD processor
+         CPU_MODEL="EPYC"
+         CPU_FEATURES+=",svm=off,arch_capabilities=off,-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
+
+       else
+
+         # Intel processor
+         CPU_MODEL="Skylake-Client-v4"
+         CPU_FEATURES+=",vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+
+       fi
      fi
+
     else
-      CPU_MODEL="qemu64"
-      CPU_FEATURES+=",+aes,+popcnt,+pni,+sse4.1,+sse4.2,+ssse3,+avx,+avx2,+bmi1,+bmi2,+f16c,+fma,+abm,+movbe,+xsave"
+
+      # Intel processor
+      CPU_MODEL="Skylake-Client-v4"
+      CPU_FEATURES+=",vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+
     fi
   fi
 
