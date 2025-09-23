@@ -52,6 +52,8 @@ if [[ "$KVM" != [Nn]* ]]; then
 
 fi
 
+vendor=$(lscpu | awk '/Vendor ID/{print $3}')
+
 if [[ "$KVM" != [Nn]* ]]; then
 
   CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
@@ -63,15 +65,13 @@ if [[ "$KVM" != [Nn]* ]]; then
   fi
 
   if [[ "$VMX" == [Nn]* && "${BOOT_MODE,,}" == "windows"* ]]; then
+    # Prevents a crash caused by a certain Windows update
     CPU_FEATURES+=",-vmx"
   fi
-
-  vendor=$(lscpu | awk '/Vendor ID/{print $3}')
 
   if [[ "$vendor" == "AuthenticAMD" ]]; then
 
     # AMD processor
-
     if grep -qw "tsc_scale" <<< "$flags"; then
       CPU_FEATURES+=",+invtsc"
     fi
@@ -83,7 +83,6 @@ if [[ "$KVM" != [Nn]* ]]; then
   else
 
     # Intel processor
-
     vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 
     if grep -qw "tsc_scaling" <<< "$vmx"; then
@@ -99,7 +98,6 @@ if [[ "$KVM" != [Nn]* ]]; then
     if [[ "$vendor" == "AuthenticAMD" ]]; then
 
       # AMD processor
-
       if ! grep -qw "avic" <<< "$flags"; then
         HV_FEATURES+=",-hv-avic"
       fi
@@ -109,7 +107,6 @@ if [[ "$KVM" != [Nn]* ]]; then
     else
 
       # Intel processor
-
       if ! grep -qw "apicv" <<< "$vmx"; then
         HV_FEATURES+=",-hv-apicv,-hv-evmcs"
       else
@@ -137,16 +134,33 @@ else
 
   if [ -z "$CPU_MODEL" ]; then
     if [[ "$ARCH" == "amd64" ]]; then
+
      if [[ "${BOOT_MODE,,}" != "windows"* ]]; then
+
        CPU_MODEL="max"
        CPU_FEATURES+=",migratable=no"
+
      else
-       CPU_MODEL="Skylake-Client-v4"
-       CPU_FEATURES+=",-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+       if [[ "$vendor" == "AuthenticAMD" ]]; then
+
+         # AMD processor
+         CPU_MODEL="EPYC"
+         CPU_FLAGS=",-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
+
+       else
+
+         # Intel processor
+         CPU_MODEL="Skylake-Client-v4"
+         CPU_FEATURES+=",-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+
+       fi
      fi
+
     else
+
       CPU_MODEL="qemu64"
       CPU_FEATURES+=",+aes,+popcnt,+pni,+sse4.1,+sse4.2,+ssse3,+avx,+avx2,+bmi1,+bmi2,+f16c,+fma,+abm,+movbe,+xsave"
+
     fi
   fi
 
