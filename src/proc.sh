@@ -145,7 +145,7 @@ else
 
          # AMD processor
          CPU_MODEL="EPYC"
-         CPU_FLAGS=",-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
+         CPU_FEATURES+=",-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
 
        else
 
