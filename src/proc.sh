@@ -91,7 +91,7 @@ if [[ "$KVM" != [Nn]* ]]; then
 
   fi
 
-  if [[ "$HV" != [Nn]* && "${BOOT_MODE,,}" == "windows"* ]]; then
+  if [[ "${BOOT_MODE,,}" == "windows"* && "$HV" != [Nn]* ]]; then
 
     HV_FEATURES="hv_passthrough"
 
@@ -158,8 +158,9 @@ else
 
     else
 
-      CPU_MODEL="qemu64"
-      CPU_FEATURES+=",+aes,+popcnt,+pni,+sse4.1,+sse4.2,+ssse3,+avx,+avx2,+bmi1,+bmi2,+f16c,+fma,+abm,+movbe,+xsave"
+      # Intel processor
+      CPU_MODEL="Skylake-Client-v4"
+      CPU_FEATURES+=",-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
 
     fi
   fi
