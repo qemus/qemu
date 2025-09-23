@@ -145,7 +145,7 @@ else
 
          # AMD processor
          CPU_MODEL="EPYC"
-         CPU_FEATURES+="svm=off,-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
+         CPU_FEATURES+="svm=off,arch_capabilities=off,-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
 
        else
 
