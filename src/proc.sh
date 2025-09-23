@@ -11,11 +11,11 @@ set -Eeuo pipefail
 
 if [[ "$KVM" == [Nn]* ]]; then
   warn "KVM acceleration is disabled, this will cause the machine to run about 10 times slower!"
-fi
-
-if [[ "${ARCH,,}" != "amd64" ]]; then
-  KVM="N"
-  warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, so the machine will run about 10 times slower."
+else
+  if [[ "${ARCH,,}" != "amd64" ]]; then
+    KVM="N"
+    warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, so the machine will run about 10 times slower."
+  fi
 fi
 
 if [[ "$KVM" != [Nn]* ]]; then
