@@ -114,8 +114,8 @@ if [[ "$KVM" != [Nn]* ]]; then
       if ! grep -qw "apicv" <<< "$vmx"; then
         HV_FEATURES+=",-hv-apicv,-hv-evmcs"
       else
-        if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
-          # Prevent eVMCS version range error on Atom CPU's
+        if [[ "$CPU" == "Intel Atom "* || "$CPU" == "Intel Celeron "* || "$CPU" == "Intel Pentium "* ]]; then
+          # Prevent eVMCS version range error on budget CPU's
           HV_FEATURES+=",-hv-evmcs"
         fi
       fi
