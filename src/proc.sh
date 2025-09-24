@@ -48,7 +48,7 @@ if [[ "$KVM" != [Nn]* ]]; then
           error "Please make sure that Synology VMM (Virtual Machine Manager) is installed and that '/dev/kvm' is binded to this container." ;;
         *)
           error "KVM acceleration is not available $KVM_ERR, this will cause the machine to run about 10 times slower."
-          error "See the FAQ for possible causes, or continue without it by adding KVM: \"N\" (not recommended)." ;;
+          error "See the FAQ for possible causes, or disable acceleration by adding the \"KVM=N\" variable (not recommended)." ;;
       esac
       [[ "$DEBUG" != [Yy1]* ]] && exit 88
     fi
@@ -114,8 +114,8 @@ if [[ "$KVM" != [Nn]* ]]; then
       if ! grep -qw "apicv" <<< "$vmx"; then
         HV_FEATURES+=",-hv-apicv,-hv-evmcs"
       else
-        if ! grep -qw "shadow_vmcs" <<< "$vmx"; then
-          # Prevent eVMCS version range error on Atom CPU's
+        if [[ "$CPU" == "Intel Atom "* || "$CPU" == "Intel Celeron "* || "$CPU" == "Intel Pentium "* ]]; then
+          # Prevent eVMCS version range error on budget CPU's
           HV_FEATURES+=",-hv-evmcs"
         fi
       fi
