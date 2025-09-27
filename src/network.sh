@@ -173,14 +173,14 @@ getUserPorts() {
 
 getHostPorts() {
 
-  local list=$1
-  local vnc="5900"
-  local web="8006"
+  local list="$1"
 
-  [ -z "$list" ] && list="$web" || list+=",$web"
+  if [[ "${WEB:-}" != [Nn]* ]]; then
+    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
+  fi
 
   if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
-    [ -z "$list" ] && list="$vnc" || list+=",$vnc"
+    [ -z "$list" ] && list="$VNC_PORT" || list+=",$VNC_PORT"
   fi
 
   [ -z "$list" ] && echo "" && return 0
