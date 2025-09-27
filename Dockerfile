@@ -24,6 +24,7 @@ RUN set -eu && \
         nginx \
         swtpm \
         procps \
+        ethtool \
         iptables \
         iproute2 \
         apt-utils \
