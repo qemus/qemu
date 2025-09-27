@@ -45,7 +45,7 @@ if [[ "${DISPLAY,,}" == "web" ]]; then
   rm -f "$PAGE"
 else
   if [[ "${DISPLAY,,}" == "vnc" ]]; then
-    html "You can now connect to VNC on port 5900." "0"
+    html "You can now connect to VNC on port $VNC_PORT." "0"
   else
     html "The virtual machine was booted successfully." "0"
   fi
