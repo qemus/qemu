@@ -27,6 +27,7 @@ RUN set -eu && \
         iptables \
         iproute2 \
         apt-utils \
+        ethtool \
         dnsmasq \
         xz-utils \
         net-tools \
