@@ -24,10 +24,10 @@ RUN set -eu && \
         nginx \
         swtpm \
         procps \
+        ethtool \
         iptables \
         iproute2 \
         apt-utils \
-        ethtool \
         dnsmasq \
         xz-utils \
         net-tools \
