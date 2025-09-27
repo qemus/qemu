@@ -166,6 +166,7 @@ html "Starting $APP for Docker..."
 
 if [[ "${WEB:-}" != [Nn]* ]]; then
 
+  mkdir -p /etc/nginx/sites-enabled
   cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
 
   user="admin"
