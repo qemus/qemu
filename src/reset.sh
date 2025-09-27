@@ -11,7 +11,7 @@ echo "❯ For support visit $SUPPORT"
 
 # Docker environment variables
 
-: "${BOOT:=""}"            # URL of the ISO file
+: "${BOOT:=""}"            # Path of ISO file
 : "${DEBUG:="N"}"          # Disable debugging
 : "${MACHINE:="q35"}"      # Machine selection
 : "${ALLOCATE:=""}"        # Preallocate diskspace
@@ -157,38 +157,38 @@ addPackage() {
   return 0
 }
 
+: "${VNC_PORT:="5900"}"    # VNC port
+: "${WEB_PORT:="8006"}"    # Webserver port
+: "${WSS_PORT:="5700"}"    # Websockets port
+
 cp -r /var/www/* /run/shm
 html "Starting $APP for Docker..."
 
 if [[ "${WEB:-}" != [Nn]* ]]; then
 
+  cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
+
   user="admin"
   [ -n "${USER:-}" ] && user="${USER:-}"
-  
+
   if [ -n "${PASS:-}" ]; then
-  
+
+    # Set password
+    echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
+
     sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
-  
-  else
-  
-    sed -i "s/auth_basic \"NoVNC\"/auth_basic off/g" /etc/nginx/sites-enabled/web.conf
-  
+
   fi
-  
-  # Set password
-  echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
-  
+
+  sed -i "s/listen 8006 default_server;/listen $WEB_PORT default_server;/g" /etc/nginx/sites-enabled/web.conf
+
   # shellcheck disable=SC2143
   if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
-  
-    sed -i "s/listen 8006 default_server;/listen [::]:8006 default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
-  
-  else
-  
-    sed -i "s/listen [::]:8006 default_server ipv6only=off;/listen 8006 default_server;/g" /etc/nginx/sites-enabled/web.conf
-  
+
+    sed -i "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
+
   fi
-  
+
   # Start webserver
   nginx -e stderr
 
