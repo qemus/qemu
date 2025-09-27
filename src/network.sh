@@ -525,7 +525,7 @@ else
         msg="podman detected, $msg"
       fi
       warn "$msg"
-      [ -z "$USER_PORTS" ] && info "Notice: to expose ports in this mode, map them using this variable: \"USER_PORTS=80,443\"."
+      [ -z "$USER_PORTS" ] && info "Notice: when you want to expose ports in this mode, map them using this variable: \"USER_PORTS=80,443\"."
 
     fi
 
