@@ -161,6 +161,11 @@ addPackage() {
 : "${WEB_PORT:="8006"}"    # Webserver port
 : "${WSS_PORT:="5700"}"    # Websockets port
 
+if (( VNC_PORT < 5900 )); then
+  warn "VNC port cannot be set lower than 5900, ignoring value $VNC_PORT."
+  VNC_PORT="5900"
+fi
+
 cp -r /var/www/* /run/shm
 html "Starting $APP for Docker..."
 
