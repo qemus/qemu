@@ -8,14 +8,15 @@ set -Eeuo pipefail
 : "${DISPLAY:="web"}"   # Display type
 : "${RENDERNODE:="/dev/dri/renderD128"}"  # Render node
 
+port=$(( VNC_PORT - 5900 ))
 [[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
 
 case "${DISPLAY,,}" in
   "vnc" )
-    DISPLAY_OPTS="-display vnc=:0 -vga $VGA"
+    DISPLAY_OPTS="-display vnc=:$port -vga $VGA"
     ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:0,websocket=$WSS_PORT -vga $VGA"
+    DISPLAY_OPTS="-display vnc=:$port,websocket=$WSS_PORT -vga $VGA"
     ;;
   "disabled" )
     DISPLAY_OPTS="-display none -vga $VGA"
@@ -42,8 +43,8 @@ fi
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
 
-[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :0"
-[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :0,websocket=$WSS_PORT"
+[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :$port"
+[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :$port,websocket=$WSS_PORT"
 
 [ ! -d /dev/dri ] && mkdir -m 755 /dev/dri
 
@@ -65,5 +66,3 @@ fi
 
 addPackage "xserver-xorg-video-intel" "Intel GPU drivers"
 addPackage "qemu-system-modules-opengl" "OpenGL module"
-
-return 0
