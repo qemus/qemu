@@ -187,7 +187,7 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
   fi
 
   sed -i "s/listen 8006 default_server;/listen $WEB_PORT default_server;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http://127.0.0.1:5700/;/proxy_pass http://127.0.0.1:$WSS_PORT/;/g" /etc/nginx/sites-enabled/web.conf
+  sed -i "s/proxy_pass http:\/\/127.0.0.1:5700\/;/proxy_pass http:\/\/127.0.0.1:$WSS_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
 
   # shellcheck disable=SC2143
   if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
