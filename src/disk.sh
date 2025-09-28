@@ -688,7 +688,6 @@ fi
 [ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE4="/dev/disk5"
 [ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE4="/dev/disk6"
 
-
 if [ -n "$DEVICE" ]; then
   addDevice "$DEVICE" "$DISK_TYPE" "3" "0xa" || exit $?
 else
