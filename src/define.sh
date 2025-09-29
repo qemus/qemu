@@ -78,8 +78,8 @@ getURL() {
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://getfedora.org/releases.json") || exit 65
         version=$(echo "$body" | jq -r 'map(.version) | unique | .[]' | sed 's/ /_/g' | sed '/_Beta/d' | sort -r | head -n 1)
-        url=$(echo "$body" | jq -r "map(select(.arch==\"x86_64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link")
-        arm=$(echo "$body" | jq -r "map(select(.arch==\"aarch64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link")
+        url=$(echo "$body" | jq -r "map(select(.arch==\"x86_64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link" | grep -m 1 .iso)
+        arm=$(echo "$body" | jq -r "map(select(.arch==\"aarch64\" and .version==\"${version}\" and .variant==\"Workstation\" and .subvariant==\"Workstation\" )) | .[].link" | grep -m 1 .iso)
       fi ;;
     "gentoo" | "gentoolinux" | "gentoo-linux" )
       name="Gentoo Linux"
@@ -177,7 +177,7 @@ getURL() {
         body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
         version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
         url="https://releases.ubuntu.com/${version}/ubuntu-${version}-desktop-amd64.iso"
-        arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}desktop-arm64.iso"
+        arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}-desktop-arm64.iso"
       fi ;;
     "ubuntus" | "ubuntu-server")
       name="Ubuntu Server"

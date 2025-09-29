@@ -46,7 +46,7 @@ RUN set -eu && \
     wget "https://github.com/novnc/noVNC/archive/refs/heads/master.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
     cd "/tmp/noVNC-master" && \
-    mv app core vendor package.json *.html /usr/share/novnc && \
+    mv app core vendor package.json ./*.html /usr/share/novnc && \
     unlink /etc/nginx/sites-enabled/default && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
     echo "$VERSION_ARG" > /run/version && \
@@ -54,7 +54,7 @@ RUN set -eu && \
 
 COPY --chmod=755 ./src /run/
 COPY --chmod=755 ./web /var/www/
-COPY --chmod=755 --from=src /utk.bin /run
+COPY --chmod=755 --from=src /utk.bin /run/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
