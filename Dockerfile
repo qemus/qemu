@@ -1,5 +1,6 @@
 # syntax=docker/dockerfile:1
 
+FROM qemux/fiano AS src
 FROM debian:trixie-slim
 
 ARG VERSION_ARG="0.0"
@@ -53,6 +54,7 @@ RUN set -eu && \
 
 COPY --chmod=755 ./src /run/
 COPY --chmod=755 ./web /var/www/
+COPY --chmod=755 --from=src /utk.bin /run
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
