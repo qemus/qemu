@@ -177,7 +177,7 @@ getURL() {
         body=$(pipe "https://api.launchpad.net/devel/ubuntu/series") || exit 65
         version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
         url="https://releases.ubuntu.com/${version}/ubuntu-${version}-desktop-amd64.iso"
-        arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}desktop-arm64.iso"
+        arm="https://cdimage.ubuntu.com/releases/${version}/release/ubuntu-${version}-desktop-arm64.iso"
       fi ;;
     "ubuntus" | "ubuntu-server")
       name="Ubuntu Server"
