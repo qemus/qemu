@@ -135,9 +135,9 @@ if [ -s "$PS" ] && [ -r "$PS" ]; then
 
 fi
 
-if [[ "$TPM" == [Yy1]* ]]; then
+rm -f /var/run/tpm.pid
 
-  rm -f /var/run/tpm.pid
+if [[ "$TPM" == [Yy1]* ]]; then
 
   if ! swtpm socket -t -d --tpmstate "backend-uri=file://$STORAGE/${BOOT_MODE,,}.tpm" --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; then
     error "Failed to start TPM emulator, reason: $?"
