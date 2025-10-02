@@ -24,13 +24,6 @@ set -Eeuo pipefail
 ADD_ERR="Please add the following setting to your container:"
 
 # ######################################
-#  Debug
-# ######################################
-
-now=$(date +'%s')
-[[ "${TRAP:-}" == [Yy1]* ]] && trap 'echo "# (( $(date +%s) - now )) $BASH_COMMAND"' DEBUG
-
-# ######################################
 #  Functions
 # ######################################
 
