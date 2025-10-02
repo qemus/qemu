@@ -13,6 +13,10 @@ SECURE="off"
 [[ "$SMM" == [Yy1]* ]] && SECURE="on"
 [ -n "$BIOS" ] && BOOT_MODE="custom"
 
+msg="Configuring boot options..."
+html "$msg"
+[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
+
 case "${BOOT_MODE,,}" in
   "uefi" | "" )
     BOOT_MODE="uefi"
