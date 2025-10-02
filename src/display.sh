@@ -39,6 +39,10 @@ if [[ "$CPU_VENDOR" != "GenuineIntel" ]]; then
   return 0
 fi
 
+msg="Configuring display drivers..."
+html "$msg"
+[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
+
 [[ "${VGA,,}" == "virtio" ]] && VGA="virtio-vga-gl"
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
