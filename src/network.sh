@@ -524,6 +524,9 @@ if [[ "$DEBUG" == [Yy1]* ]]; then
   echo
 fi
 
+# Clean up old files
+rm -f /var/run/dnsmasq.pid
+
 if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
   info "Lingering interface will be removed..."
   ip link delete "$VM_NET_TAP" || true
