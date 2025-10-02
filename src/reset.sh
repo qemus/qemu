@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
+now=$(date +'%s')
+trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR 
+[[ "${TRAP:-}" == [Yy1]* ]] && set -o functrace && trap 'echo "# (( $(date +%s) - now )) $BASH_COMMAND >2"' DEBUG
 
 [ ! -f "/run/entry.sh" ] && error "Script must run inside Docker container!" && exit 11
 [ "$(id -u)" -ne "0" ] && error "Script must be executed with root privileges." && exit 12
