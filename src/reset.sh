@@ -2,7 +2,8 @@
 set -Eeuo pipefail
 
 trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
-
+[[ "${TRAP:-}" == [Yy1]* ]] trap 'echo "# $(date) $BASH_COMMAND"' DEBUG
+ 
 [ ! -f "/run/entry.sh" ] && error "Script must run inside Docker container!" && exit 11
 [ "$(id -u)" -ne "0" ] && error "Script must be executed with root privileges." && exit 12
 
