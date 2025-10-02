@@ -9,6 +9,10 @@ set -Eeuo pipefail
 : "${MONITOR:="telnet:localhost:7100,server,nowait,nodelay"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
 
+msg="Configuring QEMU..."
+html "$msg"
+[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
+
 DEV_OPTS=""
 DEF_OPTS="-nodefaults"
 SERIAL_OPTS="-serial $SERIAL"
