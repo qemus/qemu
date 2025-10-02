@@ -3,14 +3,13 @@ set -Eeuo pipefail
 
 getBase() {
 
-  local base="$1"
-
-  base=$(basename "${base%%\?*}")
-  : "${base//+/ }"; printf -v base '%b' "${_//%/\\x}"
-  base=$(echo "$base" | sed -e 's/[^A-Za-z0-9._-]/_/g')
+  local base="${1%%\?*}"
+  base=$(basename "$base")
+  base="${base//+/ }"
+  printf -v base '%b' "${base//%/\\x}"
+  base="${base//[!A-Za-z0-9._-]/_}"
 
   echo "$base"
-
   return 0
 }
 
