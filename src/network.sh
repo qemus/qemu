@@ -14,7 +14,8 @@ set -Eeuo pipefail
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
-: "${VM_NET_IP:="20.20.20.21"}"
+: "${VM_NET_IP:="172.30.0.4"}"
+: "${VM_NET_MASK:="255.255.255.0"}"
 
 : "${PASST_OPTS:=""}"
 : "${PASST_DEBUG:=""}"
@@ -128,7 +129,7 @@ configureDNS() {
   DNSMASQ_OPTS+=" --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite"
 
   # Set DNS server and gateway
-  DNSMASQ_OPTS+=" --dhcp-option=option:netmask,255.255.255.0"
+  DNSMASQ_OPTS+=" --dhcp-option=option:netmask,${VM_NET_MASK}"
   DNSMASQ_OPTS+=" --dhcp-option=option:router,${VM_NET_IP%.*}.1"
   DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1"
 
@@ -186,11 +187,23 @@ configureUser() {
   # passt configuration:
 
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
+
+  if [[ "$VM_NET_IP" != "172.30.0.4" ]]; then
+    PASST_OPTS+=" -a $VM_NET_IP"
+    PASST_OPTS+=" -g ${VM_NET_IP%.*}.1"
+  fi
+
+  PASST_OPTS+=" -n $VM_NET_MASK"
+
   PASST_OPTS+=" -t ~8006,7001"
   PASST_OPTS+=" -u ~3389"
-  PASST_OPTS+=" -n 255.255.255.0"
-  PASST_OPTS+=" --map-host-loopback ${VM_NET_IP%.*}.1"
-  PASST_OPTS+=" --map-guest-addr $VM_NET_IP"
+
+  # For backwards compatiblity
+  if [[ "$VM_NET_IP" != "20.20.20."* ]]; then
+    PASST_OPTS+=" --map-guest-addr 20.20.20.21"
+    PASST_OPTS+=" --map-host-loopback 20.20.20.1"
+  fi
+
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
   PASST_OPTS+=" -P /var/run/passt.pid"
@@ -244,6 +257,13 @@ configureNAT() {
     fi
   fi
 
+  # For backwards compatibility
+  if [[ "$VM_NET_IP" != "20.20.20."* ]]; then
+    if ! ip address add dev "$VM_NET_DEV" 20.20.20.1/24 label "$VM_NET_DEV:compat"; then
+      error "Failed to configure IP alias!" && return 1
+    fi
+  fi
+
   # Create a bridge with a static IP for the VM guest
   { ip link add dev dockerbridge type bridge ; rc=$?; } || :
 
@@ -283,7 +303,7 @@ configureNAT() {
   done
 
   if ! ip link set dev "$VM_NET_TAP" master dockerbridge; then
-    error "Failed to set IP link!" && return 1
+    error "Failed to set master bridge!" && return 1
   fi
 
   # Add internet connection to the VM
@@ -302,11 +322,6 @@ configureNAT() {
   fi
 
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$VM_NET_IP"; then
-    error "Failed to configure IP tables!" && return 1
-  fi
-
-  # Backwards compatibility
-  if ! iptables -t nat -I POSTROUTING -j SNAT -s 3.3.3.3 --to 127.0.0.1; then
     error "Failed to configure IP tables!" && return 1
   fi
 
@@ -448,8 +463,18 @@ getInfo() {
     error "Invalid VM_NET_IP, must end in a higher number than .3" && exit 27
   fi
 
-  if [ -z "$MTU" ]; then
-    MTU=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
+  local mtu=""
+
+  if [ -f "/sys/class/net/$VM_NET_DEV/mtu" ]; then
+    mtu=$(< "/sys/class/net/$VM_NET_DEV/mtu")
+  fi
+
+  [ -z "$MTU" ] && MTU="$mtu"
+  [ -z "$MTU" ] && MTU="0"
+
+  if [ "$MTU" -gt "1500" ]; then
+    [[ "$DEBUG" == [Yy1]* ]] && echo "MTU size is too large: $MTU, ignoring..."
+    MTU="0"
   fi
 
   if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
@@ -499,6 +524,17 @@ getInfo() {
 
   [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
 
+  if [[ "$DEBUG" == [Yy1]* ]]; then
+    line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
+    [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
+    info "$line"
+    if [ -f /etc/resolv.conf ]; then
+      nameservers=$(grep '^nameserver*' /etc/resolv.conf | head -c -1 | sed 's/nameserver //g;' | sed -z 's/\n/, /g')
+      [ -n "$nameservers" ] && info "Nameservers: $nameservers"
+    fi
+    echo
+  fi
+
   return 0
 }
 
@@ -511,22 +547,10 @@ if [[ "$NETWORK" == [Nn]* ]]; then
   return 0
 fi
 
+html "Initializing network..."
 [[ "$DEBUG" == [Yy1]* ]] && echo "Retrieving network information..."
 
 getInfo
-html "Initializing network..."
-
-if [[ "$DEBUG" == [Yy1]* ]]; then
-  mtu=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
-  line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
-  [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
-  info "$line"
-  if [ -f /etc/resolv.conf ]; then
-    nameservers=$(grep '^nameserver*' /etc/resolv.conf | head -c -1 | sed 's/nameserver //g;' | sed -z 's/\n/, /g')
-    [ -n "$nameservers" ] && info "Nameservers: $nameservers"
-  fi
-  echo
-fi
 
 # Clean up old files
 rm -f /var/run/passt.pid
