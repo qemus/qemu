@@ -192,7 +192,7 @@ getHostPorts() {
     [ -z "$list" ] && list="$VNC_PORT" || list+=",$VNC_PORT"
   fi
 
-  [ -z "$list" ] && echo "" && return 0
+  [ -z "$list" ] && list="$MON_PORT" || list+=",$MON_PORT"
 
   if [[ "$list" != *","* ]]; then
     echo " ! --dport $list"
