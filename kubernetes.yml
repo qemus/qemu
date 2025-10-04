@@ -31,7 +31,7 @@ spec:
         image: qemux/qemu
         env:
         - name: BOOT
-          value: "ubuntu"
+          value: "mint"
         - name: DISK_SIZE
           value: "64G"
         ports:
