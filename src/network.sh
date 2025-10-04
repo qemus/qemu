@@ -305,6 +305,11 @@ configureNAT() {
     error "Failed to configure IP tables!" && return 1
   fi
 
+  # Backwards compatibility
+  if ! iptables -t nat -I POSTROUTING -j SNAT -s 3.3.3.3 --to 127.0.0.1; then
+    error "Failed to configure IP tables!" && return 1
+  fi
+
   if (( KERNEL > 4 )); then
     # Hack for guest VMs complaining about "bad udp checksums in 5 packets"
     iptables -A POSTROUTING -t mangle -p udp --dport bootpc -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
