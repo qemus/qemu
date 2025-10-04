@@ -17,9 +17,11 @@ set -Eeuo pipefail
 : "${VM_NET_IP:="20.20.20.21"}"
 
 : "${PASST_OPTS:=""}"
+: "${PASST_DEBUG:=""}"
 : "${PASST:="passt.avx2"}"
 
 : "${DNSMASQ_OPTS:=""}"
+: "${DNSMASQ_DEBUG:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
 : "${DNSMASQ_CONF_DIR:="/etc/dnsmasq.d"}"
 
@@ -143,7 +145,7 @@ configureDNS() {
     return 1
   fi
 
-  if [[ "${DEBUG_DNS:-}" == [Yy1]* ]]; then
+  if [[ "$DNSMASQ_DEBUG" == [Yy1]* ]]; then
     tail -fn +0 "$log" &
   fi
 
@@ -183,19 +185,17 @@ configureUser() {
 
   # passt configuration:
 
-  #PASST_OPTS+=" -g 20.20.20.1"
-  #PASST_OPTS+=" -a 20.20.20.21"
+  [ -z "$IP6" ] && PASST_OPTS+=" -4"
   PASST_OPTS+=" -t ~8006,7001"
   PASST_OPTS+=" -u ~3389"
   PASST_OPTS+=" -n 255.255.255.0"
   PASST_OPTS+=" --map-host-loopback ${VM_NET_IP%.*}.1"
   PASST_OPTS+=" --map-guest-addr $VM_NET_IP"
-  PASST_OPTS+=" -H $VM_NET_HOST"  
-  PASST_OPTS+=" -M $VM_NET_MAC" 
+  PASST_OPTS+=" -H $VM_NET_HOST"
+  PASST_OPTS+=" -M $VM_NET_MAC"
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
-  [ -z "$IP6" ] && PASST_OPTS+=" -4"  
-  [[ "$DEBUG" != [Yy1]* ]] && PASST_OPTS+=" -q"
+  PASST_OPTS+=" -q"
 
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
 
@@ -206,7 +206,7 @@ configureUser() {
     return 1
   fi
 
-  if [[ "${DEBUG:-}" == [Yy1]* ]]; then
+  if [[ "$PASST_DEBUG" == [Yy1]* ]]; then
     tail -fn +0 "$log" &
   fi
 
@@ -331,7 +331,7 @@ closeBridge() {
 
   pid="/var/run/passt.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
-  
+
   [[ "${NETWORK,,}" == "user"* ]] && return 0
 
   ip link set "$VM_NET_TAP" down promisc off &> null || true
