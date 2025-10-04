@@ -159,6 +159,7 @@ addPackage() {
 }
 
 : "${VNC_PORT:="5900"}"    # VNC port
+: "${MON_PORT:="7100"}"    # Monitor port
 : "${WEB_PORT:="8006"}"    # Webserver port
 : "${WSS_PORT:="5700"}"    # Websockets port
 
