@@ -7,7 +7,6 @@ set -Eeuo pipefail
 : "${MTU:=""}"
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
-: "${USER_PORTS:=""}"
 : "${HOST_PORTS:=""}"
 : "${ADAPTER:="virtio-net-pci"}"
 
@@ -16,6 +15,9 @@ set -Eeuo pipefail
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
 : "${VM_NET_IP:="20.20.20.21"}"
+
+: "${PASST_OPTS:=""}"
+: "${PASST:="passt.avx2"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
@@ -107,6 +109,8 @@ configureDHCP() {
 
 configureDNS() {
 
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Starting Dnsmasq daemon..."
+
   local log="/var/log/dnsmasq.log"
   rm -f "$log"
 
@@ -132,8 +136,6 @@ configureDNS() {
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
 
-  [[ "$DEBUG" == [Yy1]* ]] && echo "Starting Dnsmasq daemon..."
-
   if ! $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS}; then
     local msg="Failed to start Dnsmasq, reason: $?"
     [ -f "$log" ] && cat "$log"
@@ -145,38 +147,6 @@ configureDNS() {
     tail -fn +0 "$log" &
   fi
 
-  return 0
-}
-
-getUserPorts() {
-
-  local args=""
-  local list=$1
-  local ssh="22"
-
-  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
-  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
-
-  list="${list//,/ }"
-  list="${list## }"
-  list="${list%% }"
-
-  for port in $list; do
-    proto="tcp"
-    num="$port"
-
-    if [[ "$port" == */udp ]]; then
-      proto="udp"
-      num="${port%/udp}"
-    elif [[ "$port" == */tcp ]]; then
-      proto="tcp"
-      num="${port%/tcp}"
-    fi
-
-    args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
-  done
-
-  echo "${args%?}"
   return 0
 }
 
@@ -206,18 +176,41 @@ getHostPorts() {
 
 configureUser() {
 
-  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring SLIRP networking..."
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
 
-  if [ -z "$IP6" ]; then
-    NET_OPTS="-netdev user,id=hostnet0,host=${VM_NET_IP%.*}.1,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,hostname=$VM_NET_HOST"
-  else
-    NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=${VM_NET_IP%.*}.1,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,ipv6=on,hostname=$VM_NET_HOST"
+  local log="/var/log/passt.log"
+  rm -f "$log"
+
+  # passt configuration:
+
+  #PASST_OPTS+=" -g 20.20.20.1"
+  #PASST_OPTS+=" -a 20.20.20.21"
+  PASST_OPTS+=" -t ~8006,7001"
+  PASST_OPTS+=" -u ~3389"
+  PASST_OPTS+=" -n 255.255.255.0"
+  PASST_OPTS+=" --map-host-loopback ${VM_NET_IP%.*}.1"
+  PASST_OPTS+=" --map-guest-addr $VM_NET_IP"
+  PASST_OPTS+=" -H $VM_NET_HOST"  
+  PASST_OPTS+=" -M $VM_NET_MAC" 
+  PASST_OPTS+=" -P /var/run/passt.pid"
+  PASST_OPTS+=" -l $log"
+  [ -z "$IP6" ] && PASST_OPTS+=" -4"  
+  [[ "$DEBUG" != [Yy1]* ]] && PASST_OPTS+=" -q"
+
+  PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
+
+  if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
+    local msg="Failed to start passt, reason: $?"
+    [ -f "$log" ] && cat "$log"
+    error "$msg"
+    return 1
   fi
 
-  local forward
-  forward=$(getUserPorts "$USER_PORTS")
-  [ -n "$forward" ] && NET_OPTS+=",$forward"
+  if [[ "${DEBUG:-}" == [Yy1]* ]]; then
+    tail -fn +0 "$log" &
+  fi
 
+  NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=/tmp/passt_1.socket"
   return 0
 }
 
@@ -336,6 +329,9 @@ closeBridge() {
   local pid="/var/run/dnsmasq.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
 
+  pid="/var/run/passt.pid"
+  [ -s "$pid" ] && pKill "$(<"$pid")"
+  
   [[ "${NETWORK,,}" == "user"* ]] && return 0
 
   ip link set "$VM_NET_TAP" down promisc off &> null || true
@@ -528,6 +524,7 @@ if [[ "$DEBUG" == [Yy1]* ]]; then
 fi
 
 # Clean up old files
+rm /f /var/run/passt.pid
 rm -f /var/run/dnsmasq.pid
 
 if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
@@ -562,7 +559,7 @@ else
         msg="podman detected, $msg"
       fi
       warn "$msg"
-      [ -z "$USER_PORTS" ] && info "Notice: when you want to expose ports in this mode, map them using this variable: \"USER_PORTS=80,443\"."
+      info "Notice: when you want to expose ports in this mode, map them using this variable: \"USER_PORTS=80,443\"."
 
     fi
 
