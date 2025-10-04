@@ -524,7 +524,7 @@ if [[ "$DEBUG" == [Yy1]* ]]; then
 fi
 
 # Clean up old files
-rm /f /var/run/passt.pid
+rm -f /var/run/passt.pid
 rm -f /var/run/dnsmasq.pid
 
 if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
