@@ -166,14 +166,8 @@ getHostPorts() {
   fi
 
   [ -z "$list" ] && list="$MON_PORT" || list+=",$MON_PORT"
-  [ -z "$list" ] && echo "" && return 0
 
-  if [[ "$list" != *","* ]]; then
-    echo " ! --dport $list"
-  else
-    echo " -m multiport ! --dports $list"
-  fi
-
+  echo "$list"
   return 0
 }
 
@@ -311,6 +305,14 @@ configureNAT() {
   update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy > /dev/null
 
   exclude=$(getHostPorts "$HOST_PORTS")
+
+  if [ -n "$exclude" ]; then
+    if [[ "$exclude" != *","* ]]; then
+      exclude=" ! --dport $exclude"
+    else
+      exclude=" -m multiport ! --dports $exclude"
+    fi
+  fi
 
   if ! iptables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
     error "$tables" && return 1
