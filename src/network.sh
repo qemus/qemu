@@ -218,9 +218,9 @@ configureSlirp() {
 
   local ipv6=""
   [ -n "$IP6" ] && ipv6="ipv6=on,"
-  
-  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${dns}${ipv6}hostname=$VM_NET_HOST"
-  
+
+  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
+
   local forward
   forward=$(getUserPorts "${USER_PORTS:-}")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
@@ -314,14 +314,14 @@ configurePasst() {
     PASST_OPTS+=" --dns-forward $gateway"
     PASST_OPTS+=" --dns-host 127.0.0.1"
   fi
-  
+
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
 
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
   [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
-  
+
   if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
     local msg="Failed to start passt, reason: $?"
     [ -f "$log" ] && cat "$log"
@@ -410,7 +410,7 @@ configureNAT() {
   # fec0::/64
   # ip address add $PREFIX dev br0
   # ip route add default via $ROUTE dev br0
- 
+
   while ! ip link set dockerbridge up; do
     info "Waiting for IP address to become available..."
     sleep 2
@@ -697,7 +697,7 @@ getInfo() {
   if [[ "$PODMAN" == [Yy1]* ]] && [ -z "${NETWORK:-}" ]; then
     [[ "$DHCP" != [Yy1]* ]] && NETWORK="user"
   fi
-   
+
   if [[ "$DEBUG" == [Yy1]* ]]; then
     line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
     [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
@@ -760,7 +760,7 @@ else
         error "Failed to configure user-mode networking!"
         exit 24
       fi ;;
-  
+
     "slirp" )
 
       # Configure for user-mode networking (slirp)
