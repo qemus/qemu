@@ -238,7 +238,7 @@ configureNAT() {
   fi
 
   if [ ! -c /dev/net/tun ]; then
-    error "$tuntap" && return 1
+    warn "$tuntap" && return 1
   fi
 
   # Check port forwarding flag
@@ -246,7 +246,7 @@ configureNAT() {
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
       [[ "$PODMAN" == [Yy1]* ]] && return 1
-      error "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
+      warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
     fi
   fi
@@ -254,7 +254,7 @@ configureNAT() {
   # For backwards compatibility
   if [[ "$VM_NET_IP" != "20.20.20."* ]]; then
     if ! ip address add dev "$VM_NET_DEV" 20.20.20.1/24 label "$VM_NET_DEV:compat"; then
-      error "Failed to configure IP alias!" && return 1
+      warn "Failed to configure IP alias!" && return 1
     fi
   fi
 
@@ -262,11 +262,11 @@ configureNAT() {
   { ip link add dev dockerbridge type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
-    error "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
+    warn "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
   if ! ip address add "${VM_NET_IP%.*}.1/24" broadcast "${VM_NET_IP%.*}.255" dev dockerbridge; then
-    error "Failed to add IP address pool!" && return 1
+    warn "Failed to add IP address pool!" && return 1
   fi
 
   while ! ip link set dockerbridge up; do
@@ -276,7 +276,7 @@ configureNAT() {
 
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
-    error "$tuntap" && return 1
+    warn "$tuntap" && return 1
   fi
 
   if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
@@ -297,7 +297,7 @@ configureNAT() {
   done
 
   if ! ip link set dev "$VM_NET_TAP" master dockerbridge; then
-    error "Failed to set master bridge!" && return 1
+    warn "Failed to set master bridge!" && return 1
   fi
 
   if grep -wq "nf_tables" /proc/modules; then
@@ -319,16 +319,16 @@ configureNAT() {
   fi
 
   if ! iptables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
-    error "$tables" && return 1
+    warn "$tables" && return 1
   fi
 
   # shellcheck disable=SC2086
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
-    error "Failed to configure IP tables!" && return 1
+    warn "Failed to configure IP tables!" && return 1
   fi
 
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$VM_NET_IP"; then
-    error "Failed to configure IP tables!" && return 1
+    warn "Failed to configure IP tables!" && return 1
   fi
 
   if (( KERNEL > 4 )); then
