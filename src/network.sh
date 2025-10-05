@@ -15,6 +15,7 @@ set -Eeuo pipefail
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
+: "${VM_NET_GATEWAY:=""}"
 : "${VM_NET_MASK:="255.255.255.0"}"
 
 : "${PASST_OPTS:=""}"
@@ -186,16 +187,15 @@ configurePasst() {
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
 
-  local gateway=""
   local log="/var/log/passt.log"
   rm -f "$log"
 
   [ -z "$VM_NET_IP" ] && VM_NET_IP="$IP"
   
   if [[ "$VM_NET_IP" != *".1" ]]; then
-    gateway="${VM_NET_IP%.*}.1"
+    VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
   else
-    gateway="${VM_NET_IP%.*}.2"
+    VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
   fi
     
   # passt configuration:
@@ -203,7 +203,7 @@ configurePasst() {
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
 
   PASST_OPTS+=" -a $VM_NET_IP"
-  PASST_OPTS+=" -g $gateway"
+  PASST_OPTS+=" -g $VM_NET_GATEWAY"
   PASST_OPTS+=" -n $VM_NET_MASK"
 
   exclude=$(getHostPorts "$HOST_PORTS")
@@ -224,7 +224,7 @@ configurePasst() {
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
-  PASST_OPTS+=" -D $gateway"
+  PASST_OPTS+=" -D $VM_NET_GATEWAY"
   PASST_OPTS+=" --no-dhcp-dns"
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
@@ -245,7 +245,7 @@ configurePasst() {
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=/tmp/passt_1.socket"
 
-  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$VM_NET_GATEWAY" || return 1
 
   return 0
 }
@@ -281,19 +281,17 @@ configureNAT() {
   fi
 
   [ -z "$VM_NET_IP" ] && VM_NET_IP="172.30.0.4"
-
-  local gateway=""
   local broadcast="${VM_NET_IP%.*}.255"
 
   if [[ "$VM_NET_IP" != *".1" ]]; then
-    gateway="${VM_NET_IP%.*}.1"
+    VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
   else
-    gateway="${VM_NET_IP%.*}.2"
+    VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
   fi
 
   # For backwards compatibility
   SAMBA_INTERFACE="20.20.20.1"
-  if [[ "$SAMBA_INTERFACE" == "$gateway" ]]; then
+  if [[ "$SAMBA_INTERFACE" == "$VM_NET_GATEWAY" ]]; then
     SAMBA_INTERFACE=""
   else
     if ! ip address add dev "$VM_NET_DEV" "$SAMBA_INTERFACE/24" label "$VM_NET_DEV:compat"; then
@@ -309,7 +307,7 @@ configureNAT() {
     warn "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
-  if ! ip address add "$gateway/24" broadcast "$broadcast.255" dev dockerbridge; then
+  if ! ip address add "$VM_NET_GATEWAY/24" broadcast "$broadcast.255" dev dockerbridge; then
     warn "Failed to add IP address pool!" && return 1
   fi
 
@@ -389,7 +387,7 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$VM_NET_GATEWAY" || return 1
 
   return 0
 }
