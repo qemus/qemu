@@ -143,7 +143,10 @@ configureDNS() {
     DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,$gateway"
 
   fi
-  
+
+  #DNSMASQ_OPTS+=" --interface=eth0"
+  #DNSMASQ_OPTS+=" --bind-interfaces"
+
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/$gateway"
   DNSMASQ_OPTS+=" --log-facility=$log"
