@@ -10,11 +10,11 @@ set -Eeuo pipefail
 : "${HOST_PORTS:=""}"
 : "${ADAPTER:="virtio-net-pci"}"
 
+: "${VM_NET_IP:=""}"
 : "${VM_NET_DEV:=""}"
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
-: "${VM_NET_IP:="172.30.0.4"}"
 : "${VM_NET_MASK:="255.255.255.0"}"
 
 : "${PASST_OPTS:=""}"
@@ -180,18 +180,24 @@ configureUser() {
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
 
+  local gateway=""
   local log="/var/log/passt.log"
   rm -f "$log"
 
+  [ -z "$VM_NET_IP" ] && VM_NET_IP="$IP"
+  
+  if [[ "$VM_NET_IP" != *".1" ]]; then
+    gateway="${VM_NET_IP%.*}.1"
+  else
+    gateway="${VM_NET_IP%.*}.2"
+  fi
+    
   # passt configuration:
 
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
 
-  if [[ "$VM_NET_IP" != "172.30.0.4" ]]; then
-    PASST_OPTS+=" -a $VM_NET_IP"
-    PASST_OPTS+=" -g ${VM_NET_IP%.*}.1"
-  fi
-
+  PASST_OPTS+=" -a $VM_NET_IP"
+  PASST_OPTS+=" -g $gateway"
   PASST_OPTS+=" -n $VM_NET_MASK"
 
   exclude=$(getHostPorts "$HOST_PORTS")
@@ -207,12 +213,13 @@ configureUser() {
 
   # For backwards compatiblity
   if [[ "$VM_NET_IP" != "20.20.20."* ]]; then
-    PASST_OPTS+=" --map-guest-addr 20.20.20.21"
     PASST_OPTS+=" --map-host-loopback 20.20.20.1"
   fi
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
+  PASST_OPTS+=" -D $gateway"
+  PASST_OPTS+=" --no-dhcp-dns"
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
@@ -266,6 +273,8 @@ configureNAT() {
       return 1
     fi
   fi
+
+  [ -z "$VM_NET_IP" ] && VM_NET_IP="172.30.0.4" 
 
   # For backwards compatibility
   SAMBA_INTERFACE="20.20.20.1"
@@ -483,10 +492,11 @@ getInfo() {
 
   fi
 
-  local base="${VM_NET_IP%.*}."
-
-  if [ "${VM_NET_IP/$base/}" -lt "3" ]; then
-    error "Invalid VM_NET_IP, must end in a number higher than .3" && exit 27
+  if [ -n "$VM_NET_IP" ]; then
+    local base="${VM_NET_IP%.*}."
+    if [ "${VM_NET_IP/$base/}" -lt "3" ]; then
+      error "Invalid VM_NET_IP, must end in a number higher than .3" && exit 27
+    fi
   fi
 
   local mtu=""
