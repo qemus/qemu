@@ -255,7 +255,7 @@ configurePasst() {
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
-  local tables="The 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
+  local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring NAT networking..."
 
@@ -300,7 +300,7 @@ configureNAT() {
   else
     if ! ip address add dev "$VM_NET_DEV" "$SAMBA_INTERFACE/24" label "$VM_NET_DEV:compat"; then
       SAMBA_INTERFACE=""
-      warn "Failed to configure IP alias!"
+      warn "failed to configure IP alias!"
     fi
   fi
 
@@ -308,11 +308,11 @@ configureNAT() {
   { ip link add dev dockerbridge type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
-    warn "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
+    warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
   if ! ip address add "$VM_NET_GATEWAY/24" broadcast "$broadcast.255" dev dockerbridge; then
-    warn "Failed to add IP address pool!" && return 1
+    warn "failed to add IP address pool!" && return 1
   fi
 
   while ! ip link set dockerbridge up; do
@@ -327,14 +327,14 @@ configureNAT() {
 
   if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
-      warn "Failed to set MTU size to $MTU." && MTU="0"
+      warn "failed to set MTU size to $MTU." && MTU="0"
     fi
   fi
 
   GATEWAY_MAC=$(echo "$VM_NET_MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
 
   if ! ip link set dev "$VM_NET_TAP" address "$GATEWAY_MAC"; then
-    warn "Failed to set gateway MAC address.."
+    warn "failed to set gateway MAC address.."
   fi
 
   while ! ip link set "$VM_NET_TAP" up promisc on; do
@@ -343,7 +343,7 @@ configureNAT() {
   done
 
   if ! ip link set dev "$VM_NET_TAP" master dockerbridge; then
-    warn "Failed to set master bridge!" && return 1
+    warn "failed to set master bridge!" && return 1
   fi
 
   if grep -wq "nf_tables" /proc/modules; then
@@ -370,11 +370,11 @@ configureNAT() {
 
   # shellcheck disable=SC2086
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
-    warn "Failed to configure IP tables!" && return 1
+    warn "failed to configure IP tables!" && return 1
   fi
 
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$VM_NET_IP"; then
-    warn "Failed to configure IP tables!" && return 1
+    warn "failed to configure IP tables!" && return 1
   fi
 
   if (( KERNEL > 4 )); then
