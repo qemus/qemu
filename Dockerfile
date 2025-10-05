@@ -1,8 +1,8 @@
 # syntax=docker/dockerfile:1
 
-FROM qemux/fiano AS src
 FROM debian:trixie-slim
 
+ARG TARGETARCH
 ARG VERSION_ARG="0.0"
 ARG VERSION_VNC="1.6.0"
 
@@ -39,6 +39,8 @@ RUN set -eu && \
         netcat-openbsd \
         ca-certificates \
         qemu-system-x86 && \
+    wget "https://github.com/qemus/passt/releases/download/v2025_09_19/passt_2025_09_19_${TARGETARCH}.deb" -O /tmp/passt.deb -q && \
+    dpkg -i /tmp/passt.deb && \
     apt-get clean && \
     mkdir -p /etc/qemu && \
     echo "allow br0" > /etc/qemu/bridge.conf && \
@@ -54,10 +56,11 @@ RUN set -eu && \
 
 COPY --chmod=755 ./src /run/
 COPY --chmod=755 ./web /var/www/
-COPY --chmod=755 --from=src /utk.bin /run/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
+
+ADD "https://github.com/qemus/fiano/releases/download/v1.2.0/utk_1.2.0_${TARGETARCH}.bin" /run/utk.bin
 
 VOLUME /storage
 EXPOSE 22 5900 8006

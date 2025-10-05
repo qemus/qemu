@@ -13,7 +13,7 @@ SECURE="off"
 [[ "$SMM" == [Yy1]* ]] && SECURE="on"
 [ -n "$BIOS" ] && BOOT_MODE="custom"
 
-msg="Configuring boot options..."
+msg="Configuring boot..."
 html "$msg"
 [[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
 

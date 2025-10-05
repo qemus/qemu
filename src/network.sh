@@ -7,17 +7,23 @@ set -Eeuo pipefail
 : "${MTU:=""}"
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
-: "${USER_PORTS:=""}"
 : "${HOST_PORTS:=""}"
 : "${ADAPTER:="virtio-net-pci"}"
 
+: "${VM_NET_IP:=""}"
 : "${VM_NET_DEV:=""}"
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
-: "${VM_NET_IP:="20.20.20.21"}"
+: "${VM_NET_GATEWAY:=""}"
+: "${VM_NET_MASK:="255.255.255.0"}"
+
+: "${PASST:="passt"}"
+: "${PASST_OPTS:=""}"
+: "${PASST_DEBUG:=""}"
 
 : "${DNSMASQ_OPTS:=""}"
+: "${DNSMASQ_DEBUG:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
 : "${DNSMASQ_CONF_DIR:="/etc/dnsmasq.d"}"
 
@@ -63,7 +69,7 @@ configureDHCP() {
 
   if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
-      warn "Failed to set MTU size to $MTU." && MTU="0"
+      warn "Failed to set MTU size to $MTU."
     fi
   fi
 
@@ -107,85 +113,71 @@ configureDHCP() {
 
 configureDNS() {
 
+  local if="$1"
+  local ip="$2"
+  local mac="$3"
+  local host="$4"
+  local mask="$5"
+  local gateway="$6"
+
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Starting dnsmasq daemon..."
+
   local log="/var/log/dnsmasq.log"
   rm -f "$log"
 
-  # Create lease file for faster resolve
-  echo "0 $VM_NET_MAC $VM_NET_IP $VM_NET_HOST 01:$VM_NET_MAC" > /var/lib/misc/dnsmasq.leases
-  chmod 644 /var/lib/misc/dnsmasq.leases
+  if [[ "${NETWORK,,}" != "user"* ]]; then
 
-  # dnsmasq configuration:
-  DNSMASQ_OPTS+=" --dhcp-authoritative"
+    # Create lease file for faster resolve
+    echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
+    chmod 644 /var/lib/misc/dnsmasq.leases
 
-  # Set DHCP range and host
-  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP"
-  DNSMASQ_OPTS+=" --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite"
+    # dnsmasq configuration:
+    DNSMASQ_OPTS+=" --dhcp-authoritative"
 
-  # Set DNS server and gateway
-  DNSMASQ_OPTS+=" --dhcp-option=option:netmask,255.255.255.0"
-  DNSMASQ_OPTS+=" --dhcp-option=option:router,${VM_NET_IP%.*}.1"
-  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1"
+    # Set DHCP range and host
+    DNSMASQ_OPTS+=" --dhcp-range=$ip,$ip"
+    DNSMASQ_OPTS+=" --dhcp-host=$mac,,$ip,$host,infinite"
+
+    # Set DNS server and gateway
+    DNSMASQ_OPTS+=" --dhcp-option=option:netmask,$mask"
+    DNSMASQ_OPTS+=" --dhcp-option=option:router,$gateway"
+    DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,$gateway"
+
+  fi
+
+  DNSMASQ_OPTS+=" --interface=$if"
+  DNSMASQ_OPTS+=" --bind-interfaces"
 
   # Add DNS entry for container
-  DNSMASQ_OPTS+=" --address=/host.lan/${VM_NET_IP%.*}.1"
+  DNSMASQ_OPTS+=" --address=/host.lan/$gateway"
   DNSMASQ_OPTS+=" --log-facility=$log"
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
-
-  [[ "$DEBUG" == [Yy1]* ]] && echo "Starting Dnsmasq daemon..."
+  [[ "$DEBUG" == [Yy1]* ]] && printf "Dnsmasq arguments:\n\n%s\n\n" "${DNSMASQ_OPTS// -/$'\n-'}"
 
   if ! $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS}; then
+
     local msg="Failed to start Dnsmasq, reason: $?"
     [ -f "$log" ] && cat "$log"
     error "$msg"
+
     return 1
   fi
 
-  if [[ "${DEBUG_DNS:-}" == [Yy1]* ]]; then
+  if [[ "$DNSMASQ_DEBUG" == [Yy1]* ]]; then
     tail -fn +0 "$log" &
   fi
 
   return 0
 }
 
-getUserPorts() {
-
-  local args=""
-  local list=$1
-  local ssh="22"
-
-  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
-  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
-
-  list="${list//,/ }"
-  list="${list## }"
-  list="${list%% }"
-
-  for port in $list; do
-    proto="tcp"
-    num="$port"
-
-    if [[ "$port" == */udp ]]; then
-      proto="udp"
-      num="${port%/udp}"
-    elif [[ "$port" == */tcp ]]; then
-      proto="tcp"
-      num="${port%/tcp}"
-    fi
-
-    args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
-  done
-
-  echo "${args%?}"
-  return 0
-}
-
 getHostPorts() {
 
   local list="$1"
+  list=$(echo "${list// /}" | sed 's/,*$//g')
 
-  if [[ "${WEB:-}" != [Nn]* ]]; then
-    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
+  if [[ "${DISPLAY,,}" == "web" ]]; then
+    [ -z "$list" ] && list="$WSS_PORT" || list+=",$WSS_PORT"
   fi
 
   if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
@@ -193,30 +185,96 @@ getHostPorts() {
   fi
 
   [ -z "$list" ] && list="$MON_PORT" || list+=",$MON_PORT"
-  [ -z "$list" ] && echo "" && return 0
 
-  if [[ "$list" != *","* ]]; then
-    echo " ! --dport $list"
-  else
-    echo " -m multiport ! --dports $list"
+  if [[ "${WEB:-}" != [Nn]* ]]; then
+    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
   fi
 
+  if [[ "${NETWORK,,}" == "user"* ]]; then
+    # Temporary workaround for Passt bug
+    [ -z "$list" ] && list="53" || list+=",53"
+  fi
+
+  echo "$list"
   return 0
 }
 
-configureUser() {
+configurePasst() {
 
-  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring SLIRP networking..."
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
 
-  if [ -z "$IP6" ]; then
-    NET_OPTS="-netdev user,id=hostnet0,host=${VM_NET_IP%.*}.1,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,hostname=$VM_NET_HOST"
-  else
-    NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=${VM_NET_IP%.*}.1,net=${VM_NET_IP%.*}.0/24,dhcpstart=$VM_NET_IP,ipv6=on,hostname=$VM_NET_HOST"
+  local log="/var/log/passt.log"
+  rm -f "$log"
+
+  local pid="/var/run/dnsmasq.pid"
+  [ -s "$pid" ] && pKill "$(<"$pid")"
+
+  local ip="$IP"
+  local gateway="$VM_NET_GATEWAY"
+  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+
+  if [ -z "$gateway" ]; then
+    if [[ "$ip" != *".1" ]]; then
+      gateway="${ip%.*}.1"
+    else
+      gateway="${ip%.*}.2"
+    fi
   fi
 
-  local forward
-  forward=$(getUserPorts "$USER_PORTS")
-  [ -n "$forward" ] && NET_OPTS+=",$forward"
+  # passt configuration:
+
+  [ -z "$IP6" ] && PASST_OPTS+=" -4"
+
+  PASST_OPTS+=" -a $ip"
+  PASST_OPTS+=" -g $gateway"
+  PASST_OPTS+=" -n $VM_NET_MASK"
+
+  exclude=$(getHostPorts "$HOST_PORTS")
+
+  if [ -z "$exclude" ]; then
+    exclude="all"
+  else
+    exclude="~${exclude//,/,~}"
+  fi
+
+  PASST_OPTS+=" -t $exclude"
+  PASST_OPTS+=" -u $exclude"
+
+  # For backwards compatiblity
+  if [[ "$ip" != "20.20.20."* ]]; then
+    PASST_OPTS+=" --map-host-loopback $gateway"
+    PASST_OPTS+=" --map-host-loopback 20.20.20.1"
+  fi
+
+  PASST_OPTS+=" -H $VM_NET_HOST"
+  PASST_OPTS+=" -M $VM_NET_MAC"
+
+  PASST_OPTS+=" --dns-forward $gateway"
+  PASST_OPTS+=" --dns-host 127.0.0.1"
+  PASST_OPTS+=" -P /var/run/passt.pid"
+  PASST_OPTS+=" -l $log"
+  PASST_OPTS+=" -q"
+
+  PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
+  [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
+  
+  if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
+    local msg="Failed to start passt, reason: $?"
+    [ -f "$log" ] && cat "$log"
+    error "$msg"
+    return 1
+  fi
+
+  if [[ "$PASST_DEBUG" == [Yy1]* ]]; then
+    tail -fn +0 "$log" &
+  fi
+
+  NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=/tmp/passt_1.socket"
+
+  configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+
+  VM_NET_IP="$ip"
+  VM_NET_GATEWAY="$gateway"
 
   return 0
 }
@@ -224,7 +282,7 @@ configureUser() {
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
-  local tables="The 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
+  local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring NAT networking..."
 
@@ -238,7 +296,7 @@ configureNAT() {
   fi
 
   if [ ! -c /dev/net/tun ]; then
-    error "$tuntap" && return 1
+    warn "$tuntap" && return 1
   fi
 
   # Check port forwarding flag
@@ -246,8 +304,31 @@ configureNAT() {
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
       [[ "$PODMAN" == [Yy1]* ]] && return 1
-      error "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
+      warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
+    fi
+  fi
+
+  local ip="172.30.0.2"
+  local samba="20.20.20.1"
+  local gateway="$VM_NET_GATEWAY"
+  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+
+  if [ -z "$gateway" ]; then
+    if [[ "$ip" != *".1" ]]; then
+      gateway="${ip%.*}.1"
+    else
+      gateway="${ip%.*}.2"
+    fi
+  fi
+
+  # For backwards compatibility
+  if [[ "$samba" == "$gateway" ]]; then
+    samba=""
+  else
+    if ! ip address add dev "$VM_NET_DEV" "$samba/24" label "$VM_NET_DEV:compat"; then
+      samba=""
+      warn "failed to configure IP alias!"
     fi
   fi
 
@@ -255,11 +336,11 @@ configureNAT() {
   { ip link add dev dockerbridge type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
-    error "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
+    warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
-  if ! ip address add "${VM_NET_IP%.*}.1/24" broadcast "${VM_NET_IP%.*}.255" dev dockerbridge; then
-    error "Failed to add IP address pool!" && return 1
+  if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev dockerbridge; then
+    warn "failed to add IP address pool!" && return 1
   fi
 
   while ! ip link set dockerbridge up; do
@@ -269,19 +350,19 @@ configureNAT() {
 
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
-    error "$tuntap" && return 1
+    warn "$tuntap" && return 1
   fi
 
   if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
-      warn "Failed to set MTU size to $MTU." && MTU="0"
+      warn "failed to set MTU size to $MTU."
     fi
   fi
 
   GATEWAY_MAC=$(echo "$VM_NET_MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
 
   if ! ip link set dev "$VM_NET_TAP" address "$GATEWAY_MAC"; then
-    warn "Failed to set gateway MAC address.."
+    warn "failed to set gateway MAC address.."
   fi
 
   while ! ip link set "$VM_NET_TAP" up promisc on; do
@@ -290,26 +371,38 @@ configureNAT() {
   done
 
   if ! ip link set dev "$VM_NET_TAP" master dockerbridge; then
-    error "Failed to set IP link!" && return 1
+    warn "failed to set master bridge!" && return 1
   fi
 
-  # Add internet connection to the VM
-  update-alternatives --set iptables /usr/sbin/iptables-legacy > /dev/null
-  update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy > /dev/null
+  if grep -wq "nf_tables" /proc/modules; then
+    update-alternatives --set iptables /usr/sbin/iptables-nft > /dev/null
+    update-alternatives --set ip6tables /usr/sbin/ip6tables-nft > /dev/null
+  else
+    update-alternatives --set iptables /usr/sbin/iptables-legacy > /dev/null
+    update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy > /dev/null
+  fi
 
   exclude=$(getHostPorts "$HOST_PORTS")
 
+  if [ -n "$exclude" ]; then
+    if [[ "$exclude" != *","* ]]; then
+      exclude=" ! --dport $exclude"
+    else
+      exclude=" -m multiport ! --dports $exclude"
+    fi
+  fi
+
   if ! iptables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
-    error "$tables" && return 1
+    warn "$tables" && return 1
   fi
 
   # shellcheck disable=SC2086
-  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
-    error "Failed to configure IP tables!" && return 1
+  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$ip"; then
+    warn "failed to configure IP tables!" && return 1
   fi
 
-  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$VM_NET_IP"; then
-    error "Failed to configure IP tables!" && return 1
+  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$ip"; then
+    warn "failed to configure IP tables!" && return 1
   fi
 
   if (( KERNEL > 4 )); then
@@ -326,7 +419,11 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS || return 1
+  configureDNS "dockerbridge" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+
+  VM_NET_IP="$ip"
+  VM_NET_GATEWAY="$gateway"
+  SAMBA_INTERFACE="$samba"
 
   return 0
 }
@@ -334,6 +431,9 @@ configureNAT() {
 closeBridge() {
 
   local pid="/var/run/dnsmasq.pid"
+  [ -s "$pid" ] && pKill "$(<"$pid")"
+
+  pid="/var/run/passt.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
 
   [[ "${NETWORK,,}" == "user"* ]] && return 0
@@ -371,6 +471,20 @@ closeNetwork() {
 
   ip link set "$VM_NET_TAP" down || true
   ip link delete "$VM_NET_TAP" || true
+
+  return 0
+}
+
+cleanUp() {
+
+  # Clean up old files
+  rm -f /var/run/passt.pid
+  rm -f /var/run/dnsmasq.pid
+
+  if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
+    info "Lingering interface will be removed..."
+    ip link delete "$VM_NET_TAP" || true
+  fi
 
   return 0
 }
@@ -415,6 +529,16 @@ getInfo() {
     error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 26
   fi
 
+  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
+  IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1)
+  IP6=""
+
+  # shellcheck disable=SC2143
+  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
+    IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up)
+    [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
+  fi
+
   local result nic bus
   result=$(ethtool -i "$VM_NET_DEV")
   nic=$(grep -m 1 -i 'driver:' <<< "$result" | awk '{print $(2)}')
@@ -428,6 +552,8 @@ getInfo() {
 
   if [[ "$DHCP" == [Yy1]* ]]; then
 
+    checkOS
+
     if [[ "${nic,,}" == "ipvlan" ]]; then
       error "This container does not support IPVLAN networking when DHCP=Y."
       exit 29
@@ -439,16 +565,26 @@ getInfo() {
       exit 29
     fi
 
+  else
+
+    if [[ "$IP" != "172."* && "$IP" != "10.8"* && "$IP" != "10.9"* ]]; then
+      checkOS
+    fi
+
   fi
 
-  BASE_IP="${VM_NET_IP%.*}."
+  local mtu=""
 
-  if [ "${VM_NET_IP/$BASE_IP/}" -lt "3" ]; then
-    error "Invalid VM_NET_IP, must end in a higher number than .3" && exit 27
+  if [ -f "/sys/class/net/$VM_NET_DEV/mtu" ]; then
+    mtu=$(< "/sys/class/net/$VM_NET_DEV/mtu")
   fi
 
-  if [ -z "$MTU" ]; then
-    MTU=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
+  [ -z "$MTU" ] && MTU="$mtu"
+  [ -z "$MTU" ] && MTU="0"
+
+  if [ "$MTU" -gt "1500" ]; then
+    [[ "$DEBUG" == [Yy1]* ]] && echo "MTU size is too large: $MTU, ignoring..."
+    MTU="0"
   fi
 
   if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
@@ -486,17 +622,18 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
-  IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1)
-
-  IP6=""
-  # shellcheck disable=SC2143
-  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
-    IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up)
-    [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
-  fi
-
   [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
+
+  if [[ "$DEBUG" == [Yy1]* ]]; then
+    line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
+    [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
+    info "$line"
+    if [ -f /etc/resolv.conf ]; then
+      nameservers=$(grep '^nameserver*' /etc/resolv.conf | head -c -1 | sed 's/nameserver //g;' | sed -z 's/\n/, /g')
+      [ -n "$nameservers" ] && info "Nameservers: $nameservers"
+    fi
+    echo
+  fi
 
   return 0
 }
@@ -510,43 +647,19 @@ if [[ "$NETWORK" == [Nn]* ]]; then
   return 0
 fi
 
-[[ "$DEBUG" == [Yy1]* ]] && echo "Retrieving network information..."
+msg="Initializing network..."
+html "$msg"
+[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
 
 getInfo
-html "Initializing network..."
-
-if [[ "$DEBUG" == [Yy1]* ]]; then
-  mtu=$(cat "/sys/class/net/$VM_NET_DEV/mtu")
-  line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
-  [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
-  info "$line"
-  if [ -f /etc/resolv.conf ]; then
-    nameservers=$(grep '^nameserver*' /etc/resolv.conf | head -c -1 | sed 's/nameserver //g;' | sed -z 's/\n/, /g')
-    [ -n "$nameservers" ] && info "Nameservers: $nameservers"
-  fi
-  echo
-fi
-
-# Clean up old files
-rm -f /var/run/dnsmasq.pid
-
-if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
-  info "Lingering interface will be removed..."
-  ip link delete "$VM_NET_TAP" || true
-fi
+cleanUp
 
 if [[ "$DHCP" == [Yy1]* ]]; then
-
-  checkOS
 
   # Configure for macvtap interface
   configureDHCP || exit 20
 
 else
-
-  if [[ "$IP" != "172."* && "$IP" != "10.8"* && "$IP" != "10.9"* ]]; then
-    checkOS
-  fi
 
   if [[ "${NETWORK,,}" != "user"* ]]; then
 
@@ -557,12 +670,11 @@ else
       NETWORK="user"
       msg="falling back to user-mode networking!"
       if [[ "$PODMAN" != [Yy1]* ]]; then
-        msg="an error occured, $msg"
+        msg="failed to setup NAT networking, $msg"
       else
         msg="podman detected, $msg"
       fi
       warn "$msg"
-      [ -z "$USER_PORTS" ] && info "Notice: when you want to expose ports in this mode, map them using this variable: \"USER_PORTS=80,443\"."
 
     fi
 
@@ -570,8 +682,11 @@ else
 
   if [[ "${NETWORK,,}" == "user"* ]]; then
 
-    # Configure for user-mode networking (slirp)
-    configureUser || exit 24
+    # Configure for user-mode networking (passt)
+    if ! configurePasst; then
+      error "Failed to configure user-mode networking!"
+      exit 24
+    fi
 
   fi
 
