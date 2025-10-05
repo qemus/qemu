@@ -120,7 +120,7 @@ configureDNS() {
   local mask="$5"
   local gateway="$6"
 
-  [[ "$DEBUG" == [Yy1]* ]] && echo "Starting Dnsmasq daemon..."
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Starting dnsmasq daemon..."
 
   local log="/var/log/dnsmasq.log"
   rm -f "$log"
