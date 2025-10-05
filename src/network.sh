@@ -225,7 +225,6 @@ configureSlirp() {
   forward=$(getUserPorts "${USER_PORTS:-}")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
-  NETWORK="user"
   VM_NET_IP="$ip"
   VM_NET_GATEWAY="$gateway"
 
@@ -337,7 +336,6 @@ configurePasst() {
 
   configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
-  NETWORK="user"
   VM_NET_IP="$ip"
   VM_NET_GATEWAY="$gateway"
 
