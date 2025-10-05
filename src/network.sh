@@ -193,6 +193,7 @@ configurePasst() {
   local log="/var/log/passt.log"
   rm -f "$log"
 
+  SAMBA_INTERFACE=""
   [ -z "$VM_NET_IP" ] && VM_NET_IP="$IP"
 
   if [ -z "$VM_NET_GATEWAY" ]; then
