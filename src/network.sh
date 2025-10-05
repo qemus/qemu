@@ -69,7 +69,7 @@ configureDHCP() {
 
   if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
-      warn "Failed to set MTU size to $MTU." && MTU="0"
+      warn "Failed to set MTU size to $MTU."
     fi
   fi
 
@@ -113,11 +113,12 @@ configureDHCP() {
 
 configureDNS() {
 
-  local ip="$1"
-  local mac="$2"
-  local host="$3"
-  local mask="$4"
-  local gateway="$5"
+  local if="$1"
+  local ip="$2"
+  local mac="$3"
+  local host="$4"
+  local mask="$5"
+  local gateway="$6"
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Starting Dnsmasq daemon..."
 
@@ -144,8 +145,8 @@ configureDNS() {
 
   fi
 
-  #DNSMASQ_OPTS+=" --interface=eth0"
-  #DNSMASQ_OPTS+=" --bind-interfaces"
+  DNSMASQ_OPTS+=" --interface=$if"
+  DNSMASQ_OPTS+=" --bind-interfaces"
 
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/$gateway"
@@ -154,9 +155,11 @@ configureDNS() {
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
 
   if ! $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS}; then
+
     local msg="Failed to start Dnsmasq, reason: $?"
     [ -f "$log" ] && cat "$log"
     error "$msg"
+
     return 1
   fi
 
@@ -172,6 +175,10 @@ getHostPorts() {
   local list="$1"
   list=$(echo "${list// /}" | sed 's/,*$//g')
 
+  if [[ "${DISPLAY,,}" == "web" ]]; then
+    [ -z "$list" ] && list="$WSS_PORT" || list+=",$WSS_PORT"
+  fi
+
   if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
     [ -z "$list" ] && list="$VNC_PORT" || list+=",$VNC_PORT"
   fi
@@ -180,6 +187,11 @@ getHostPorts() {
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
     [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
+  fi
+
+  if [[ "${NETWORK,,}" == "user"* ]]; then
+    # Temporary workaround for Passt bug
+    [ -z "$list" ] && list="53" || list+=",53"
   fi
 
   echo "$list"
@@ -193,23 +205,28 @@ configurePasst() {
   local log="/var/log/passt.log"
   rm -f "$log"
 
-  SAMBA_INTERFACE=""
-  [ -z "$VM_NET_IP" ] && VM_NET_IP="$IP"
+  local pid="/var/run/dnsmasq.pid"
+  [ -s "$pid" ] && pKill "$(<"$pid")"
 
-  if [ -z "$VM_NET_GATEWAY" ]; then
-    if [[ "$VM_NET_IP" != *".1" ]]; then
-      VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
+
+  local ip="$IP"
+  local gateway="$VM_NET_GATEWAY"
+  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+
+  if [ -z "$gateway" ]; then
+    if [[ "$ip" != *".1" ]]; then
+      gateway="${ip%.*}.1"
     else
-      VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
+      gateway="${ip%.*}.2"
     fi
   fi
-    
+
   # passt configuration:
 
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
 
-  PASST_OPTS+=" -a $VM_NET_IP"
-  PASST_OPTS+=" -g $VM_NET_GATEWAY"
+  PASST_OPTS+=" -a $ip"
+  PASST_OPTS+=" -g $gateway"
   PASST_OPTS+=" -n $VM_NET_MASK"
 
   exclude=$(getHostPorts "$HOST_PORTS")
@@ -221,17 +238,19 @@ configurePasst() {
   fi
 
   PASST_OPTS+=" -t $exclude"
-  PASST_OPTS+=" -u all"
+  PASST_OPTS+=" -u $exclude"
 
   # For backwards compatiblity
-  if [[ "$VM_NET_IP" != "20.20.20."* ]]; then
+  if [[ "$ip" != "20.20.20."* ]]; then
+    PASST_OPTS+=" --map-host-loopback $gateway"
     PASST_OPTS+=" --map-host-loopback 20.20.20.1"
   fi
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
-  PASST_OPTS+=" -D $VM_NET_GATEWAY"
-  PASST_OPTS+=" --no-dhcp-dns"
+
+  PASST_OPTS+=" --dns-forward $gateway"
+  PASST_OPTS+=" --dns-host 127.0.0.1"
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
@@ -251,7 +270,10 @@ configurePasst() {
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=/tmp/passt_1.socket"
 
-  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$VM_NET_GATEWAY" || return 1
+  configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+
+  VM_NET_IP="$ip"
+  VM_NET_GATEWAY="$gateway"
 
   return 0
 }
@@ -286,24 +308,25 @@ configureNAT() {
     fi
   fi
 
-  [ -z "$VM_NET_IP" ] && VM_NET_IP="172.30.0.2"
-  local broadcast="${VM_NET_IP%.*}.255"
+  local ip="172.30.0.2"
+  local samba="20.20.20.1"
+  local gateway="$VM_NET_GATEWAY"
+  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
-  if [ -z "$VM_NET_GATEWAY" ]; then
-    if [[ "$VM_NET_IP" != *".1" ]]; then
-      VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
+  if [ -z "$gateway" ]; then
+    if [[ "$ip" != *".1" ]]; then
+      gateway="${ip%.*}.1"
     else
-      VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
+      gateway="${ip%.*}.2"
     fi
   fi
 
   # For backwards compatibility
-  SAMBA_INTERFACE="20.20.20.1"
-  if [[ "$SAMBA_INTERFACE" == "$VM_NET_GATEWAY" ]]; then
-    SAMBA_INTERFACE=""
+  if [[ "$samba" == "$gateway" ]]; then
+    samba=""
   else
-    if ! ip address add dev "$VM_NET_DEV" "$SAMBA_INTERFACE/24" label "$VM_NET_DEV:compat"; then
-      SAMBA_INTERFACE=""
+    if ! ip address add dev "$VM_NET_DEV" "$samba/24" label "$VM_NET_DEV:compat"; then
+      samba=""
       warn "failed to configure IP alias!"
     fi
   fi
@@ -315,7 +338,7 @@ configureNAT() {
     warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
-  if ! ip address add "$VM_NET_GATEWAY/24" broadcast "$broadcast.255" dev dockerbridge; then
+  if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev dockerbridge; then
     warn "failed to add IP address pool!" && return 1
   fi
 
@@ -331,7 +354,7 @@ configureNAT() {
 
   if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
     if ! ip link set dev "$VM_NET_TAP" mtu "$MTU"; then
-      warn "failed to set MTU size to $MTU." && MTU="0"
+      warn "failed to set MTU size to $MTU."
     fi
   fi
 
@@ -373,11 +396,11 @@ configureNAT() {
   fi
 
   # shellcheck disable=SC2086
-  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$VM_NET_IP"; then
+  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$ip"; then
     warn "failed to configure IP tables!" && return 1
   fi
 
-  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$VM_NET_IP"; then
+  if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p udp -j DNAT --to "$ip"; then
     warn "failed to configure IP tables!" && return 1
   fi
 
@@ -395,7 +418,11 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$VM_NET_GATEWAY" || return 1
+  configureDNS "dockerbridge" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+
+  VM_NET_IP="$ip"
+  VM_NET_GATEWAY="$gateway"
+  SAMBA_INTERFACE="$samba"
 
   return 0
 }
@@ -619,8 +646,9 @@ if [[ "$NETWORK" == [Nn]* ]]; then
   return 0
 fi
 
-html "Initializing network..."
-[[ "$DEBUG" == [Yy1]* ]] && echo "Retrieving network information..."
+msg="Initializing network..."
+html "$msg"
+[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
 
 getInfo
 cleanUp
@@ -641,7 +669,7 @@ else
       NETWORK="user"
       msg="falling back to user-mode networking!"
       if [[ "$PODMAN" != [Yy1]* ]]; then
-        msg="an error occured, $msg"
+        msg="failed to setup NAT networking, $msg"
       else
         msg="podman detected, $msg"
       fi
@@ -654,7 +682,10 @@ else
   if [[ "${NETWORK,,}" == "user"* ]]; then
 
     # Configure for user-mode networking (passt)
-    configurePasst || exit 24
+    if ! configurePasst; then
+      error "Failed to configure user-mode networking!"
+      exit 24
+    fi
 
   fi
 
