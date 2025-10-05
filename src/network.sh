@@ -208,9 +208,6 @@ configureSlirp() {
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring slirp networking..."
 
-  local pid="/var/run/dnsmasq.pid"
-  [ -s "$pid" ] && pKill "$(<"$pid")"
-
   local ip="$IP"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
   local base="${ip%.*}."
@@ -218,13 +215,6 @@ configureSlirp() {
 
   [ "${ip/$base/}" -lt "4" ] && ip="${ip%.*}.4"
   [ -z "$gateway" ] && gateway="${ip%.*}.1"
-
-  local dns=""
-
-  if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
-    dns="dns=$gateway,"
-      #ipv6-dns=addr
-  fi
 
   local ipv6=""
   [ -n "$IP6" ] && ipv6="ipv6=on,"
@@ -234,8 +224,6 @@ configureSlirp() {
   local forward
   forward=$(getUserPorts "${USER_PORTS:-}")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
-
-  configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   NETWORK="user"
   VM_NET_IP="$ip"
