@@ -112,6 +112,12 @@ configureDHCP() {
 
 configureDNS() {
 
+  local ip="$1"
+  local mac="$2"
+  local host="$3"
+  local mask="$4"
+  local gateway="$5"
+
   [[ "$DEBUG" == [Yy1]* ]] && echo "Starting Dnsmasq daemon..."
 
   local log="/var/log/dnsmasq.log"
@@ -120,25 +126,25 @@ configureDNS() {
   if [[ "${NETWORK,,}" != "user"* ]]; then
 
     # Create lease file for faster resolve
-    echo "0 $VM_NET_MAC $VM_NET_IP $VM_NET_HOST 01:$VM_NET_MAC" > /var/lib/misc/dnsmasq.leases
+    echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
     chmod 644 /var/lib/misc/dnsmasq.leases
 
     # dnsmasq configuration:
     DNSMASQ_OPTS+=" --dhcp-authoritative"
 
     # Set DHCP range and host
-    DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP"
-    DNSMASQ_OPTS+=" --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite"
+    DNSMASQ_OPTS+=" --dhcp-range=$ip,$ip"
+    DNSMASQ_OPTS+=" --dhcp-host=$mac,,$ip,$host,infinite"
 
     # Set DNS server and gateway
-    DNSMASQ_OPTS+=" --dhcp-option=option:netmask,${VM_NET_MASK}"
-    DNSMASQ_OPTS+=" --dhcp-option=option:router,${VM_NET_IP%.*}.1"
-    DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1"
+    DNSMASQ_OPTS+=" --dhcp-option=option:netmask,$mask"
+    DNSMASQ_OPTS+=" --dhcp-option=option:router,$gateway"
+    DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,$gateway"
 
   fi
   
   # Add DNS entry for container
-  DNSMASQ_OPTS+=" --address=/host.lan/${VM_NET_IP%.*}.1"
+  DNSMASQ_OPTS+=" --address=/host.lan/$gateway"
   DNSMASQ_OPTS+=" --log-facility=$log"
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
@@ -239,7 +245,7 @@ configureUser() {
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=/tmp/passt_1.socket"
 
-  configureDNS || return 1
+  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   return 0
 }
@@ -274,11 +280,20 @@ configureNAT() {
     fi
   fi
 
-  [ -z "$VM_NET_IP" ] && VM_NET_IP="172.30.0.4" 
+  [ -z "$VM_NET_IP" ] && VM_NET_IP="172.30.0.4"
+
+  local gateway=""
+  local broadcast="${VM_NET_IP%.*}.255"
+
+  if [[ "$VM_NET_IP" != *".1" ]]; then
+    gateway="${VM_NET_IP%.*}.1"
+  else
+    gateway="${VM_NET_IP%.*}.2"
+  fi
 
   # For backwards compatibility
   SAMBA_INTERFACE="20.20.20.1"
-  if [[ "${VM_NET_IP%.*}.1" == "$SAMBA_INTERFACE" ]]; then
+  if [[ "$SAMBA_INTERFACE" == "$gateway" ]]; then
     SAMBA_INTERFACE=""
   else
     if ! ip address add dev "$VM_NET_DEV" "$SAMBA_INTERFACE/24" label "$VM_NET_DEV:compat"; then
@@ -294,7 +309,7 @@ configureNAT() {
     warn "Failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
-  if ! ip address add "${VM_NET_IP%.*}.1/24" broadcast "${VM_NET_IP%.*}.255" dev dockerbridge; then
+  if ! ip address add "$gateway/24" broadcast "$broadcast.255" dev dockerbridge; then
     warn "Failed to add IP address pool!" && return 1
   fi
 
@@ -374,7 +389,7 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS || return 1
+  configureDNS "$VM_NET_IP" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   return 0
 }
@@ -426,6 +441,20 @@ closeNetwork() {
   return 0
 }
 
+cleanUp() {
+
+  # Clean up old files
+  rm -f /var/run/passt.pid
+  rm -f /var/run/dnsmasq.pid
+
+  if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
+    info "Lingering interface will be removed..."
+    ip link delete "$VM_NET_TAP" || true
+  fi
+
+  return 0
+}
+
 checkOS() {
 
   local kernel
@@ -466,6 +495,16 @@ getInfo() {
     error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 26
   fi
 
+  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
+  IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1)
+  IP6=""
+
+  # shellcheck disable=SC2143
+  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
+    IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up)
+    [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
+  fi
+
   local result nic bus
   result=$(ethtool -i "$VM_NET_DEV")
   nic=$(grep -m 1 -i 'driver:' <<< "$result" | awk '{print $(2)}')
@@ -479,6 +518,8 @@ getInfo() {
 
   if [[ "$DHCP" == [Yy1]* ]]; then
 
+    checkOS
+
     if [[ "${nic,,}" == "ipvlan" ]]; then
       error "This container does not support IPVLAN networking when DHCP=Y."
       exit 29
@@ -490,13 +531,12 @@ getInfo() {
       exit 29
     fi
 
-  fi
+  else
 
-  if [ -n "$VM_NET_IP" ]; then
-    local base="${VM_NET_IP%.*}."
-    if [ "${VM_NET_IP/$base/}" -lt "3" ]; then
-      error "Invalid VM_NET_IP, must end in a number higher than .3" && exit 27
+    if [[ "$IP" != "172."* && "$IP" != "10.8"* && "$IP" != "10.9"* ]]; then
+      checkOS
     fi
+
   fi
 
   local mtu=""
@@ -548,16 +588,6 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
-  IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1)
-
-  IP6=""
-  # shellcheck disable=SC2143
-  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
-    IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up)
-    [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
-  fi
-
   [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
 
   if [[ "$DEBUG" == [Yy1]* ]]; then
@@ -587,28 +617,14 @@ html "Initializing network..."
 [[ "$DEBUG" == [Yy1]* ]] && echo "Retrieving network information..."
 
 getInfo
-
-# Clean up old files
-rm -f /var/run/passt.pid
-rm -f /var/run/dnsmasq.pid
-
-if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
-  info "Lingering interface will be removed..."
-  ip link delete "$VM_NET_TAP" || true
-fi
+cleanUp
 
 if [[ "$DHCP" == [Yy1]* ]]; then
-
-  checkOS
 
   # Configure for macvtap interface
   configureDHCP || exit 20
 
 else
-
-  if [[ "$IP" != "172."* && "$IP" != "10.8"* && "$IP" != "10.9"* ]]; then
-    checkOS
-  fi
 
   if [[ "${NETWORK,,}" != "user"* ]]; then
 
@@ -624,7 +640,6 @@ else
         msg="podman detected, $msg"
       fi
       warn "$msg"
-      info "Notice: when you want to expose ports in this mode, map them using this variable: \"USER_PORTS=80,443\"."
 
     fi
 
