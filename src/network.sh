@@ -268,9 +268,13 @@ configureNAT() {
   fi
 
   # For backwards compatibility
-  if [[ "$VM_NET_IP" != "20.20.20."* ]]; then
-    if ! ip address add dev "$VM_NET_DEV" 20.20.20.1/24 label "$VM_NET_DEV:compat"; then
-      warn "Failed to configure IP alias!" && return 1
+  SAMBA_INTERFACE="20.20.20.1"
+  if [[ "${VM_NET_IP%.*}.1" == "$SAMBA_INTERFACE" ]]; then
+    SAMBA_INTERFACE=""
+  else
+    if ! ip address add dev "$VM_NET_DEV" "$SAMBA_INTERFACE/24" label "$VM_NET_DEV:compat"; then
+      SAMBA_INTERFACE=""
+      warn "Failed to configure IP alias!"
     fi
   fi
 
@@ -479,10 +483,10 @@ getInfo() {
 
   fi
 
-  BASE_IP="${VM_NET_IP%.*}."
+  local base="${VM_NET_IP%.*}."
 
-  if [ "${VM_NET_IP/$BASE_IP/}" -lt "3" ]; then
-    error "Invalid VM_NET_IP, must end in a higher number than .3" && exit 27
+  if [ "${VM_NET_IP/$base/}" -lt "3" ]; then
+    error "Invalid VM_NET_IP, must end in a number higher than .3" && exit 27
   fi
 
   local mtu=""
