@@ -120,6 +120,7 @@ configureDNS() {
   local mask="$5"
   local gateway="$6"
 
+  [[ "${DNSMASQ_DISABLE:-}" == [Yy1]* ]] && return 0
   [[ "$DEBUG" == [Yy1]* ]] && echo "Starting dnsmasq daemon..."
 
   local log="/var/log/dnsmasq.log"
@@ -167,6 +168,78 @@ configureDNS() {
   if [[ "$DNSMASQ_DEBUG" == [Yy1]* ]]; then
     tail -fn +0 "$log" &
   fi
+
+  return 0
+}
+
+getUserPorts() {
+
+  local args=""
+  local list=$1
+  local ssh="22"
+
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
+  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
+
+  list="${list//,/ }"
+  list="${list## }"
+  list="${list%% }"
+
+  for port in $list; do
+    proto="tcp"
+    num="$port"
+
+    if [[ "$port" == */udp ]]; then
+      proto="udp"
+      num="${port%/udp}"
+    elif [[ "$port" == */tcp ]]; then
+      proto="tcp"
+      num="${port%/tcp}"
+    fi
+
+    args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
+  done
+
+  echo "${args%?}"
+  return 0
+}
+
+configureSlirp() {
+
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring slirp networking..."
+
+  local pid="/var/run/dnsmasq.pid"
+  [ -s "$pid" ] && pKill "$(<"$pid")"
+
+  local ip="$IP"
+  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+  local base="${ip%.*}."
+  local gateway="$VM_NET_GATEWAY"
+
+  [ "${ip/$base/}" -lt "4" ] && ip="${ip%.*}.4"
+  [ -z "$gateway" ] && gateway="${ip%.*}.1"
+
+  local dns=""
+
+  if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
+    dns="dns=$gateway,"
+      #ipv6-dns=addr
+  fi
+
+  local ipv6=""
+  [ -n "$IP6" ] && ipv6="ipv6=on,"
+  
+  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${dns}${ipv6}hostname=$VM_NET_HOST"
+  
+  local forward
+  forward=$(getUserPorts "${USER_PORTS:-}")
+  [ -n "$forward" ] && NET_OPTS+=",$forward"
+
+  configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+
+  NETWORK="user"
+  VM_NET_IP="$ip"
+  VM_NET_GATEWAY="$gateway"
 
   return 0
 }
@@ -249,8 +322,11 @@ configurePasst() {
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
 
-  PASST_OPTS+=" --dns-forward $gateway"
-  PASST_OPTS+=" --dns-host 127.0.0.1"
+  if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
+    PASST_OPTS+=" --dns-forward $gateway"
+    PASST_OPTS+=" --dns-host 127.0.0.1"
+  fi
+  
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
@@ -273,6 +349,7 @@ configurePasst() {
 
   configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
+  NETWORK="user"
   VM_NET_IP="$ip"
   VM_NET_GATEWAY="$gateway"
 
@@ -342,7 +419,10 @@ configureNAT() {
   if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev dockerbridge; then
     warn "failed to add IP address pool!" && return 1
   fi
-
+  # fec0::/64
+  # ip address add $PREFIX dev br0
+  # ip route add default via $ROUTE dev br0
+ 
   while ! ip link set dockerbridge up; do
     info "Waiting for IP address to become available..."
     sleep 2
@@ -667,29 +747,44 @@ if [[ "$DHCP" == [Yy1]* ]]; then
 
 else
 
-  if [[ "${NETWORK,,}" != "user"* ]]; then
+  case "${NETWORK,,}" in
+    "user"* | "passt" | "slirp" ) ;;
+    "nat" | "tap" | "tun" | "tuntap" | "y" )
 
-    # Configure for tap interface
-    if ! configureNAT; then
+      # Configure tap interface
+      if ! configureNAT; then
 
-      closeBridge
-      NETWORK="user"
-      msg="falling back to user-mode networking!"
-      msg="failed to setup NAT networking, $msg"
+        closeBridge
+        NETWORK="user"
+        msg="falling back to user-mode networking!"
+        msg="failed to setup NAT networking, $msg"
 
-    fi
+      fi ;;
 
-  fi
+  esac
 
-  if [[ "${NETWORK,,}" == "user"* ]]; then
+  case "${NETWORK,,}" in
+    "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
+    "user"* | "passt" )
 
-    # Configure for user-mode networking (passt)
-    if ! configurePasst; then
-      error "Failed to configure user-mode networking!"
-      exit 24
-    fi
+      # Configure for user-mode networking (passt)
+      if ! configurePasst; then
+        error "Failed to configure user-mode networking!"
+        exit 24
+      fi ;;
+  
+    "slirp" )
 
-  fi
+      # Configure for user-mode networking (slirp)
+      if ! configureSlirp; then
+        error "Failed to configure user-mode networking!"
+        exit 24
+      fi ;;
+
+    *)
+      error "Unrecognized NETWORK value: \"$NETWORK\"" && exit 24
+      ;;
+  esac
 
 fi
 
