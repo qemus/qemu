@@ -407,9 +407,6 @@ configureNAT() {
   if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev dockerbridge; then
     warn "failed to add IP address pool!" && return 1
   fi
-  # fec0::/64
-  # ip address add $PREFIX dev br0
-  # ip route add default via $ROUTE dev br0
 
   while ! ip link set dockerbridge up; do
     info "Waiting for IP address to become available..."
