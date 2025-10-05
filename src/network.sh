@@ -117,22 +117,26 @@ configureDNS() {
   local log="/var/log/dnsmasq.log"
   rm -f "$log"
 
-  # Create lease file for faster resolve
-  echo "0 $VM_NET_MAC $VM_NET_IP $VM_NET_HOST 01:$VM_NET_MAC" > /var/lib/misc/dnsmasq.leases
-  chmod 644 /var/lib/misc/dnsmasq.leases
+  if [[ "${NETWORK,,}" != "user"* ]]; then
 
-  # dnsmasq configuration:
-  DNSMASQ_OPTS+=" --dhcp-authoritative"
+    # Create lease file for faster resolve
+    echo "0 $VM_NET_MAC $VM_NET_IP $VM_NET_HOST 01:$VM_NET_MAC" > /var/lib/misc/dnsmasq.leases
+    chmod 644 /var/lib/misc/dnsmasq.leases
 
-  # Set DHCP range and host
-  DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP"
-  DNSMASQ_OPTS+=" --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite"
+    # dnsmasq configuration:
+    DNSMASQ_OPTS+=" --dhcp-authoritative"
 
-  # Set DNS server and gateway
-  DNSMASQ_OPTS+=" --dhcp-option=option:netmask,${VM_NET_MASK}"
-  DNSMASQ_OPTS+=" --dhcp-option=option:router,${VM_NET_IP%.*}.1"
-  DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1"
+    # Set DHCP range and host
+    DNSMASQ_OPTS+=" --dhcp-range=$VM_NET_IP,$VM_NET_IP"
+    DNSMASQ_OPTS+=" --dhcp-host=$VM_NET_MAC,,$VM_NET_IP,$VM_NET_HOST,infinite"
 
+    # Set DNS server and gateway
+    DNSMASQ_OPTS+=" --dhcp-option=option:netmask,${VM_NET_MASK}"
+    DNSMASQ_OPTS+=" --dhcp-option=option:router,${VM_NET_IP%.*}.1"
+    DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,${VM_NET_IP%.*}.1"
+
+  fi
+  
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/${VM_NET_IP%.*}.1"
   DNSMASQ_OPTS+=" --log-facility=$log"
@@ -156,16 +160,17 @@ configureDNS() {
 getHostPorts() {
 
   local list="$1"
-
-  if [[ "${WEB:-}" != [Nn]* ]]; then
-    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
-  fi
+  list=$(echo "${list// /}" | sed 's/,*$//g')
 
   if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
     [ -z "$list" ] && list="$VNC_PORT" || list+=",$VNC_PORT"
   fi
 
   [ -z "$list" ] && list="$MON_PORT" || list+=",$MON_PORT"
+
+  if [[ "${WEB:-}" != [Nn]* ]]; then
+    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
+  fi
 
   echo "$list"
   return 0
@@ -189,8 +194,16 @@ configureUser() {
 
   PASST_OPTS+=" -n $VM_NET_MASK"
 
-  PASST_OPTS+=" -t ~8006,7001"
-  PASST_OPTS+=" -u ~3389"
+  exclude=$(getHostPorts "$HOST_PORTS")
+
+  if [ -z "$exclude" ]; then
+    exclude="all"
+  else
+    exclude="~${exclude//,/,~}"
+  fi
+
+  PASST_OPTS+=" -t $exclude"
+  PASST_OPTS+=" -u all"
 
   # For backwards compatiblity
   if [[ "$VM_NET_IP" != "20.20.20."* ]]; then
@@ -218,6 +231,9 @@ configureUser() {
   fi
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=/tmp/passt_1.socket"
+
+  configureDNS || return 1
+
   return 0
 }
 
