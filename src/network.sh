@@ -191,11 +191,13 @@ configurePasst() {
   rm -f "$log"
 
   [ -z "$VM_NET_IP" ] && VM_NET_IP="$IP"
-  
-  if [[ "$VM_NET_IP" != *".1" ]]; then
-    VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
-  else
-    VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
+
+  if [ -z "$VM_NET_GATEWAY" ]; then
+    if [[ "$VM_NET_IP" != *".1" ]]; then
+      VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
+    else
+      VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
+    fi
   fi
     
   # passt configuration:
@@ -280,13 +282,15 @@ configureNAT() {
     fi
   fi
 
-  [ -z "$VM_NET_IP" ] && VM_NET_IP="172.30.0.4"
+  [ -z "$VM_NET_IP" ] && VM_NET_IP="172.30.0.2"
   local broadcast="${VM_NET_IP%.*}.255"
 
-  if [[ "$VM_NET_IP" != *".1" ]]; then
-    VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
-  else
-    VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
+  if [ -z "$VM_NET_GATEWAY" ]; then
+    if [[ "$VM_NET_IP" != *".1" ]]; then
+      VM_NET_GATEWAY="${VM_NET_IP%.*}.1"
+    else
+      VM_NET_GATEWAY="${VM_NET_IP%.*}.2"
+    fi
   fi
 
   # For backwards compatibility
