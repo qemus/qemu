@@ -182,7 +182,7 @@ getHostPorts() {
   return 0
 }
 
-configureUser() {
+configurePasst() {
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
 
@@ -647,8 +647,8 @@ else
 
   if [[ "${NETWORK,,}" == "user"* ]]; then
 
-    # Configure for user-mode networking (slirp)
-    configureUser || exit 24
+    # Configure for user-mode networking (passt)
+    configurePasst || exit 24
 
   fi
 
