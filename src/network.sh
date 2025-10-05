@@ -622,8 +622,14 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
+  if [ -z "${PODMAN:-}" ]; then
+    [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
+  fi
 
+  if [[ "$PODMAN" == [Yy1]* ]] && [ -z "${NETWORK:-}" ]; then
+    [[ "$DHCP" != [Yy1]* ]] && NETWORK="user"
+  fi
+   
   if [[ "$DEBUG" == [Yy1]* ]]; then
     line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
     [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
@@ -669,12 +675,7 @@ else
       closeBridge
       NETWORK="user"
       msg="falling back to user-mode networking!"
-      if [[ "$PODMAN" != [Yy1]* ]]; then
-        msg="failed to setup NAT networking, $msg"
-      else
-        msg="podman detected, $msg"
-      fi
-      warn "$msg"
+      msg="failed to setup NAT networking, $msg"
 
     fi
 
