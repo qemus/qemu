@@ -153,6 +153,7 @@ configureDNS() {
   DNSMASQ_OPTS+=" --log-facility=$log"
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
+  [[ "$DEBUG" == [Yy1]* ]] && printf "Dnsmasq arguments:\n\n%s\n\n" "${DNSMASQ_OPTS// -/$'\n-'}"
 
   if ! $DNSMASQ ${DNSMASQ_OPTS:+ $DNSMASQ_OPTS}; then
 
@@ -208,7 +209,6 @@ configurePasst() {
   local pid="/var/run/dnsmasq.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
 
-
   local ip="$IP"
   local gateway="$VM_NET_GATEWAY"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
@@ -256,7 +256,8 @@ configurePasst() {
   PASST_OPTS+=" -q"
 
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
-
+  [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
+  
   if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
     local msg="Failed to start passt, reason: $?"
     [ -f "$log" ] && cat "$log"
