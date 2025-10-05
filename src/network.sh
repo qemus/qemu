@@ -18,9 +18,9 @@ set -Eeuo pipefail
 : "${VM_NET_GATEWAY:=""}"
 : "${VM_NET_MASK:="255.255.255.0"}"
 
+: "${PASST:="passt"}"
 : "${PASST_OPTS:=""}"
 : "${PASST_DEBUG:=""}"
-: "${PASST:="passt.avx2"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ_DEBUG:=""}"
