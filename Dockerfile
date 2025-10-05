@@ -2,6 +2,7 @@
 
 FROM debian:trixie-slim
 
+ARG TARGETARCH
 ARG VERSION_ARG="0.0"
 ARG VERSION_VNC="1.6.0"
 
