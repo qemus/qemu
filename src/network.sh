@@ -250,9 +250,9 @@ getHostPorts() {
     [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
   fi
 
-  if [[ "${NETWORK,,}" == "user"* ]]; then
+  if [[ "${NETWORK,,}" == "user"* || "${NETWORK,,}" == "passt" ]]; then
     # Temporary workaround for Passt bug
-    [ -z "$list" ] && list="53" || list+=",53"
+    [ -z "$list" ] && list="53,445" || list+=",53,445"
   fi
 
   echo "$list"
@@ -301,10 +301,9 @@ configurePasst() {
   PASST_OPTS+=" -u $exclude"
 
   # For backwards compatiblity
-  if [[ "$ip" != "20.20.20."* ]]; then
-    PASST_OPTS+=" --map-host-loopback $gateway"
-    PASST_OPTS+=" --map-host-loopback 20.20.20.1"
-  fi
+  # if [[ "$ip" != "20.20.20."* ]]; then
+  #   PASST_OPTS+=" --map-host-loopback 20.20.20.1"
+  # fi
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
