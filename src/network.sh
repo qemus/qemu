@@ -801,6 +801,10 @@ else
         exit 24
       fi ;;
 
+      if [ -z "$USER_PORTS" ]; then
+        info "Notice: slirp networking is active, so when you want to expose ports, you will need to map them using this variable: \"USER_PORTS=80,443\"."
+      fi
+
     *)
       error "Unrecognized NETWORK value: \"$NETWORK\"" && exit 24
       ;;
