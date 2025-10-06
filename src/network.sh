@@ -234,11 +234,12 @@ getHostPorts() {
 compat() {
 
   local gateway="$1"
+  local interface="$2"
   local samba="20.20.20.1"
   [[ "$samba" == "$gateway" ]] && return 0
 
   # Backwards compatibility with old installations
-  if ip address add dev "$VM_NET_DEV" "$samba/24" label "$VM_NET_DEV:compat"; then
+  if ip address add dev "$interface" "$samba/24" label "$interface:compat"; then
     SAMBA_INTERFACE="$samba"
   else
     warn "failed to configure IP alias!"
@@ -256,6 +257,9 @@ configureSlirp() {
   local base="${ip%.*}."
   [ "${ip/$base/}" -lt "4" ] && ip="${ip%.*}.4"
   local gateway="${ip%.*}.1"
+
+  # Backwards compatibility
+  compat "$gateway" "$VM_NET_DEV"
 
   local ipv6=""
   [ -n "$IP6" ] && ipv6="ipv6=on,"
@@ -289,6 +293,9 @@ configurePasst() {
   else
     gateway="${ip%.*}.2"
   fi
+
+  # Backwards compatibility
+  compat "$gateway" "$VM_NET_DEV"
 
   # passt configuration:
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
@@ -397,6 +404,9 @@ configureNAT() {
     sleep 2
   done
 
+  # Backwards compatibility
+  compat "$gateway" dockerbridge
+
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
     warn "$tuntap" && return 1
@@ -478,9 +488,11 @@ closeBridge() {
 
   local pid="/var/run/dnsmasq.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
+  rm -f "$pid"
 
   pid="/var/run/passt.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
+  rm -f "$pid"
 
   [[ "${NETWORK,,}" == "user"* ]] && return 0
 
