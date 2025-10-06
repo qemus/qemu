@@ -800,15 +800,14 @@ else
       if ! configureSlirp; then
         error "Failed to configure user-mode networking!"
         exit 24
-      fi ;;
+      fi
 
       if [ -z "$USER_PORTS" ]; then
         info "Notice: slirp networking is active, so when you want to expose ports, you will need to map them using this variable: \"USER_PORTS=80,443\"."
-      fi
+      fi ;;
 
     *)
-      error "Unrecognized NETWORK value: \"$NETWORK\"" && exit 24
-      ;;
+      error "Unrecognized NETWORK value: \"$NETWORK\"" && exit 24 ;;
   esac
 
 fi
