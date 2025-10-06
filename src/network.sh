@@ -226,7 +226,7 @@ getHostPorts() {
   fi
 
   if [[ "${NETWORK,,}" == "passt" ]]; then
-  
+
     local DNS_PORT="53"
     local SAMBA_PORT="445"
     # Temporary workaround for Passt bug
@@ -773,7 +773,7 @@ else
       NETWORK="slirp"
     fi
   fi
-  
+
   case "${NETWORK,,}" in
     "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
     "passt" )
