@@ -226,8 +226,22 @@ getHostPorts() {
   fi
 
   if [[ "${NETWORK,,}" == "passt" ]]; then
+  
+    local DNS_PORT="53"
+    local SAMBA_PORT="445"
     # Temporary workaround for Passt bug
-    [ -z "$list" ] && list="53,445,137,138,139,3702,5357" || list+=",53,445,137,138,139,3702,5357"
+
+    if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
+      [ -z "$list" ] && list="$DNS_PORT" || list+=",$DNS_PORT"
+    fi
+
+    if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
+      if [[ "${SAMBA:-}" != [Nn]* ]]; then
+        [ -z "$list" ] && list="$SAMBA_PORT" || list+=",$SAMBA_PORT"
+      fi
+      [ -z "$list" ] && list="137,138,139,3702,5357" || list+=",137,138,139,3702,5357"
+    fi
+
   fi
 
   echo "$list"
