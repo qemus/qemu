@@ -4,11 +4,8 @@ set -Eeuo pipefail
 trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 [[ "${TRACE:-}" == [Yy1]* ]] && set -o functrace && trap 'echo "# $BASH_COMMAND" >&2' DEBUG
 
-[ ! -f "/run/entry.sh" ] && error "Script must run inside Docker container!" && exit 11
+[ ! -f "/run/entry.sh" ] && error "Script must be run inside the container!" && exit 11
 [ "$(id -u)" -ne "0" ] && error "Script must be executed with root privileges." && exit 12
-
-echo "❯ Starting $APP for Docker v$(</run/version)..."
-echo "❯ For support visit $SUPPORT"
 
 # Docker environment variables
 
@@ -27,13 +24,23 @@ echo "❯ For support visit $SUPPORT"
 
 # Helper variables
 
+PODMAN="N"
+ENGINE="Docker"
 PROCESS="${APP,,}"
 PROCESS="${PROCESS// /-}"
+
+if [ -f "/run/.containerenv" ]; then
+  PODMAN="Y"
+  ENGINE="Podman"
+fi
+
+echo "❯ Starting $APP for $ENGINE v$(</run/version)..."
+echo "❯ For support visit $SUPPORT"
 
 INFO="/run/shm/msg.html"
 PAGE="/run/shm/index.html"
 TEMPLATE="/var/www/index.html"
-FOOTER1="$APP for Docker v$(</run/version)"
+FOOTER1="$APP for $ENGINE v$(</run/version)"
 FOOTER2="<a href='$SUPPORT'>$SUPPORT</a>"
 
 CPU=$(cpu)
@@ -169,7 +176,7 @@ if (( VNC_PORT < 5900 )); then
 fi
 
 cp -r /var/www/* /run/shm
-html "Starting $APP for Docker..."
+html "Starting $APP for $ENGINE..."
 
 if [[ "${WEB:-}" != [Nn]* ]]; then
 
