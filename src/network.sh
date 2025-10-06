@@ -297,11 +297,12 @@ configureSlirp() {
   forward=$(getUserPorts "${USER_PORTS:-}")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
-  # Force local DNS to dnsmasq as slirp provides no way to set it
-  cp /etc/resolv.conf /etc/resolv.dnsmasq
-  echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
-
-  configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
+    # Force local DNS to dnsmasq as slirp provides no way to set it
+    cp /etc/resolv.conf /etc/resolv.dnsmasq
+    echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
+    configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  fi
 
   VM_NET_IP="$ip"
   return 0
