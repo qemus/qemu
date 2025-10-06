@@ -15,7 +15,6 @@ set -Eeuo pipefail
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
-: "${VM_NET_GATEWAY:=""}"
 : "${VM_NET_MASK:="255.255.255.0"}"
 
 : "${PASST:="passt"}"
@@ -204,33 +203,6 @@ getUserPorts() {
   return 0
 }
 
-configureSlirp() {
-
-  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring slirp networking..."
-
-  local ip="$IP"
-  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
-  local base="${ip%.*}."
-  local gateway="$VM_NET_GATEWAY"
-
-  [ "${ip/$base/}" -lt "4" ] && ip="${ip%.*}.4"
-  [ -z "$gateway" ] && gateway="${ip%.*}.1"
-
-  local ipv6=""
-  [ -n "$IP6" ] && ipv6="ipv6=on,"
-
-  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
-
-  local forward
-  forward=$(getUserPorts "${USER_PORTS:-}")
-  [ -n "$forward" ] && NET_OPTS+=",$forward"
-
-  VM_NET_IP="$ip"
-  VM_NET_GATEWAY="$gateway"
-
-  return 0
-}
-
 getHostPorts() {
 
   local list="$1"
@@ -259,6 +231,47 @@ getHostPorts() {
   return 0
 }
 
+compat() {
+
+  local gateway="$1"
+  local samba="20.20.20.1"
+  [[ "$samba" == "$gateway" ]] && return 0
+
+  # Backwards compatibility with old installations
+  if ip address add dev "$VM_NET_DEV" "$samba/24" label "$VM_NET_DEV:compat"; then
+    SAMBA_INTERFACE="$samba"
+  else
+    warn "failed to configure IP alias!"
+  fi
+
+  return 0
+}
+
+configureSlirp() {
+
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring slirp networking..."
+
+  local ip="$IP"
+  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+  local base="${ip%.*}."
+  local gateway="$VM_NET_GATEWAY"
+
+  [ "${ip/$base/}" -lt "4" ] && ip="${ip%.*}.4"
+  [ -z "$gateway" ] && gateway="${ip%.*}.1"
+
+  local ipv6=""
+  [ -n "$IP6" ] && ipv6="ipv6=on,"
+
+  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
+
+  local forward
+  forward=$(getUserPorts "${USER_PORTS:-}")
+  [ -n "$forward" ] && NET_OPTS+=",$forward"
+
+  VM_NET_IP="$ip"
+  return 0
+}
+
 configurePasst() {
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
@@ -282,7 +295,6 @@ configurePasst() {
   fi
 
   # passt configuration:
-
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
 
   PASST_OPTS+=" -a $ip"
@@ -299,12 +311,6 @@ configurePasst() {
 
   PASST_OPTS+=" -t $exclude"
   PASST_OPTS+=" -u $exclude"
-
-  # For backwards compatiblity
-  # if [[ "$ip" != "20.20.20."* ]]; then
-  #   PASST_OPTS+=" --map-host-loopback 20.20.20.1"
-  # fi
-
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
 
@@ -336,8 +342,6 @@ configurePasst() {
   configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   VM_NET_IP="$ip"
-  VM_NET_GATEWAY="$gateway"
-
   return 0
 }
 
@@ -372,25 +376,14 @@ configureNAT() {
   fi
 
   local ip="172.30.0.2"
-  local samba="20.20.20.1"
-  local gateway="$VM_NET_GATEWAY"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
+  local gateway="$VM_NET_GATEWAY"
   if [ -z "$gateway" ]; then
     if [[ "$ip" != *".1" ]]; then
       gateway="${ip%.*}.1"
     else
       gateway="${ip%.*}.2"
-    fi
-  fi
-
-  # For backwards compatibility
-  if [[ "$samba" == "$gateway" ]]; then
-    samba=""
-  else
-    if ! ip address add dev "$VM_NET_DEV" "$samba/24" label "$VM_NET_DEV:compat"; then
-      samba=""
-      warn "failed to configure IP alias!"
     fi
   fi
 
@@ -484,9 +477,6 @@ configureNAT() {
   configureDNS "dockerbridge" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   VM_NET_IP="$ip"
-  VM_NET_GATEWAY="$gateway"
-  SAMBA_INTERFACE="$samba"
-
   return 0
 }
 
