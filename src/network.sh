@@ -127,25 +127,26 @@ configureDNS() {
   local log="/var/log/dnsmasq.log"
   rm -f "$log"
 
-  if [[ "${NETWORK,,}" != "user"* ]]; then
+  case "${NETWORK,,}" in
+    "nat" | "tap" | "tun" | "tuntap" | "y" )
 
-    # Create lease file for faster resolve
-    echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
-    chmod 644 /var/lib/misc/dnsmasq.leases
+      # Create lease file for faster resolve
+      echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
+      chmod 644 /var/lib/misc/dnsmasq.leases
 
-    # dnsmasq configuration:
-    DNSMASQ_OPTS+=" --dhcp-authoritative"
+      # dnsmasq configuration:
+      DNSMASQ_OPTS+=" --dhcp-authoritative"
 
-    # Set DHCP range and host
-    DNSMASQ_OPTS+=" --dhcp-range=$ip,$ip"
-    DNSMASQ_OPTS+=" --dhcp-host=$mac,,$ip,$host,infinite"
+      # Set DHCP range and host
+      DNSMASQ_OPTS+=" --dhcp-range=$ip,$ip"
+      DNSMASQ_OPTS+=" --dhcp-host=$mac,,$ip,$host,infinite"
 
-    # Set DNS server and gateway
-    DNSMASQ_OPTS+=" --dhcp-option=option:netmask,$mask"
-    DNSMASQ_OPTS+=" --dhcp-option=option:router,$gateway"
-    DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,$gateway"
+      # Set DNS server and gateway
+      DNSMASQ_OPTS+=" --dhcp-option=option:netmask,$mask"
+      DNSMASQ_OPTS+=" --dhcp-option=option:router,$gateway"
+      DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,$gateway"
 
-  fi
+  esac
 
   DNSMASQ_OPTS+=" --interface=$if"
   DNSMASQ_OPTS+=" --bind-interfaces"
@@ -224,7 +225,7 @@ getHostPorts() {
     [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
   fi
 
-  if [[ "${NETWORK,,}" == "user"* || "${NETWORK,,}" == "passt" ]]; then
+  if [[ "${NETWORK,,}" == "passt" ]]; then
     # Temporary workaround for Passt bug
     [ -z "$list" ] && list="53,445,137,138,139,3702,5357" || list+=",53,445,137,138,139,3702,5357"
   fi
@@ -502,7 +503,9 @@ closeBridge() {
   [ -s "$pid" ] && pKill "$(<"$pid")"
   rm -f "$pid"
 
-  [[ "${NETWORK,,}" == "user"* ]] && return 0
+  case "${NETWORK,,}" in
+    "user"* | "passt" | "slirp" ) return 0 ;;
+  esac
 
   ip link set "$VM_NET_TAP" down promisc off &> null || true
   ip link delete "$VM_NET_TAP" &> null || true
@@ -749,9 +752,17 @@ else
 
   esac
 
+  if [[ "${NETWORK,,}" == "user"* ]]; then
+    if [[ "${ADAPTER,,}" == "virtio-net-pci" ]]; then
+      NETWORK="passt"
+    else
+      NETWORK="slirp"
+    fi
+  fi
+  
   case "${NETWORK,,}" in
     "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
-    "user"* | "passt" )
+    "passt" )
 
       # Configure for user-mode networking (passt)
       if ! configurePasst; then
