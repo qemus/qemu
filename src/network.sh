@@ -252,7 +252,7 @@ getHostPorts() {
 
   if [[ "${NETWORK,,}" == "user"* || "${NETWORK,,}" == "passt" ]]; then
     # Temporary workaround for Passt bug
-    [ -z "$list" ] && list="53,445,137,138,139" || list+=",53,445,137,138,139"
+    [ -z "$list" ] && list="53,445,137,138,139,3702,5357" || list+=",53,445,137,138,139,3702,5357"
   fi
 
   echo "$list"
