@@ -254,10 +254,8 @@ configureSlirp() {
   local ip="$IP"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
   local base="${ip%.*}."
-  local gateway="$VM_NET_GATEWAY"
-
   [ "${ip/$base/}" -lt "4" ] && ip="${ip%.*}.4"
-  [ -z "$gateway" ] && gateway="${ip%.*}.1"
+  local gateway="${ip%.*}.1"
 
   local ipv6=""
   [ -n "$IP6" ] && ipv6="ipv6=on,"
@@ -283,15 +281,13 @@ configurePasst() {
   [ -s "$pid" ] && pKill "$(<"$pid")"
 
   local ip="$IP"
-  local gateway="$VM_NET_GATEWAY"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
-  if [ -z "$gateway" ]; then
-    if [[ "$ip" != *".1" ]]; then
-      gateway="${ip%.*}.1"
-    else
-      gateway="${ip%.*}.2"
-    fi
+  local gateway=""
+  if [[ "$ip" != *".1" ]]; then
+    gateway="${ip%.*}.1"
+  else
+    gateway="${ip%.*}.2"
   fi
 
   # passt configuration:
@@ -378,13 +374,11 @@ configureNAT() {
   local ip="172.30.0.2"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
-  local gateway="$VM_NET_GATEWAY"
-  if [ -z "$gateway" ]; then
-    if [[ "$ip" != *".1" ]]; then
-      gateway="${ip%.*}.1"
-    else
-      gateway="${ip%.*}.2"
-    fi
+  local gateway=""
+  if [[ "$ip" != *".1" ]]; then
+    gateway="${ip%.*}.1"
+  else
+    gateway="${ip%.*}.2"
   fi
 
   # Create a bridge with a static IP for the VM guest
