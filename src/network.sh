@@ -148,11 +148,17 @@ configureDNS() {
 
   esac
 
+  # Set interfaces
   DNSMASQ_OPTS+=" --interface=$if"
   DNSMASQ_OPTS+=" --bind-interfaces"
 
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/$gateway"
+
+  # Set local dns resolver to dnsmasq when needed
+  [ -f /etc/resolv.dnsmasq ] && DNSMASQ_OPTS+=" --resolv-file=/etc/resolv.dnsmasq"
+
+  # Enable logging to file
   DNSMASQ_OPTS+=" --log-facility=$log"
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
@@ -229,7 +235,6 @@ getHostPorts() {
 
     local DNS_PORT="53"
     local SAMBA_PORT="445"
-    # Temporary workaround for Passt bug
 
     if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
       [ -z "$list" ] && list="$DNS_PORT" || list+=",$DNS_PORT"
@@ -239,7 +244,6 @@ getHostPorts() {
       if [[ "${SAMBA:-}" != [Nn]* ]]; then
         [ -z "$list" ] && list="$SAMBA_PORT" || list+=",$SAMBA_PORT"
       fi
-      [ -z "$list" ] && list="137,138,139,3702,5357" || list+=",137,138,139,3702,5357"
     fi
 
   fi
@@ -292,6 +296,12 @@ configureSlirp() {
   local forward
   forward=$(getUserPorts "${USER_PORTS:-}")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
+
+  # Force local DNS to dnsmasq as slirp provides no way to set it
+  cp /etc/resolv.conf /etc/resolv.dnsmasq
+  echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
+
+  configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   VM_NET_IP="$ip"
   return 0
@@ -395,7 +405,6 @@ configureNAT() {
   if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
-      [[ "$PODMAN" == [Yy1]* ]] && return 1
       warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
     fi
@@ -561,6 +570,7 @@ closeNetwork() {
 cleanUp() {
 
   # Clean up old files
+  rm -f /etc/resolv.dnsmasq
   rm -f /var/run/passt.pid
   rm -f /var/run/dnsmasq.pid
 
@@ -705,12 +715,11 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  if [ -z "${PODMAN:-}" ]; then
-    [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
-  fi
-
-  if [[ "$PODMAN" == [Yy1]* ]] && [ -z "${NETWORK:-}" ]; then
-    [[ "$DHCP" != [Yy1]* ]] && NETWORK="user"
+  if [[ "$PODMAN" == [Yy1]* && "$DHCP" != [Yy1]* ]]; then
+    if [ -z "$NETWORK" ] || [[ "${NETWORK^^}" == "Y" ]]; then
+      # By default Podman has no permissions for NAT networking
+      NETWORK="user"
+    fi
   fi
 
   if [[ "$DEBUG" == [Yy1]* ]]; then
@@ -767,7 +776,7 @@ else
   esac
 
   if [[ "${NETWORK,,}" == "user"* ]]; then
-    if [[ "${ADAPTER,,}" != "rtl8139" ]]; then
+    if [[ "${BOOT_MODE:-}" != "windows_legacy" ]]; then
       NETWORK="passt"
     else
       NETWORK="slirp"
