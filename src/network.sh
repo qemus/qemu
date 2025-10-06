@@ -348,7 +348,7 @@ configurePasst() {
   PASST_OPTS+=" -t $exclude"
   PASST_OPTS+=" -u $exclude"
   PASST_OPTS+=" -H $VM_NET_HOST"
-  PASST_OPTS+=" -M $VM_NET_MAC"
+  PASST_OPTS+=" -M $GATEWAY_MAC"
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
@@ -448,8 +448,6 @@ configureNAT() {
       warn "failed to set MTU size to $MTU."
     fi
   fi
-
-  GATEWAY_MAC=$(echo "$VM_NET_MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
 
   if ! ip link set dev "$VM_NET_TAP" address "$GATEWAY_MAC"; then
     warn "failed to set gateway MAC address.."
@@ -714,6 +712,8 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
+  GATEWAY_MAC=$(echo "$VM_NET_MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
+
   if [[ "$PODMAN" == [Yy1]* && "$DHCP" != [Yy1]* ]]; then
     if [ -z "$NETWORK" ] || [[ "${NETWORK^^}" == "Y" ]]; then
       # By default Podman has no permissions for NAT networking
@@ -774,13 +774,7 @@ else
 
   esac
 
-  if [[ "${NETWORK,,}" == "user"* ]]; then
-    if [[ "${BOOT_MODE:-}" != "windows_legacy" ]]; then
-      NETWORK="passt"
-    else
-      NETWORK="slirp"
-    fi
-  fi
+  [[ "${NETWORK,,}" == "user"* ]] && NETWORK="passt"
 
   case "${NETWORK,,}" in
     "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
