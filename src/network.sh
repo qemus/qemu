@@ -8,6 +8,7 @@ set -Eeuo pipefail
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
 : "${HOST_PORTS:=""}"
+: "${USER_PORTS:=""}"
 : "${ADAPTER:="virtio-net-pci"}"
 
 : "${VM_NET_IP:=""}"
@@ -15,6 +16,7 @@ set -Eeuo pipefail
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
+: "${VM_NET_BRIDGE:="docker"}"
 : "${VM_NET_MASK:="255.255.255.0"}"
 
 : "${PASST:="passt"}"
@@ -236,10 +238,12 @@ compat() {
   local gateway="$1"
   local interface="$2"
   local samba="20.20.20.1"
+
   [[ "$samba" == "$gateway" ]] && return 0
+  [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
   # Backwards compatibility with old installations
-  if ip address add dev "$interface" "$samba/24" label "$interface:compat"; then
+  if ip address add dev "$interface" "$samba/24" label "${interface:0:8}:compat"; then
     SAMBA_INTERFACE="$samba"
   else
     warn "failed to configure IP alias!"
@@ -389,23 +393,23 @@ configureNAT() {
   fi
 
   # Create a bridge with a static IP for the VM guest
-  { ip link add dev dockerbridge type bridge ; rc=$?; } || :
+  { ip link add dev "$VM_NET_BRIDGE" type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
     warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
-  if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev dockerbridge; then
+  if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev "$VM_NET_BRIDGE"; then
     warn "failed to add IP address pool!" && return 1
   fi
 
-  while ! ip link set dockerbridge up; do
+  # Backwards compatibility
+  compat "$gateway" "$VM_NET_BRIDGE"
+
+  while ! ip link set "$VM_NET_BRIDGE" up; do
     info "Waiting for IP address to become available..."
     sleep 2
   done
-
-  # Backwards compatibility
-  compat "$gateway" dockerbridge
 
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
@@ -429,7 +433,7 @@ configureNAT() {
     sleep 2
   done
 
-  if ! ip link set dev "$VM_NET_TAP" master dockerbridge; then
+  if ! ip link set dev "$VM_NET_TAP" master "$VM_NET_BRIDGE"; then
     warn "failed to set master bridge!" && return 1
   fi
 
@@ -478,7 +482,7 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "dockerbridge" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  configureDNS "$VM_NET_BRIDGE" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   VM_NET_IP="$ip"
   return 0
@@ -499,8 +503,8 @@ closeBridge() {
   ip link set "$VM_NET_TAP" down promisc off &> null || true
   ip link delete "$VM_NET_TAP" &> null || true
 
-  ip link set dockerbridge down &> null || true
-  ip link delete dockerbridge &> null || true
+  ip link set "$VM_NET_BRIDGE" down &> null || true
+  ip link delete "$VM_NET_BRIDGE" &> null || true
 
   return 0
 }
