@@ -8,6 +8,7 @@ set -Eeuo pipefail
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
 : "${HOST_PORTS:=""}"
+: "${USER_PORTS:=""}"
 : "${ADAPTER:="virtio-net-pci"}"
 
 : "${VM_NET_IP:=""}"
@@ -15,7 +16,7 @@ set -Eeuo pipefail
 : "${VM_NET_TAP:="qemu"}"
 : "${VM_NET_MAC:="$MAC"}"
 : "${VM_NET_HOST:="$APP"}"
-: "${VM_NET_GATEWAY:=""}"
+: "${VM_NET_BRIDGE:="docker"}"
 : "${VM_NET_MASK:="255.255.255.0"}"
 
 : "${PASST:="passt"}"
@@ -120,36 +121,44 @@ configureDNS() {
   local mask="$5"
   local gateway="$6"
 
+  [[ "${DNSMASQ_DISABLE:-}" == [Yy1]* ]] && return 0
   [[ "$DEBUG" == [Yy1]* ]] && echo "Starting dnsmasq daemon..."
 
   local log="/var/log/dnsmasq.log"
   rm -f "$log"
 
-  if [[ "${NETWORK,,}" != "user"* ]]; then
+  case "${NETWORK,,}" in
+    "nat" | "tap" | "tun" | "tuntap" | "y" )
 
-    # Create lease file for faster resolve
-    echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
-    chmod 644 /var/lib/misc/dnsmasq.leases
+      # Create lease file for faster resolve
+      echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
+      chmod 644 /var/lib/misc/dnsmasq.leases
 
-    # dnsmasq configuration:
-    DNSMASQ_OPTS+=" --dhcp-authoritative"
+      # dnsmasq configuration:
+      DNSMASQ_OPTS+=" --dhcp-authoritative"
 
-    # Set DHCP range and host
-    DNSMASQ_OPTS+=" --dhcp-range=$ip,$ip"
-    DNSMASQ_OPTS+=" --dhcp-host=$mac,,$ip,$host,infinite"
+      # Set DHCP range and host
+      DNSMASQ_OPTS+=" --dhcp-range=$ip,$ip"
+      DNSMASQ_OPTS+=" --dhcp-host=$mac,,$ip,$host,infinite"
 
-    # Set DNS server and gateway
-    DNSMASQ_OPTS+=" --dhcp-option=option:netmask,$mask"
-    DNSMASQ_OPTS+=" --dhcp-option=option:router,$gateway"
-    DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,$gateway"
+      # Set DNS server and gateway
+      DNSMASQ_OPTS+=" --dhcp-option=option:netmask,$mask"
+      DNSMASQ_OPTS+=" --dhcp-option=option:router,$gateway"
+      DNSMASQ_OPTS+=" --dhcp-option=option:dns-server,$gateway"
 
-  fi
+  esac
 
+  # Set interfaces
   DNSMASQ_OPTS+=" --interface=$if"
   DNSMASQ_OPTS+=" --bind-interfaces"
 
   # Add DNS entry for container
   DNSMASQ_OPTS+=" --address=/host.lan/$gateway"
+
+  # Set local dns resolver to dnsmasq when needed
+  [ -f /etc/resolv.dnsmasq ] && DNSMASQ_OPTS+=" --resolv-file=/etc/resolv.dnsmasq"
+
+  # Enable logging to file
   DNSMASQ_OPTS+=" --log-facility=$log"
 
   DNSMASQ_OPTS=$(echo "$DNSMASQ_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
@@ -168,6 +177,38 @@ configureDNS() {
     tail -fn +0 "$log" &
   fi
 
+  return 0
+}
+
+getUserPorts() {
+
+  local args=""
+  local list=$1
+  local ssh="22"
+
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
+  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
+
+  list="${list//,/ }"
+  list="${list## }"
+  list="${list%% }"
+
+  for port in $list; do
+    proto="tcp"
+    num="$port"
+
+    if [[ "$port" == */udp ]]; then
+      proto="udp"
+      num="${port%/udp}"
+    elif [[ "$port" == */tcp ]]; then
+      proto="tcp"
+      num="${port%/tcp}"
+    fi
+
+    args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
+  done
+
+  echo "${args%?}"
   return 0
 }
 
@@ -190,12 +231,80 @@ getHostPorts() {
     [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
   fi
 
-  if [[ "${NETWORK,,}" == "user"* ]]; then
-    # Temporary workaround for Passt bug
-    [ -z "$list" ] && list="53" || list+=",53"
+  if [[ "${NETWORK,,}" == "passt" ]]; then
+
+    local DNS_PORT="53"
+    local SAMBA_PORT="445"
+
+    if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
+      [ -z "$list" ] && list="$DNS_PORT" || list+=",$DNS_PORT"
+    fi
+
+    if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
+      if [[ "${SAMBA:-}" != [Nn]* ]]; then
+        [ -z "$list" ] && list="$SAMBA_PORT" || list+=",$SAMBA_PORT"
+      fi
+    fi
+
   fi
 
   echo "$list"
+  return 0
+}
+
+compat() {
+
+  local gateway="$1"
+  local interface="$2"
+  local samba="20.20.20.1"
+
+  [[ "$samba" == "$gateway" ]] && return 0
+  [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
+
+  if [[ "$interface" != "${interface:0:8}" ]]; then
+    error "Bridge name too long!" && return 1
+  fi
+
+  # Backwards compatibility with old installations
+  if ip address add dev "$interface" "$samba/24" label "$interface:compat"; then
+    SAMBA_INTERFACE="$samba"
+  else
+    warn "failed to configure IP alias!"
+  fi
+
+  return 0
+}
+
+configureSlirp() {
+
+  [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring slirp networking..."
+
+  local ip="$IP"
+  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+  local base="${ip%.*}."
+  [ "${ip/$base/}" -lt "4" ] && ip="${ip%.*}.4"
+  local gateway="${ip%.*}.1"
+
+  # Backwards compatibility
+  ! compat "$gateway" "$VM_NET_DEV" && exit 24
+
+  local ipv6=""
+  [ -n "$IP6" ] && ipv6="ipv6=on,"
+
+  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
+
+  local forward
+  forward=$(getUserPorts "${USER_PORTS:-}")
+  [ -n "$forward" ] && NET_OPTS+=",$forward"
+
+  if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
+    # Force local DNS to dnsmasq as slirp provides no way to set it
+    cp /etc/resolv.conf /etc/resolv.dnsmasq
+    echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
+    configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  fi
+
+  VM_NET_IP="$ip"
   return 0
 }
 
@@ -210,19 +319,19 @@ configurePasst() {
   [ -s "$pid" ] && pKill "$(<"$pid")"
 
   local ip="$IP"
-  local gateway="$VM_NET_GATEWAY"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
-  if [ -z "$gateway" ]; then
-    if [[ "$ip" != *".1" ]]; then
-      gateway="${ip%.*}.1"
-    else
-      gateway="${ip%.*}.2"
-    fi
+  local gateway=""
+  if [[ "$ip" != *".1" ]]; then
+    gateway="${ip%.*}.1"
+  else
+    gateway="${ip%.*}.2"
   fi
 
-  # passt configuration:
+  # Backwards compatibility
+  ! compat "$gateway" "$VM_NET_DEV" && exit 24
 
+  # passt configuration:
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
 
   PASST_OPTS+=" -a $ip"
@@ -239,25 +348,21 @@ configurePasst() {
 
   PASST_OPTS+=" -t $exclude"
   PASST_OPTS+=" -u $exclude"
-
-  # For backwards compatiblity
-  if [[ "$ip" != "20.20.20."* ]]; then
-    PASST_OPTS+=" --map-host-loopback $gateway"
-    PASST_OPTS+=" --map-host-loopback 20.20.20.1"
-  fi
-
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $VM_NET_MAC"
 
-  PASST_OPTS+=" --dns-forward $gateway"
-  PASST_OPTS+=" --dns-host 127.0.0.1"
+  if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
+    PASST_OPTS+=" --dns-forward $gateway"
+    PASST_OPTS+=" --dns-host 127.0.0.1"
+  fi
+
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
 
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
   [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
-  
+
   if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
     local msg="Failed to start passt, reason: $?"
     [ -f "$log" ] && cat "$log"
@@ -274,8 +379,6 @@ configurePasst() {
   configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   VM_NET_IP="$ip"
-  VM_NET_GATEWAY="$gateway"
-
   return 0
 }
 
@@ -303,47 +406,36 @@ configureNAT() {
   if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
-      [[ "$PODMAN" == [Yy1]* ]] && return 1
       warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
     fi
   fi
 
   local ip="172.30.0.2"
-  local samba="20.20.20.1"
-  local gateway="$VM_NET_GATEWAY"
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
-  if [ -z "$gateway" ]; then
-    if [[ "$ip" != *".1" ]]; then
-      gateway="${ip%.*}.1"
-    else
-      gateway="${ip%.*}.2"
-    fi
-  fi
-
-  # For backwards compatibility
-  if [[ "$samba" == "$gateway" ]]; then
-    samba=""
+  local gateway=""
+  if [[ "$ip" != *".1" ]]; then
+    gateway="${ip%.*}.1"
   else
-    if ! ip address add dev "$VM_NET_DEV" "$samba/24" label "$VM_NET_DEV:compat"; then
-      samba=""
-      warn "failed to configure IP alias!"
-    fi
+    gateway="${ip%.*}.2"
   fi
 
   # Create a bridge with a static IP for the VM guest
-  { ip link add dev dockerbridge type bridge ; rc=$?; } || :
+  { ip link add dev "$VM_NET_BRIDGE" type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
     warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
-  if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev dockerbridge; then
+  if ! ip address add "$gateway/24" broadcast "${ip%.*}.255" dev "$VM_NET_BRIDGE"; then
     warn "failed to add IP address pool!" && return 1
   fi
 
-  while ! ip link set dockerbridge up; do
+  # Backwards compatibility
+  ! compat "$gateway" "$VM_NET_BRIDGE" && exit 24
+
+  while ! ip link set "$VM_NET_BRIDGE" up; do
     info "Waiting for IP address to become available..."
     sleep 2
   done
@@ -370,7 +462,7 @@ configureNAT() {
     sleep 2
   done
 
-  if ! ip link set dev "$VM_NET_TAP" master dockerbridge; then
+  if ! ip link set dev "$VM_NET_TAP" master "$VM_NET_BRIDGE"; then
     warn "failed to set master bridge!" && return 1
   fi
 
@@ -419,12 +511,9 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "dockerbridge" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  configureDNS "$VM_NET_BRIDGE" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
 
   VM_NET_IP="$ip"
-  VM_NET_GATEWAY="$gateway"
-  SAMBA_INTERFACE="$samba"
-
   return 0
 }
 
@@ -432,17 +521,21 @@ closeBridge() {
 
   local pid="/var/run/dnsmasq.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
+  rm -f "$pid"
 
   pid="/var/run/passt.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
+  rm -f "$pid"
 
-  [[ "${NETWORK,,}" == "user"* ]] && return 0
+  case "${NETWORK,,}" in
+    "user"* | "passt" | "slirp" ) return 0 ;;
+  esac
 
   ip link set "$VM_NET_TAP" down promisc off &> null || true
   ip link delete "$VM_NET_TAP" &> null || true
 
-  ip link set dockerbridge down &> null || true
-  ip link delete dockerbridge &> null || true
+  ip link set "$VM_NET_BRIDGE" down &> null || true
+  ip link delete "$VM_NET_BRIDGE" &> null || true
 
   return 0
 }
@@ -478,6 +571,7 @@ closeNetwork() {
 cleanUp() {
 
   # Clean up old files
+  rm -f /etc/resolv.dnsmasq
   rm -f /var/run/passt.pid
   rm -f /var/run/dnsmasq.pid
 
@@ -622,7 +716,12 @@ getInfo() {
     error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  [ -f "/run/.containerenv" ] && PODMAN="Y" || PODMAN="N"
+  if [[ "$PODMAN" == [Yy1]* && "$DHCP" != [Yy1]* ]]; then
+    if [ -z "$NETWORK" ] || [[ "${NETWORK^^}" == "Y" ]]; then
+      # By default Podman has no permissions for NAT networking
+      NETWORK="user"
+    fi
+  fi
 
   if [[ "$DEBUG" == [Yy1]* ]]; then
     line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
@@ -661,34 +760,55 @@ if [[ "$DHCP" == [Yy1]* ]]; then
 
 else
 
-  if [[ "${NETWORK,,}" != "user"* ]]; then
+  case "${NETWORK,,}" in
+    "user"* | "passt" | "slirp" ) ;;
+    "nat" | "tap" | "tun" | "tuntap" | "y" )
 
-    # Configure for tap interface
-    if ! configureNAT; then
+      # Configure tap interface
+      if ! configureNAT; then
 
-      closeBridge
-      NETWORK="user"
-      msg="falling back to user-mode networking!"
-      if [[ "$PODMAN" != [Yy1]* ]]; then
+        closeBridge
+        NETWORK="user"
+        msg="falling back to user-mode networking!"
         msg="failed to setup NAT networking, $msg"
-      else
-        msg="podman detected, $msg"
-      fi
-      warn "$msg"
 
-    fi
+      fi ;;
 
-  fi
+  esac
 
   if [[ "${NETWORK,,}" == "user"* ]]; then
-
-    # Configure for user-mode networking (passt)
-    if ! configurePasst; then
-      error "Failed to configure user-mode networking!"
-      exit 24
+    if [[ "${BOOT_MODE:-}" != "windows_legacy" ]]; then
+      NETWORK="passt"
+    else
+      NETWORK="slirp"
     fi
-
   fi
+
+  case "${NETWORK,,}" in
+    "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
+    "passt" )
+
+      # Configure for user-mode networking (passt)
+      if ! configurePasst; then
+        error "Failed to configure user-mode networking!"
+        exit 24
+      fi ;;
+
+    "slirp" )
+
+      # Configure for user-mode networking (slirp)
+      if ! configureSlirp; then
+        error "Failed to configure user-mode networking!"
+        exit 24
+      fi
+
+      if [ -z "$USER_PORTS" ]; then
+        info "Notice: slirp networking is active, so when you want to expose ports, you will need to map them using this variable: \"USER_PORTS=80,443\"."
+      fi ;;
+
+    *)
+      error "Unrecognized NETWORK value: \"$NETWORK\"" && exit 24 ;;
+  esac
 
 fi
 
