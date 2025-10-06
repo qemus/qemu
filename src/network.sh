@@ -767,7 +767,7 @@ else
   esac
 
   if [[ "${NETWORK,,}" == "user"* ]]; then
-    if [[ "${ADAPTER,,}" == "virtio-net-pci" ]]; then
+    if [[ "${ADAPTER,,}" != "rtl8139" ]]; then
       NETWORK="passt"
     else
       NETWORK="slirp"
