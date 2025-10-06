@@ -242,8 +242,12 @@ compat() {
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
+  if [[ "$interface" != "${interface:0:8}" ]]; then
+    error "Bridge name too long!" && return 1
+  fi
+
   # Backwards compatibility with old installations
-  if ip address add dev "$interface" "$samba/24" label "${interface:0:8}:compat"; then
+  if ip address add dev "$interface" "$samba/24" label "$interface:compat"; then
     SAMBA_INTERFACE="$samba"
   else
     warn "failed to configure IP alias!"
@@ -263,7 +267,7 @@ configureSlirp() {
   local gateway="${ip%.*}.1"
 
   # Backwards compatibility
-  compat "$gateway" "$VM_NET_DEV"
+  ! compat "$gateway" "$VM_NET_DEV" && exit 24
 
   local ipv6=""
   [ -n "$IP6" ] && ipv6="ipv6=on,"
@@ -299,7 +303,7 @@ configurePasst() {
   fi
 
   # Backwards compatibility
-  compat "$gateway" "$VM_NET_DEV"
+  ! compat "$gateway" "$VM_NET_DEV" && exit 24
 
   # passt configuration:
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
@@ -404,7 +408,7 @@ configureNAT() {
   fi
 
   # Backwards compatibility
-  compat "$gateway" "$VM_NET_BRIDGE"
+  ! compat "$gateway" "$VM_NET_BRIDGE" && exit 24
 
   while ! ip link set "$VM_NET_BRIDGE" up; do
     info "Waiting for IP address to become available..."
