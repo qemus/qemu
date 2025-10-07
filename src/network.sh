@@ -361,7 +361,7 @@ configurePasst() {
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
   [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
 
-  if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
+  if ! $PASST ${PASST_OPTS:+ $PASST_OPTS} >/dev/null 2>&1; then
     local msg="Failed to start passt, reason: $?"
     [ -f "$log" ] && cat "$log"
     error "$msg"
@@ -370,6 +370,10 @@ configurePasst() {
 
   if [[ "$PASST_DEBUG" == [Yy1]* ]]; then
     tail -fn +0 "$log" &
+  else
+    if [[ "$DEBUG" == [Yy1]* ]]; then
+      cat "$log" && echo ""
+    fi
   fi
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=/tmp/passt_1.socket"
