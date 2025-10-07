@@ -778,7 +778,13 @@ else
 
   esac
 
-  [[ "${NETWORK,,}" == "user"* ]] && NETWORK="passt"
+  if [[ "${NETWORK,,}" == "user"* ]]; then
+    if [[ "${ADAPTER,,}" != "rtl8139" ]]; then
+      NETWORK="passt"
+    else
+      NETWORK="slirp"
+    fi
+  fi
 
   case "${NETWORK,,}" in
     "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
