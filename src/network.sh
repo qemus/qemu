@@ -372,7 +372,7 @@ configurePasst() {
     tail -fn +0 "$log" &
   else
     if [[ "$DEBUG" == [Yy1]* ]]; then
-      cat "$log" && echo ""
+      [ -f "$log" ] && cat "$log" && echo ""
     fi
   fi
 
