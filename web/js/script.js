@@ -143,7 +143,7 @@ function connect() {
   ws.onmessage = function(e) {
 
     var pos = e.data.indexOf(":");
-    var cmd = e.data.substring(0, pos;
+    var cmd = e.data.substring(0, pos);
     var msg = e.data.substring(pos + 1);
 
     switch(cmd) {
@@ -151,11 +151,11 @@ function connect() {
         setInfo(msg);
         break;
       case "c":
-        setError("X + msg + "X");
+        setError("X" + msg + "X");
         break;
       case "e":
-        setError("X + msg + "X");
-        break;            
+        setError("X" + msg + "X");
+        break;
     }
   };
 
@@ -166,7 +166,7 @@ function connect() {
   };
 
   ws.onerror = function(e) {
-    setError("Error: " + e.message);
+    setError("Error: " + e);
     ws.close();
   };
 }
