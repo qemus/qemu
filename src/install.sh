@@ -456,3 +456,5 @@ dst="$STORAGE/${base%.*}.$target_ext"
 base=$(basename "$dst")
 detectType "$STORAGE/$base" && return 0
 error "Cannot convert file \"${base}\"" && exit 36
+
+return 0
