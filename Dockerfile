@@ -28,13 +28,14 @@ RUN set -eu && \
         ethtool \
         iptables \
         iproute2 \
-        apt-utils \
         dnsmasq \
         xz-utils \
+        apt-utils \
         net-tools \
         e2fsprogs \
         qemu-utils \
         iputils-ping \
+        websocketd \
         genisoimage \
         netcat-openbsd \
         ca-certificates \
