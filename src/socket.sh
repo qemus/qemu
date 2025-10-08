@@ -1,6 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-info="/run/shm/msg.html"
+path="/run/shm/msg.html"
 
-tail -fn +0 "$info" --pid=$$ &
+inotifywait -m "$path" | 
+  while read fp event fn; do 
+    case "${event,,}" in
+      "modify" ) cat "$path" ;;      
+      "delete" ) echo "DONE" ;;
+    esac
+  done
