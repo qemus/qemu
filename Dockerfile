@@ -34,8 +34,8 @@ RUN set -eu && \
         net-tools \
         e2fsprogs \
         qemu-utils \
-        iputils-ping \
         websocketd \
+        iputils-ping \
         genisoimage \
         inotify-tools \
         netcat-openbsd \
