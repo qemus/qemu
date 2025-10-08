@@ -8,5 +8,6 @@ inotifywait -m "$path" |
     case "${event,,}" in
       "modify" ) echo -n "s: " && cat "$path" ;;
       "delete" ) echo "c: vnc" ;;
-    esac
+      * ) echo "e: Unknown event: $event" ;;      
+    esac    
   done
