@@ -66,7 +66,6 @@ function processInfo() {
 
         var msg = request.responseText;
         if (msg == null || msg.length == 0) {
-            setError("Lost connection");
             window.location.reload();
             return false;
         }
@@ -78,6 +77,7 @@ function processInfo() {
                 notFound = true;
             } else {
                 setInfo(msg);
+                schedule();
                 return true;
             }
         }
@@ -103,13 +103,19 @@ function setInfo(msg, loading, error) {
             return false;
         }
 
-        var el = document.getElementById("spinner");
+        var el = document.getElementById("info");
+
+        if (el.innerText == msg || el.innerHTML == msg) {
+            return true;
+        }
+
+        var spin = document.getElementById("spinner");
 
         error = !!error;
         if (!error) {
-            el.style.visibility = 'visible';
+            spin.style.visibility = 'visible';
         } else {
-            el.style.visibility = 'hidden';
+            spin.style.visibility = 'hidden';
         }
 
         loading = !!loading;
@@ -117,12 +123,7 @@ function setInfo(msg, loading, error) {
             msg = "<p class=\"loading\">" + msg + "</p>";
         }
 
-        el = document.getElementById("info");
-
-        if (el.innerHTML != msg) {
-            el.innerHTML = msg;
-        }
-
+        el.innerHTML = msg;
         return true;
 
     } catch (e) {
@@ -134,6 +135,10 @@ function setInfo(msg, loading, error) {
 function setError(text) {
     console.warn(text);
     return setInfo(text, false, true);
+}
+
+function schedule() {
+    setTimeout(getInfo, interval);
 }
 
 function connect() {
@@ -182,5 +187,5 @@ function connect() {
     };
 }
 
-getInfo();
+schedule();
 connect();

@@ -548,19 +548,24 @@ closeBridge() {
   return 0
 }
 
+closeWeb() {
+
+  # Shutdown nginx
+  nginx -s stop 2> /dev/null
+  fWait "nginx"
+
+  # Shutdown websocket
+  local pid="/var/run/websocketd.pid"
+  [ -s "$pid" ] && pKill "$(<"$pid")"
+  rm -f "$pid"
+
+  return 0
+}
+
 closeNetwork() {
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
-
-    # Shutdown nginx
-    nginx -s stop 2> /dev/null
-    fWait "nginx"
-
-     # Shutdown websocket
-     local pid="/var/run/websocketd.pid"
-     [ -s "$pid" ] && pKill "$(<"$pid")"
-     rm -f "$pid"
-  
+    closeWeb  
   fi
 
   [[ "$NETWORK" == [Nn]* ]] && return 0

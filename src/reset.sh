@@ -206,6 +206,4 @@ if [[ "$KVM" != [Nn]* ]]; then
 
 fi
 
-html "Starting $APP for $ENGINE..."
-
 return 0
