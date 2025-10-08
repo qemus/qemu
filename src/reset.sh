@@ -215,7 +215,7 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
   # Start websocket server
   websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh >/var/log/websocketd.log &
   echo "$!" > /var/run/websocketd.pid
-  
+
 fi
 
 return 0
