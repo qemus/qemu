@@ -168,6 +168,7 @@ addPackage() {
 : "${VNC_PORT:="5900"}"    # VNC port
 : "${MON_PORT:="7100"}"    # Monitor port
 : "${WEB_PORT:="8006"}"    # Webserver port
+: "${WSD_PORT:="8004"}"    # Websockets port
 : "${WSS_PORT:="5700"}"    # Websockets port
 
 if (( VNC_PORT < 5900 )); then
@@ -211,7 +212,7 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
   nginx -e stderr
 
   # Start websocket server
-  websocketd --address 127.0.0.1 --port=8080 /run/socket.sh
+  websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh &
   echo "$!" > /var/run/websocketd.pid
   
 fi
