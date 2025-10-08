@@ -166,7 +166,7 @@ function connect() {
   };
 
   ws.onerror = function(e) {
-    setError("Error: " + e);
+    setError("Websocket closed");
     ws.close();
   };
 }
