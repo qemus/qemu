@@ -9,6 +9,7 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 
 # Docker environment variables
 
+: "${KVM:="Y"}"            # KVM acceleration
 : "${BOOT:=""}"            # Path of ISO file
 : "${DEBUG:="N"}"          # Disable debugging
 : "${MACHINE:="q35"}"      # Machine selection
@@ -148,22 +149,54 @@ if [[ "$RAM_CHECK" != [Nn]* ]] && (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); th
   info "$msg"
 fi
 
-addPackage() {
-  local pkg=$1
-  local desc=$2
+if [[ "$KVM" == [Nn]* ]]; then
+  warn "KVM acceleration is disabled, this will cause the machine to run about 10 times slower!"
+else
+  if [[ "${ARCH,,}" != "amd64" ]]; then
+    KVM="N"
+    warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for x64 instructions, so the machine will run about 10 times slower."
+  fi
+fi
 
-  if apt-mark showinstall | grep -qx "$pkg"; then
-    return 0
+# Check KVM support
+
+if [[ "$KVM" != [Nn]* ]]; then
+
+  KVM_ERR=""
+
+  if [ ! -e /dev/kvm ]; then
+    KVM_ERR="(/dev/kvm is missing)"
+  else
+    if ! sh -c 'echo -n > /dev/kvm' &> /dev/null; then
+      KVM_ERR="(/dev/kvm is unwriteable)"
+    else
+      flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
+      if ! grep -qw "vmx\|svm" <<< "$flags"; then
+        KVM_ERR="(not enabled in BIOS)"
+      fi
+    fi
   fi
 
-  MSG="Installing $desc..."
-  info "$MSG" && html "$MSG"
+  if [ -n "$KVM_ERR" ]; then
+    KVM="N"
+    if [[ "$OSTYPE" =~ ^darwin ]]; then
+      warn "you are using macOS which has no KVM support, so the machine will run about 10 times slower."
+    else
+      kernel=$(uname -a)
+      case "${kernel,,}" in
+        *"microsoft"* )
+          error "Please bind '/dev/kvm' as a volume in the optional container settings when using Docker Desktop." ;;
+        *"synology"* )
+          error "Please make sure that Synology VMM (Virtual Machine Manager) is installed and that '/dev/kvm' is binded to this container." ;;
+        *)
+          error "KVM acceleration is not available $KVM_ERR, this will cause the machine to run about 10 times slower."
+          error "See the FAQ for possible causes, or disable acceleration by adding the \"KVM=N\" variable (not recommended)." ;;
+      esac
+      [[ "$DEBUG" != [Yy1]* ]] && exit 88
+    fi
+  fi
 
-  DEBIAN_FRONTEND=noninteractive apt-get -qq update
-  DEBIAN_FRONTEND=noninteractive apt-get -qq --no-install-recommends -y install "$pkg" > /dev/null
-
-  return 0
-}
+fi
 
 : "${VNC_PORT:="5900"}"    # VNC port
 : "${MON_PORT:="7100"}"    # Monitor port
