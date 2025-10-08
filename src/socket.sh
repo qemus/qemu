@@ -6,7 +6,7 @@ path="/run/shm/msg.html"
 inotifywait -m "$path" | 
   while read fp event fn; do 
     case "${event,,}" in
-      "modify" ) cat "$path" ;;      
-      "delete" ) echo "DONE" ;;
+      "modify" ) echo -n "s: " && cat "$path" ;;
+      "delete" ) echo "c: vnc" ;;
     esac
   done
