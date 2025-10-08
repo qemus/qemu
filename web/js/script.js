@@ -146,8 +146,8 @@ function connect() {
     }, 1000);
   };
 
-  ws.onerror = function(e) {
-    console.log("Error: " + e.message);
+  ws.onerror = function(err) {
+    console.log("Error: " + err);
     ws.close();
   };
 }
