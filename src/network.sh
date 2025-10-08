@@ -229,6 +229,7 @@ getHostPorts() {
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
     [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
+    [ -z "$list" ] && list="$WSD_PORT" || list+=",$WSD_PORT"
   fi
 
   if [[ "${NETWORK,,}" == "passt" ]]; then
