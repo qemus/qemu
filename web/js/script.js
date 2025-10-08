@@ -143,48 +143,48 @@ function schedule() {
 
 function connect() {
 
-  var wsUrl = getURL() + "/status";
-  var ws = new WebSocket(wsUrl);
+    var wsUrl = getURL() + "/status";
+    var ws = new WebSocket(wsUrl);
 
-  ws.onmessage = function(e) {
+    ws.onmessage = function(e) {
 
-    var pos = e.data.indexOf(":");
-    var cmd = e.data.substring(0, pos);
-    var msg = e.data.substring(pos + 2);
-    
-    switch(cmd) {
-      case "s":
-        setInfo(msg);
-        break;
-      case "c":
-        switch(msg) {
-          case "vnc":
-            redirect();
-            break;
-          default:
-            console.warn("Unknown command: " + msg);
-            break;
+        var pos = e.data.indexOf(":");
+        var cmd = e.data.substring(0, pos);
+        var msg = e.data.substring(pos + 2);
+
+        switch (cmd) {
+            case "s":
+                setInfo(msg);
+                break;
+            case "c":
+                switch (msg) {
+                    case "vnc":
+                        redirect();
+                        break;
+                    default:
+                        console.warn("Unknown command: " + msg);
+                        break;
+                }
+                break;
+            case "e":
+                setError(msg);
+                break;
+            default:
+                console.warn("Unknown event: " + cmd);
+                break;
         }
-        break;
-      case "e":
-        setError(msg);
-        break;
-      default:
-        console.warn("Unknown event: " + cmd);
-        break;            
-    }
-  };
+    };
 
-  ws.onclose = function(e) {
-    setTimeout(function() {
-      connect();
-    }, interval);
-  };
+    ws.onclose = function(e) {
+        setTimeout(function() {
+            connect();
+        }, interval);
+    };
 
-  ws.onerror = function(e) {
-    console.warn("Websocket closed");
-    ws.close();
-  };
+    ws.onerror = function(e) {
+        console.warn("Websocket closed");
+        ws.close();
+    };
 }
 
 getInfo();
