@@ -144,17 +144,17 @@ function connect() {
 
     var pos = e.data.indexOf(":");
     var cmd = e.data.substring(0, pos);
-    var msg = e.data.substring(pos + 1);
+    var msg = e.data.substring(pos + 2);
 
     switch(cmd) {
       case "s":
         setInfo(msg);
         break;
       case "c":
-        setError("X" + msg + "X");
+        setError(msg);
         break;
       case "e":
-        setError("X" + msg + "X");
+        setError(msg);
         break;
     }
   };
