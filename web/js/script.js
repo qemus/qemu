@@ -153,6 +153,9 @@ function connect() {
       case "c":
         setError("X + msg + "X");
         break;
+      case "e":
+        setError("X + msg + "X");
+        break;            
     }
   };
 
