@@ -7,7 +7,6 @@ inotifywait -m "$path" |
   while read fp event fn; do
     case "${event,,}" in
       "modify" ) echo -n "s: " && cat "$path" ;;
-      "delete" ) echo "c: vnc" ;;
-      * ) echo "e: Unknown event: $event" ;;      
+      "delete_self" ) echo "c: vnc" ;;
     esac    
   done
