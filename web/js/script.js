@@ -8,7 +8,7 @@ var webSocketFactory = {
 
         ws.addEventListener("open", e => {
             ws.close();
-            document.location.reload();
+            window.location.reload();
         });
 
         ws.addEventListener("error", e => {
@@ -67,7 +67,7 @@ function processInfo() {
         var msg = request.responseText;
         if (msg == null || msg.length == 0) {
             setError("Lost connection");
-            schedule();
+            window.location.reload();
             return false;
         }
 
@@ -88,7 +88,6 @@ function processInfo() {
         }
 
         setError("Error: Received statuscode " + request.status);
-        schedule();
         return false;
 
     } catch (e) {
@@ -137,10 +136,6 @@ function setError(text) {
     return setInfo(text, false, true);
 }
 
-function schedule() {
-    setTimeout(getInfo, interval);
-}
-
 function connect() {
 
     var wsUrl = getURL() + "/status";
@@ -182,8 +177,8 @@ function connect() {
     };
 
     ws.onerror = function(e) {
-        console.warn("Websocket closed");
         ws.close();
+        window.location.reload();
     };
 }
 
