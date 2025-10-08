@@ -47,6 +47,16 @@ function getURL() {
     return protocol + "//" + window.location.host + path;
 }
 
+function redirect() {
+
+    setInfo("Connecting to VNC", true);
+
+    var wsUrl = getURL() + "/websockify";
+    var webSocket = webSocketFactory.connect(wsUrl);
+
+    return true;
+}
+
 function processInfo() {
     try {
 
@@ -73,11 +83,7 @@ function processInfo() {
         }
 
         if (notFound) {
-            setInfo("Connecting to VNC", true);
-
-            var wsUrl = getURL() + "/websockify";
-            var webSocket = webSocketFactory.connect(wsUrl);
-
+            redirect();
             return true;
         }
 
@@ -145,17 +151,27 @@ function connect() {
     var pos = e.data.indexOf(":");
     var cmd = e.data.substring(0, pos);
     var msg = e.data.substring(pos + 2);
-
+    
     switch(cmd) {
       case "s":
         setInfo(msg);
         break;
       case "c":
-        setError(msg);
+        switch(msg) {
+          case "vnc":
+            redirect();
+            break;
+          default:
+            console.warn("Unknown command: " + msg);
+            break;
+        }
         break;
       case "e":
         setError(msg);
         break;
+      default:
+        console.warn("Unknown event: " + cmd);
+        break;            
     }
   };
 
@@ -166,7 +182,7 @@ function connect() {
   };
 
   ws.onerror = function(e) {
-    setError("Websocket closed");
+    console.warn("Websocket closed");
     ws.close();
   };
 }
