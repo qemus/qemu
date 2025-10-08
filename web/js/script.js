@@ -41,6 +41,14 @@ function getInfo() {
     }
 }
 
+function getURL() {
+
+    var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    var path = window.location.pathname.replace(/[^/]*$/, '').replace(/\/$/, '');
+    
+    return protocol + "//" + window.location.host + path;
+}
+
 function processInfo() {
     try {
 
@@ -51,7 +59,6 @@ function processInfo() {
         var msg = request.responseText;
         if (msg == null || msg.length == 0) {
             setError("Lost connection");
-            schedule();
             return false;
         }
 
@@ -62,7 +69,6 @@ function processInfo() {
                 notFound = true;
             } else {
                 setInfo(msg);
-                schedule();
                 return true;
             }
         }
@@ -70,21 +76,17 @@ function processInfo() {
         if (notFound) {
             setInfo("Connecting to VNC", true);
 
-            var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-            var path = window.location.pathname.replace(/[^/]*$/, '').replace(/\/$/, '');
-            var wsUrl = protocol + "//" + window.location.host + path + "/websockify";
+            var wsUrl = getURL() + "/websockify";
             var webSocket = webSocketFactory.connect(wsUrl);
 
             return true;
         }
 
         setError("Error: Received statuscode " + request.status);
-        schedule();
         return false;
 
     } catch (e) {
-        var err = "Error: " + e.message;
-        console.log(err);
+        console.log("Error: " + e.message);
         setError(err);
         return false;
     }
@@ -129,8 +131,26 @@ function setError(text) {
     return setInfo(text, false, true);
 }
 
-function schedule() {
-    setTimeout(getInfo, interval);
+function connect() {
+
+  var wsUrl = getURL() + "/msg";
+  var ws = new WebSocket(wsUrl);
+
+  ws.onmessage = function(e) {
+    console.log('Message:', e.data);
+  };
+
+  ws.onclose = function(e) {
+    setTimeout(function() {
+      connect();
+    }, 1000);
+  };
+
+  ws.onerror = function(e) {
+    console.log("Error: " + e.message);
+    ws.close();
+  };
 }
 
-schedule();
+getInfo();
+connect();
