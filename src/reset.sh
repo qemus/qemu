@@ -176,6 +176,8 @@ if (( VNC_PORT < 5900 )); then
 fi
 
 cp -r /var/www/* /run/shm
+rm -f /var/run/websocketd.pid
+
 html "Starting $APP for $ENGINE..."
 
 if [[ "${WEB:-}" != [Nn]* ]]; then
@@ -208,6 +210,10 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
   # Start webserver
   nginx -e stderr
 
+  # Start websocket server
+  websocketd --address 127.0.0.1 --port=8080 /run/socket.sh
+  echo "$!" > /var/run/websocketd.pid
+  
 fi
 
 return 0
