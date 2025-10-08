@@ -11,6 +11,7 @@ set -Eeuo pipefail
 [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring KVM..."
 
 vendor=$(lscpu | awk '/Vendor ID/{print $3}')
+flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
 
 if [[ "$KVM" != [Nn]* ]]; then
 
