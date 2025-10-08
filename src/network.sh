@@ -174,7 +174,7 @@ configureDNS() {
   fi
 
   if [[ "$DNSMASQ_DEBUG" == [Yy1]* ]]; then
-    tail -fn +0 "$log" &
+    tail -fn +0 "$log" --pid=$$ &
   fi
 
   return 0
@@ -369,7 +369,7 @@ configurePasst() {
   fi
 
   if [[ "$PASST_DEBUG" == [Yy1]* ]]; then
-    tail -fn +0 "$log" &
+    tail -fn +0 "$log" --pid=$$ &
   else
     if [[ "$DEBUG" == [Yy1]* ]]; then
       [ -f "$log" ] && cat "$log" && echo ""
