@@ -212,7 +212,7 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
   nginx -e stderr
 
   # Start websocket server
-  websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh &
+  websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh >/var/log/websocketd.log &
   echo "$!" > /var/run/websocketd.pid
   
 fi
