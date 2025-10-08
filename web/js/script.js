@@ -141,7 +141,19 @@ function connect() {
   var ws = new WebSocket(wsUrl);
 
   ws.onmessage = function(e) {
-    setInfo(e.data);
+
+    var pos = e.data.indexOf(":");
+    var cmd = e.data.substring(0, pos;
+    var msg = e.data.substring(pos + 1);
+
+    switch(cmd) {
+      case "s":
+        setInfo(msg);
+        break;
+      case "c":
+        setError("X + msg + "X");
+        break;
+    }
   };
 
   ws.onclose = function(e) {
@@ -150,8 +162,8 @@ function connect() {
     }, interval);
   };
 
-  ws.onerror = function(err) {
-    setError("Error: " + err);
+  ws.onerror = function(e) {
+    setError("Error: " + e.message);
     ws.close();
   };
 }
