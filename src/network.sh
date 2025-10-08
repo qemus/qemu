@@ -174,7 +174,7 @@ configureDNS() {
   fi
 
   if [[ "$DNSMASQ_DEBUG" == [Yy1]* ]]; then
-    tail -fn +0 "$log" &
+    tail -fn +0 "$log" --pid=$$ &
   fi
 
   return 0
@@ -229,6 +229,7 @@ getHostPorts() {
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
     [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
+    [ -z "$list" ] && list="$WSD_PORT" || list+=",$WSD_PORT"
   fi
 
   if [[ "${NETWORK,,}" == "passt" ]]; then
@@ -369,7 +370,7 @@ configurePasst() {
   fi
 
   if [[ "$PASST_DEBUG" == [Yy1]* ]]; then
-    tail -fn +0 "$log" &
+    tail -fn +0 "$log" --pid=$$ &
   else
     if [[ "$DEBUG" == [Yy1]* ]]; then
       [ -f "$log" ] && cat "$log" && echo ""
@@ -555,6 +556,11 @@ closeNetwork() {
     nginx -s stop 2> /dev/null
     fWait "nginx"
 
+     # Shutdown websocket
+     local pid="/var/run/websocketd.pid"
+     [ -s "$pid" ] && pKill "$(<"$pid")"
+     rm -f "$pid"
+  
   fi
 
   [[ "$NETWORK" == [Nn]* ]] && return 0

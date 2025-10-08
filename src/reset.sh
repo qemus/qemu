@@ -9,6 +9,7 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 
 # Docker environment variables
 
+: "${KVM:="Y"}"            # KVM acceleration
 : "${BOOT:=""}"            # Path of ISO file
 : "${DEBUG:="N"}"          # Disable debugging
 : "${MACHINE:="q35"}"      # Machine selection
@@ -148,66 +149,63 @@ if [[ "$RAM_CHECK" != [Nn]* ]] && (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); th
   info "$msg"
 fi
 
-addPackage() {
-  local pkg=$1
-  local desc=$2
+# Check KVM support
 
-  if apt-mark showinstall | grep -qx "$pkg"; then
-    return 0
-  fi
-
-  MSG="Installing $desc..."
-  info "$MSG" && html "$MSG"
-
-  DEBIAN_FRONTEND=noninteractive apt-get -qq update
-  DEBIAN_FRONTEND=noninteractive apt-get -qq --no-install-recommends -y install "$pkg" > /dev/null
-
-  return 0
-}
-
-: "${VNC_PORT:="5900"}"    # VNC port
-: "${MON_PORT:="7100"}"    # Monitor port
-: "${WEB_PORT:="8006"}"    # Webserver port
-: "${WSS_PORT:="5700"}"    # Websockets port
-
-if (( VNC_PORT < 5900 )); then
-  warn "VNC port cannot be set lower than 5900, ignoring value $VNC_PORT."
-  VNC_PORT="5900"
+if [[ "${PLATFORM,,}" == "x64" ]]; then
+  TARGET="amd64"
+else
+  TARGET="arm64"
 fi
 
-cp -r /var/www/* /run/shm
+if [[ "$KVM" == [Nn]* ]]; then
+  warn "KVM acceleration is disabled, this will cause the machine to run about 10 times slower!"
+else
+  if [[ "${ARCH,,}" != "$TARGET" ]]; then
+    KVM="N"
+    warn "your CPU architecture is ${ARCH^^} and cannot provide KVM acceleration for ${PLATFORM^^} instructions, so the machine will run about 10 times slower."
+  fi
+fi
+
+if [[ "$KVM" != [Nn]* ]]; then
+
+  KVM_ERR=""
+
+  if [ ! -e /dev/kvm ]; then
+    KVM_ERR="(/dev/kvm is missing)"
+  else
+    if ! sh -c 'echo -n > /dev/kvm' &> /dev/null; then
+      KVM_ERR="(/dev/kvm is unwriteable)"
+    else
+      if [[ "${PLATFORM,,}" == "x64" ]]; then
+        flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
+        if ! grep -qw "vmx\|svm" <<< "$flags"; then
+          KVM_ERR="(not enabled in BIOS)"
+        fi
+      fi
+    fi
+  fi
+
+  if [ -n "$KVM_ERR" ]; then
+    KVM="N"
+    if [[ "$OSTYPE" =~ ^darwin ]]; then
+      warn "you are using macOS which has no KVM support, so the machine will run about 10 times slower."
+    else
+      kernel=$(uname -a)
+      case "${kernel,,}" in
+        *"microsoft"* )
+          error "Please bind '/dev/kvm' as a volume in the optional container settings when using Docker Desktop." ;;
+        *"synology"* )
+          error "Please make sure that Synology VMM (Virtual Machine Manager) is installed and that '/dev/kvm' is binded to this container." ;;
+        *)
+          error "KVM acceleration is not available $KVM_ERR, this will cause the machine to run about 10 times slower."
+          error "See the FAQ for possible causes, or disable acceleration by adding the \"KVM=N\" variable (not recommended)." ;;
+      esac
+      [[ "$DEBUG" != [Yy1]* ]] && exit 88
+    fi
+  fi
+
+fi
+
 html "Starting $APP for $ENGINE..."
-
-if [[ "${WEB:-}" != [Nn]* ]]; then
-
-  mkdir -p /etc/nginx/sites-enabled
-  cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
-
-  user="admin"
-  [ -n "${USER:-}" ] && user="${USER:-}"
-
-  if [ -n "${PASS:-}" ]; then
-
-    # Set password
-    echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
-
-    sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
-
-  fi
-
-  sed -i "s/listen 8006 default_server;/listen $WEB_PORT default_server;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http:\/\/127.0.0.1:5700\/;/proxy_pass http:\/\/127.0.0.1:$WSS_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
-
-  # shellcheck disable=SC2143
-  if [ -f /proc/net/if_inet6 ] && [ -n "$(ifconfig -a | grep inet6)" ]; then
-
-    sed -i "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
-
-  fi
-
-  # Start webserver
-  nginx -e stderr
-
-fi
 
 return 0
