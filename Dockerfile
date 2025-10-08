@@ -37,6 +37,7 @@ RUN set -eu && \
         iputils-ping \
         websocketd \
         genisoimage \
+        inotify-tools \
         netcat-openbsd \
         ca-certificates \
         qemu-system-x86 && \
