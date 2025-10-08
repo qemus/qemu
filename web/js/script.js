@@ -35,10 +35,16 @@ function getInfo() {
         request.send();
 
     } catch (e) {
-        var err = "Error: " + e.message;
-        console.log(err);
-        setError(err);
+        setError("Error: " + e.message);
     }
+}
+
+function getURL() {
+
+    var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    var path = window.location.pathname.replace(/[^/]*$/, '').replace(/\/$/, '');
+
+    return protocol + "//" + window.location.host + path;
 }
 
 function processInfo() {
@@ -62,7 +68,6 @@ function processInfo() {
                 notFound = true;
             } else {
                 setInfo(msg);
-                schedule();
                 return true;
             }
         }
@@ -70,9 +75,7 @@ function processInfo() {
         if (notFound) {
             setInfo("Connecting to VNC", true);
 
-            var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
-            var path = window.location.pathname.replace(/[^/]*$/, '').replace(/\/$/, '');
-            var wsUrl = protocol + "//" + window.location.host + path + "/websockify";
+            var wsUrl = getURL() + "/websockify";
             var webSocket = webSocketFactory.connect(wsUrl);
 
             return true;
@@ -83,9 +86,7 @@ function processInfo() {
         return false;
 
     } catch (e) {
-        var err = "Error: " + e.message;
-        console.log(err);
-        setError(err);
+        setError("Error: " + e.message);
         return false;
     }
 }
@@ -126,6 +127,7 @@ function setInfo(msg, loading, error) {
 }
 
 function setError(text) {
+    console.warn(text);
     return setInfo(text, false, true);
 }
 
@@ -133,4 +135,26 @@ function schedule() {
     setTimeout(getInfo, interval);
 }
 
-schedule();
+function connect() {
+
+  var wsUrl = getURL() + "/status";
+  var ws = new WebSocket(wsUrl);
+
+  ws.onmessage = function(e) {
+    setInfo(e.data);
+  };
+
+  ws.onclose = function(e) {
+    setTimeout(function() {
+      connect();
+    }, interval);
+  };
+
+  ws.onerror = function(err) {
+    setError("Error: " + err);
+    ws.close();
+  };
+}
+
+getInfo();
+connect();
