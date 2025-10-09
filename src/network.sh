@@ -20,6 +20,7 @@ set -Eeuo pipefail
 : "${VM_NET_MASK:="255.255.255.0"}"
 
 : "${PASST:="passt"}"
+: "${PASST_MTU:=""}"
 : "${PASST_OPTS:=""}"
 : "${PASST_DEBUG:=""}"
 
@@ -338,6 +339,9 @@ configurePasst() {
   PASST_OPTS+=" -g $gateway"
   PASST_OPTS+=" -n $VM_NET_MASK"
 
+  [[ "${ADAPTER,,}" == "rtl8139" ]] && [ -z "$PASST_MTU" ] && PASST_MTU="$MTU"  
+  [ -n "$PASST_MTU" ] && PASST_OPTS+=" -m $PASST_MTU"
+
   exclude=$(getHostPorts "$HOST_PORTS")
 
   if [ -z "$exclude" ]; then
@@ -421,7 +425,7 @@ configureNAT() {
   else
     ip="172.31.$base"
   fi
-  
+
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
   local gateway=""
@@ -565,7 +569,7 @@ closeWeb() {
 closeNetwork() {
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
-    closeWeb  
+    closeWeb
   fi
 
   [[ "$NETWORK" == [Nn]* ]] && return 0
