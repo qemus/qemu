@@ -338,6 +338,8 @@ configurePasst() {
   PASST_OPTS+=" -a $ip"
   PASST_OPTS+=" -g $gateway"
   PASST_OPTS+=" -n $VM_NET_MASK"
+
+  [[ "${ADAPTER,,}" == "rtl8139" ]] && [ -z "$PASST_MTU" ] && PASST_MTU="$MTU"  
   [ -n "$PASST_MTU" ] && PASST_OPTS+=" -m $PASST_MTU"
 
   exclude=$(getHostPorts "$HOST_PORTS")
@@ -423,7 +425,7 @@ configureNAT() {
   else
     ip="172.31.$base"
   fi
-  
+
   [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
 
   local gateway=""
@@ -567,7 +569,7 @@ closeWeb() {
 closeNetwork() {
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
-    closeWeb  
+    closeWeb
   fi
 
   [[ "$NETWORK" == [Nn]* ]] && return 0
@@ -799,9 +801,10 @@ else
   esac
 
   if [[ "${NETWORK,,}" == "user"* ]]; then
-    NETWORK="passt"
-    if [[ "${ADAPTER,,}" == "rtl8139" ]]; then
-      PASST_MTU="$MTU"
+    if [[ "${ADAPTER,,}" != "rtl8139" ]]; then
+      NETWORK="passt"
+    else
+      NETWORK="slirp"
     fi
   fi
 
