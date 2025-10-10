@@ -338,8 +338,6 @@ configurePasst() {
   PASST_OPTS+=" -a $ip"
   PASST_OPTS+=" -g $gateway"
   PASST_OPTS+=" -n $VM_NET_MASK"
-
-  [[ "${ADAPTER,,}" == "rtl8139" ]] && [ -z "$PASST_MTU" ] && PASST_MTU="$MTU"  
   [ -n "$PASST_MTU" ] && PASST_OPTS+=" -m $PASST_MTU"
 
   exclude=$(getHostPorts "$HOST_PORTS")
@@ -800,13 +798,7 @@ else
 
   esac
 
-  if [[ "${NETWORK,,}" == "user"* ]]; then
-    if [[ "${ADAPTER,,}" != "rtl8139" ]]; then
-      NETWORK="passt"
-    else
-      NETWORK="slirp"
-    fi
-  fi
+  [[ "${NETWORK,,}" == "user"* ]] && NETWORK="passt"
 
   case "${NETWORK,,}" in
     "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
