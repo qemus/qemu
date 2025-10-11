@@ -242,7 +242,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I expose network ports?
 
-  You can expose ports just by adding them to your compose file. If you want to be able to connect to the SSH service of the machine for example, you would add it like this:
+  When using bridge networking, you can expose ports by adding them to your compose file. If you want to be able to connect to the SSH service of the machine for example, you would add it like this:
 
   ```yaml
   ports:
@@ -250,6 +250,13 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   ```
 
   This will make port 2222 on your host redirect to port 22 of the virtual machine.
+
+  When using user-mode networking (for example when running under Podman), you will also need to add those ports to the `USER_PORTS` variable like this:
+
+  ```yaml
+  environment:
+    USER_PORTS: "22,80,443"
+  ```
 
 ### How do I assign an individual IP address to the container?
 

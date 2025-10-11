@@ -181,79 +181,6 @@ configureDNS() {
   return 0
 }
 
-getUserPorts() {
-
-  local args=""
-  local list=$1
-  local ssh="22"
-
-  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
-  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
-
-  list="${list//,/ }"
-  list="${list## }"
-  list="${list%% }"
-
-  for port in $list; do
-    proto="tcp"
-    num="$port"
-
-    if [[ "$port" == */udp ]]; then
-      proto="udp"
-      num="${port%/udp}"
-    elif [[ "$port" == */tcp ]]; then
-      proto="tcp"
-      num="${port%/tcp}"
-    fi
-
-    args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
-  done
-
-  echo "${args%?}"
-  return 0
-}
-
-getHostPorts() {
-
-  local list="$1"
-  list=$(echo "${list// /}" | sed 's/,*$//g')
-
-  if [[ "${DISPLAY,,}" == "web" ]]; then
-    [ -z "$list" ] && list="$WSS_PORT" || list+=",$WSS_PORT"
-  fi
-
-  if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
-    [ -z "$list" ] && list="$VNC_PORT" || list+=",$VNC_PORT"
-  fi
-
-  [ -z "$list" ] && list="$MON_PORT" || list+=",$MON_PORT"
-
-  if [[ "${WEB:-}" != [Nn]* ]]; then
-    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
-    [ -z "$list" ] && list="$WSD_PORT" || list+=",$WSD_PORT"
-  fi
-
-  if [[ "${NETWORK,,}" == "passt" ]]; then
-
-    local DNS_PORT="53"
-    local SAMBA_PORT="445"
-
-    if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
-      [ -z "$list" ] && list="$DNS_PORT" || list+=",$DNS_PORT"
-    fi
-
-    if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
-      if [[ "${SAMBA:-}" != [Nn]* ]]; then
-        [ -z "$list" ] && list="$SAMBA_PORT" || list+=",$SAMBA_PORT"
-      fi
-    fi
-
-  fi
-
-  echo "$list"
-  return 0
-}
-
 compat() {
 
   local gateway="$1"
@@ -277,6 +204,75 @@ compat() {
   return 0
 }
 
+getHostPorts() {
+
+  local list="$1"
+  list=$(echo "${list// /}" | sed 's/,*$//g')
+
+  if [[ "${DISPLAY,,}" == "web" ]]; then
+    [ -z "$list" ] && list="$WSS_PORT" || list+=",$WSS_PORT"
+  fi
+
+  if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
+    [ -z "$list" ] && list="$VNC_PORT" || list+=",$VNC_PORT"
+  fi
+
+  [ -z "$list" ] && list="$MON_PORT" || list+=",$MON_PORT"
+
+  if [[ "${WEB:-}" != [Nn]* ]]; then
+    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
+    [ -z "$list" ] && list="$WSD_PORT" || list+=",$WSD_PORT"
+  fi
+
+  echo "$list"
+  return 0
+}
+
+getUserPorts() {
+
+  local args=""
+  local list=$1
+  list=$(echo "${list// /}" | sed 's/,*$//g')
+
+  local ssh="22"
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
+  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
+
+  echo "$list"
+  return 0
+}
+
+getSlirp() {
+
+  local args=""
+  local list=""
+
+  list=$(getUserPorts)
+  list="${list//,/ }"
+  list="${list## }"
+  list="${list%% }"
+
+  for port in $list; do
+
+    proto="tcp"
+    num="${port%/tcp}"
+
+    if [[ "$port" == *"/udp" ]]; then
+      proto="udp"
+      num="${port%/udp}"
+    elif [[ "$port" != *"/tcp" ]]; then
+      args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
+      proto="udp"
+      num="${port%/udp}"
+    fi
+
+    args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
+  done
+
+  echo "${args%?}"
+  return 0
+}
+
 configureSlirp() {
 
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring slirp networking..."
@@ -295,14 +291,14 @@ configureSlirp() {
 
   NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
 
-  local forward
+  local forward=""
   forward=$(getUserPorts "${USER_PORTS:-}")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
   if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
     cp /etc/resolv.conf /etc/resolv.dnsmasq
-    echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
     configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+    echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
   fi
 
   VM_NET_IP="$ip"
@@ -340,16 +336,17 @@ configurePasst() {
   PASST_OPTS+=" -n $VM_NET_MASK"
   [ -n "$PASST_MTU" ] && PASST_OPTS+=" -m $PASST_MTU"
 
-  exclude=$(getHostPorts "$HOST_PORTS")
+  local forward=""
+  forward=$(getUserPorts "${USER_PORTS:-}")
+  forward="${forward///tcp}"
+  forward="${forward///udp}"
 
-  if [ -z "$exclude" ]; then
-    exclude="%${VM_NET_DEV}/all"
-  else
-    exclude="%${VM_NET_DEV}/~${exclude//,/,~}"
+  if [ -n "$forward" ]; then
+    forward="%${VM_NET_DEV}/$forward"
+    PASST_OPTS+=" -t $forward"
+    PASST_OPTS+=" -u $forward"
   fi
 
-  PASST_OPTS+=" -t $exclude"
-  PASST_OPTS+=" -u $exclude"
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $GATEWAY_MAC"
   PASST_OPTS+=" -P /var/run/passt.pid"
@@ -701,11 +698,6 @@ getInfo() {
   [ -z "$MTU" ] && MTU="$mtu"
   [ -z "$MTU" ] && MTU="0"
 
-  if [ "$MTU" -gt "1500" ]; then
-    [[ "$DEBUG" == [Yy1]* ]] && echo "MTU size is too large: $MTU, ignoring..."
-    MTU="0"
-  fi
-
   if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
     if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
       warn "MTU size is $MTU, but cannot be set for $ADAPTER adapters!" && MTU="0"
@@ -821,14 +813,19 @@ else
       if ! configureSlirp; then
         error "Failed to configure user-mode networking!"
         exit 24
-      fi
-
-      if [ -z "$USER_PORTS" ]; then
-        info "Notice: slirp networking is active, so when you want to expose ports, you will need to map them using this variable: \"USER_PORTS=80,443\"."
       fi ;;
 
     *)
       error "Unrecognized NETWORK value: \"$NETWORK\"" && exit 24 ;;
+  esac
+
+  case "${NETWORK,,}" in
+    "passt" | "slirp" )
+
+      if [ -z "$USER_PORTS" ]; then
+        info "Notice: because user-mode networking is active, if you need to expose ports, add them to the \"USER_PORTS\" variable."
+      fi ;;
+
   esac
 
 fi
