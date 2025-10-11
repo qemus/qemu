@@ -132,7 +132,7 @@ function setInfo(msg, loading, error) {
 
         if (msg.includes(p)) {
             if (el.innerHTML.includes(p)) {
-                el.getElementsByClassName('loading')[0].innerText = extractContent(msg);
+                el.getElementsByClassName('loading')[0].textContent = extractContent(msg);
                 return true;
             }
         }
