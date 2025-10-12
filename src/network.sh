@@ -198,7 +198,7 @@ compat() {
   if ip address add dev "$interface" "$samba/24" label "$interface:compat"; then
     SAMBA_INTERFACE="$samba"
   else
-    warn "failed to configure IP alias!"
+    warn "failed to configure IP alias. $ADD_ERR --cap-add NET_ADMIN"
   fi
 
   return 0
