@@ -187,7 +187,6 @@ compat() {
   local interface="$2"
   local samba="20.20.20.1"
 
-  [[ "$PODMAN" == [Yy1]* ]] && return 0
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
@@ -196,10 +195,14 @@ compat() {
   fi
 
   # Backwards compatibility with old installations
-  if ip address add dev "$interface" "$samba/24" label "$interface:compat"; then
+  if ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>/dev/null; then
     SAMBA_INTERFACE="$samba"
   else
-    warn "failed to configure IP alias. $ADD_ERR --cap-add NET_ADMIN"
+    msg=$(ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>&1)
+    if [[ "${msg,,}" != *"address already assigned"* && "$PODMAN" != [Yy1]* ]]; then
+      echo "$msg" >&2
+      warn "failed to configure IP alias. $ADD_ERR --cap-add NET_ADMIN"
+    fi
   fi
 
   return 0
