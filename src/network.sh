@@ -187,6 +187,7 @@ compat() {
   local interface="$2"
   local samba="20.20.20.1"
 
+  [[ "$PODMAN" == [Yy1]* ]] && return 0
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
