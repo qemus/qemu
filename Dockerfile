@@ -5,6 +5,8 @@ FROM debian:trixie-slim
 ARG TARGETARCH
 ARG VERSION_ARG="0.0"
 ARG VERSION_VNC="1.6.0"
+ARG VERSION_UTK="1.2.0"
+ARG VERSION_PASST="2025_09_19"
 
 ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -41,7 +43,7 @@ RUN set -eu && \
         netcat-openbsd \
         ca-certificates \
         qemu-system-x86 && \
-    wget "https://github.com/qemus/passt/releases/download/v2025_09_19/passt_2025_09_19_${TARGETARCH}.deb" -O /tmp/passt.deb -q && \
+    wget "https://github.com/qemus/passt/releases/download/v${VERSION_PASST}/passt_${VERSION_PASST}_${TARGETARCH}.deb" -O /tmp/passt.deb -q && \
     dpkg -i /tmp/passt.deb && \
     apt-get clean && \
     mkdir -p /etc/qemu && \
@@ -62,7 +64,7 @@ COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
 
-ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v1.2.0/utk_1.2.0_${TARGETARCH}.bin" /run/utk.bin
+ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK}/utk_${VERSION_UTK}_${TARGETARCH}.bin" /run/utk.bin
 
 VOLUME /storage
 EXPOSE 22 5900 8006
