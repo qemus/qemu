@@ -362,15 +362,15 @@ configurePasst() {
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
   [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
 
-  if [[ "$PASST_DEBUG" != [Yy1]* ]]; then
-    PASST_OPTS+=" >/dev/null 2>&1"
-  fi
-
-  if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
-    local msg="Failed to start passt, reason: $?"
-    [ -f "$log" ] && cat "$log"
-    error "$msg"
-    return 1
+  if ! $PASST ${PASST_OPTS:+ $PASST_OPTS} >/dev/null 2>&1; then
+    rm -f "$log"
+    PASST_OPTS="${PASST_OPTS/ -q/}"
+    if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
+      local msg="Failed to start passt, reason: $?"
+      [ -f "$log" ] && cat "$log"
+      error "$msg"
+      return 1
+    fi
   fi
 
   if [[ "$PASST_DEBUG" == [Yy1]* ]]; then
