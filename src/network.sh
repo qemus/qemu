@@ -363,14 +363,17 @@ configurePasst() {
   [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
 
   if ! $PASST ${PASST_OPTS:+ $PASST_OPTS} >/dev/null 2>&1; then
+
     rm -f "$log"
     PASST_OPTS="${PASST_OPTS/ -q/}"
-    if ! $PASST ${PASST_OPTS:+ $PASST_OPTS}; then
-      local msg="Failed to start passt, reason: $?"
+    { $PASST ${PASST_OPTS:+ $PASST_OPTS}; rc=$?; } || :
+
+    if (( rc != 0 )); then
       [ -f "$log" ] && cat "$log"
-      error "$msg"
+      error "Failed to start passt, reason: $rc"
       return 1
     fi
+
   fi
 
   if [[ "$PASST_DEBUG" == [Yy1]* ]]; then
