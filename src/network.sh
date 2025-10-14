@@ -251,7 +251,7 @@ getSlirp() {
   local args=""
   local list=""
 
-  list=$(getUserPorts)
+  list=$(getUserPorts "${USER_PORTS:-}")
   list="${list//,/ }"
   list="${list## }"
   list="${list%% }"
