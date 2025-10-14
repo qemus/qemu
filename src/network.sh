@@ -241,6 +241,10 @@ getUserPorts() {
   local list="${USER_PORTS:-}"
   list=$(echo "${list// /}" | sed 's/,*$//g')
 
+  local ssh="22"
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
+  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
+  
   list="${list//,,/,}"
   list="${list//,/ }"
   list="${list## }"
@@ -276,10 +280,6 @@ getUserPorts() {
     fi
 
   done
-
-  local ssh="22"
-  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
-  [ -z "$ports" ] && ports="$ssh" || ports+=",$ssh"
 
   # Remove duplicates
   ports=$(echo "$ports," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
