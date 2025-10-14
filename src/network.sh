@@ -269,7 +269,9 @@ getUserPorts() {
   
     done
 
-    [ -n "$num" ] && [[ "$num" != "$ssh" ]] && ports+="$userport,"
+    if [ -n "$num" ] && [[ "$num" != "$ssh" ]]; then
+      [ -z "$ports" ] && ports="$userport" || ports+=",$userport"
+    fi
 
   done
 
