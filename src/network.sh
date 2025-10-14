@@ -212,6 +212,7 @@ getHostPorts() {
 
   local list="${HOST_PORTS:-}"
   list=$(echo "${list// /}" | sed 's/,*$//g')
+  list="${list//,,/,}"
 
   if [[ "${DISPLAY,,}" == "web" ]]; then
     [ -z "$list" ] && list="$WSS_PORT" || list+=",$WSS_PORT"
@@ -228,11 +229,8 @@ getHostPorts() {
     [ -z "$list" ] && list="$WSD_PORT" || list+=",$WSD_PORT"
   fi
 
-  if [ -n "$list" ]; then
-    if echo "$list" | tr ',' '\n' | grep -v '^$' | sort -rf | uniq -ci | sort -k 1,1nr | sed 's/^[\ ]*//' | grep -vq '^1\ '; then
-      warn "the variable \"HOST_PORTS\" contains duplicate port numbers: $list"
-    fi
-  fi
+  # Remove duplicates
+  list=$(echo "$list," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
 
   echo "$list"
   return 0
@@ -243,6 +241,7 @@ getUserPorts() {
   local list="${USER_PORTS:-}"
   list=$(echo "${list// /}" | sed 's/,*$//g')
 
+  list="${list//,,/,}"
   list="${list//,/ }"
   list="${list## }"
   list="${list%% }"
@@ -254,32 +253,36 @@ getUserPorts() {
   exclude="${exclude%% }"
 
   local ports=""
-  local ssh="22"
-  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
 
   for userport in $list; do
 
     local num="${userport///tcp}"
     num="${num///udp}"
+    [ -z "$num" ] && continue
 
     for hostport in $exclude; do
 
-      local val="${port///tcp}"
-      [[ "$num" == "${val///udp}" ]] && num=""
-  
+      local val="${hostport///tcp}"
+
+      if [[ "$num" == "${val///udp}" ]]; then
+        num=""
+        warn "Could not assign port ${val///udp} to \"USER_PORTS\" because it is already in \"HOST_PORTS\"!"
+      fi
+
     done
 
-    if [ -n "$num" ] && [[ "$num" != "$ssh" ]]; then
+    if [ -n "$num" ]; then
       [ -z "$ports" ] && ports="$userport" || ports+=",$userport"
     fi
 
   done
 
+  local ssh="22"
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
   [ -z "$ports" ] && ports="$ssh" || ports+=",$ssh"
 
-  if echo "$ports" | tr ',' '\n' | grep -v '^$' | sort -rf | uniq -ci | sort -k 1,1nr | sed 's/^[\ ]*//' | grep -vq '^1\ '; then
-    warn "the variable \"USER_PORTS\" contains duplicate port numbers: $ports"
-  fi
+  # Remove duplicates
+  ports=$(echo "$ports," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
 
   echo "$ports"
   return 0
@@ -312,7 +315,7 @@ getSlirp() {
     args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
   done
 
-  [ -n "$args" ] && args=$(echo "$args" | sed 's/,*$//g')
+  args=$(echo "$args" | sed 's/,*$//g')
 
   echo "${args%?}"
   return 0
