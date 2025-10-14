@@ -1,0 +1,20 @@
+services:
+  qemu:
+    image: qemux/qemu
+    container_name: qemu
+    environment:
+      BOOT: "mint"
+      RAM_SIZE: "max"
+      DISK_SIZE: "max"
+      CPU_CORES: "max"
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - 8006:8006
+    volumes:
+      - ./qemu:/storage
+    restart: always
+    stop_grace_period: 2m
