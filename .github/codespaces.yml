@@ -16,5 +16,5 @@ services:
       - 8006:8006
     volumes:
       - ./qemu:/storage
-    restart: always
+    restart: on-failure
     stop_grace_period: 2m
