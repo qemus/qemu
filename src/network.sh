@@ -129,7 +129,7 @@ configureDNS() {
   rm -f "$log"
 
   case "${NETWORK,,}" in
-    "nat" | "tap" | "tun" | "tuntap" | "y" )
+    "tap" | "tun" | "tuntap" | "y" )
 
       # Create lease file for faster resolve
       echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
@@ -824,7 +824,7 @@ else
 
   case "${NETWORK,,}" in
     "user"* | "passt" | "slirp" ) ;;
-    "nat" | "tap" | "tun" | "tuntap" | "y" )
+    "tap" | "tun" | "tuntap" | "y" )
 
       # Configure tap interface
       if ! configureNAT; then
@@ -841,7 +841,7 @@ else
   [[ "${NETWORK,,}" == "user"* ]] && NETWORK="passt"
 
   case "${NETWORK,,}" in
-    "nat" | "tap" | "tun" | "tuntap" | "y" ) ;;
+    "tap" | "tun" | "tuntap" | "y" ) ;;
     "passt" )
 
       # Configure for user-mode networking (passt)
