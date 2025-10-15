@@ -1,6 +1,21 @@
 {
-  "name": "qemu",
+  "name": "QEMU",
   "service": "qemu",
-  "forwardPorts": [8006],
+  "containerEnv": {
+    "VERSION": "mint",
+    "RAM_SIZE": "max",
+    "DISK_SIZE": "max",
+    "CPU_CORES": "max"    
+  },  
+  "forwardPorts": [8006],  
+  "portsAttributes": {
+    "8006": {
+      "label": "Web",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  }, 
   "dockerComposeFile": ".github/codespaces.yml"
 }
