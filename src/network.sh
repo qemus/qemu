@@ -311,6 +311,7 @@ getSlirp() {
 
 configureSlirp() {
 
+  NETWORK="slirp"
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring slirp networking..."
 
   local ip="$IP"
@@ -343,6 +344,7 @@ configureSlirp() {
 
 configurePasst() {
 
+  NETWORK="passt"
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
 
   local log="/var/log/passt.log"
@@ -823,7 +825,7 @@ if [[ "$DHCP" == [Yy1]* ]]; then
 else
 
   case "${NETWORK,,}" in
-    "user"* | "passt" | "slirp" ) ;;
+    "passt" | "slirp" | "user"* ) ;;
     "tap" | "tun" | "tuntap" | "y" )
 
       # Configure tap interface
@@ -838,11 +840,9 @@ else
 
   esac
 
-  [[ "${NETWORK,,}" == "user"* ]] && NETWORK="passt"
-
   case "${NETWORK,,}" in
     "tap" | "tun" | "tuntap" | "y" ) ;;
-    "passt" )
+    "passt" | "user"* )
 
       # Configure for user-mode networking (passt)
       if ! configurePasst; then
