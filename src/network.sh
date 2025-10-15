@@ -199,7 +199,7 @@ compat() {
     SAMBA_INTERFACE="$samba"
   else
     msg=$(ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>&1)
-    if [[ "${msg,,}" != *"address already assigned"*; then
+    if [[ "${msg,,}" != *"address already assigned"* ]]; then
       echo "$msg" >&2
       warn "failed to configure IP alias for backwards compatibility. $ADD_ERR --cap-add NET_ADMIN"
     fi
@@ -210,27 +210,27 @@ compat() {
 
 getHostPorts() {
 
-  local list="${HOST_PORTS:-}"
-  list=$(echo "${list// /}" | sed 's/,*$//g')
-  list="${list//,,/,}"
+  local list=""
 
   if [[ "${DISPLAY,,}" == "web" ]]; then
-    [ -z "$list" ] && list="$WSS_PORT" || list+=",$WSS_PORT"
+    list+="$WSS_PORT,"
   fi
 
   if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
-    [ -z "$list" ] && list="$VNC_PORT" || list+=",$VNC_PORT"
+    list+="$VNC_PORT,"
   fi
 
-  [ -z "$list" ] && list="$MON_PORT" || list+=",$MON_PORT"
+  list+="$MON_PORT,"
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
-    [ -z "$list" ] && list="$WEB_PORT" || list+=",$WEB_PORT"
-    [ -z "$list" ] && list="$WSD_PORT" || list+=",$WSD_PORT"
+    list+="$WEB_PORT,"
+    list+="$WSD_PORT,"
   fi
 
+  list+="${HOST_PORTS// /},"
+
   # Remove duplicates
-  list=$(echo "$list," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
+  list=$(echo "${list//,,/,}," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
 
   echo "$list"
   return 0
@@ -238,26 +238,25 @@ getHostPorts() {
 
 getUserPorts() {
 
-  local list="${USER_PORTS:-}"
-  list=$(echo "${list// /}" | sed 's/,*$//g')
-  list="${list//,,/,}"
-
   local ssh="22"
   [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
-  [ -z "$list" ] && list="$ssh" || list+=",$ssh"
+
+  local list="$ssh,"
+  list+="${USER_PORTS// /},"
 
   local exclude
   exclude=$(getHostPorts)
 
   local ports=""
+  local userport=""
+  local hostport=""
 
-  for userport in "${list//,/ }"; do
+  for userport in ${list//,/ }; do
 
     local num="${userport///tcp}"
     num="${num///udp}"
-    [ -z "$num" ] && continue
 
-    for hostport in "${exclude//,/ }"; do
+    for hostport in ${exclude//,/ }; do
 
       local val="${hostport///tcp}"
 
@@ -268,14 +267,12 @@ getUserPorts() {
 
     done
 
-    if [ -n "$num" ]; then
-      [ -z "$ports" ] && ports="$userport" || ports+=",$userport"
-    fi
+    [ -n "$num" ] && ports+="$userport,"
 
   done
 
   # Remove duplicates
-  ports=$(echo "$ports," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
+  ports=$(echo "${ports//,,/,}," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
 
   echo "$ports"
   return 0
@@ -287,9 +284,8 @@ getSlirp() {
   local list=""
 
   list=$(getUserPorts)
-  list="${list//,/ }"
 
-  for port in $list; do
+  for port in ${list//,/ }; do
 
     local proto="tcp"
     local num="${port%/tcp}"
@@ -336,7 +332,7 @@ configureSlirp() {
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
   if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
-    cp /etc/resolv.conf /etc/resolv.dnsmasq
+    [ ! -f /etc/resolv.dnsmasq ] && cp /etc/resolv.conf /etc/resolv.dnsmasq
     configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
     echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
   fi
@@ -394,7 +390,7 @@ configurePasst() {
   PASST_OPTS+=" -q"
 
   if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
-    cp /etc/resolv.conf /etc/resolv.dnsmasq
+    [ ! -f /etc/resolv.dnsmasq ] && cp /etc/resolv.conf /etc/resolv.dnsmasq
     echo -e "nameserver 127.0.0.1\nsearch .\noptions ndots:0" >/etc/resolv.conf
   fi
 
@@ -409,8 +405,8 @@ configurePasst() {
 
     if (( rc != 0 )); then
       [ -f "$log" ] && cat "$log"
-      error "Failed to start passt, reason: $rc"
-      return 1
+      warn "failed to start passt ($rc), falling back to slirp networking!"
+      configureSlirp && return 0 || return 1
     fi
 
   fi
