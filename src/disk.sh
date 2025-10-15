@@ -480,7 +480,8 @@ addDisk () {
     local SPARE=536870912
     SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
     (( SPACE < SPARE )) && SPACE="$SPARE" || SPACE=$((SPACE-SPARE))
-    GB=$(( SPACE/1073741824 ))
+    GB=$(( SPACE/1073741825 ))
+    [[ "${BOOT_MODE:-}" == "windows"* ]] && (( GB < 16 )) && GB="16"
     DISK_SPACE="${GB}G"
 
   fi
