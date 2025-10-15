@@ -199,9 +199,9 @@ compat() {
     SAMBA_INTERFACE="$samba"
   else
     msg=$(ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>&1)
-    if [[ "${msg,,}" != *"address already assigned"* && "$PODMAN" != [Yy1]* ]]; then
+    if [[ "${msg,,}" != *"address already assigned"*; then
       echo "$msg" >&2
-      warn "failed to configure IP alias. $ADD_ERR --cap-add NET_ADMIN"
+      warn "failed to configure IP alias for backwards compatibility. $ADD_ERR --cap-add NET_ADMIN"
     fi
   fi
 
@@ -240,31 +240,24 @@ getUserPorts() {
 
   local list="${USER_PORTS:-}"
   list=$(echo "${list// /}" | sed 's/,*$//g')
+  list="${list//,,/,}"
 
   local ssh="22"
   [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
   [ -z "$list" ] && list="$ssh" || list+=",$ssh"
-  
-  list="${list//,,/,}"
-  list="${list//,/ }"
-  list="${list## }"
-  list="${list%% }"
 
   local exclude
   exclude=$(getHostPorts)
-  exclude="${exclude//,/ }"
-  exclude="${exclude## }"
-  exclude="${exclude%% }"
 
   local ports=""
 
-  for userport in $list; do
+  for userport in "${list//,/ }"; do
 
     local num="${userport///tcp}"
     num="${num///udp}"
     [ -z "$num" ] && continue
 
-    for hostport in $exclude; do
+    for hostport in "${exclude//,/ }"; do
 
       local val="${hostport///tcp}"
 
@@ -295,13 +288,12 @@ getSlirp() {
 
   list=$(getUserPorts)
   list="${list//,/ }"
-  list="${list## }"
-  list="${list%% }"
 
   for port in $list; do
 
     local proto="tcp"
     local num="${port%/tcp}"
+    [ -z "$num" ] && continue
 
     if [[ "$port" == *"/udp" ]]; then
       proto="udp"
