@@ -19,7 +19,7 @@ cd /run
 . boot.sh       # Configure boot
 . proc.sh       # Initialize processor
 . config.sh     # Configure arguments
-. memory.sh     # Check memory size
+. memory.sh     # Check available memory
 . finish.sh     # Finish initialization
 
 trap - ERR
