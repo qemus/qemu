@@ -1,8 +1,8 @@
 {
-  "name": "QEMU",
+  "name": "Linux Mint",
   "service": "qemu",
   "containerEnv": {
-    "VERSION": "mint",
+    "BOOT": "mint",
     "RAM_SIZE": "max",
     "DISK_SIZE": "max",
     "CPU_CORES": "max"    
@@ -17,5 +17,5 @@
   "otherPortsAttributes": {
     "onAutoForward": "silent"
   }, 
-  "dockerComposeFile": ".github/codespaces.yml"
+  "dockerComposeFile": "codespaces.yml"
 }
