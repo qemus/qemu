@@ -2,10 +2,7 @@
   "name": "Ubuntu Server",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "ubuntus",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "ubuntus"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
