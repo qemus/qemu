@@ -2,10 +2,7 @@
   "name": "Rocky Linux",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "rocky",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "rocky"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
