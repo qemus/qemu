@@ -1,5 +1,5 @@
 {
-  "name": "Cachy OS",
+  "name": "CachyOS",
   "service": "qemu",
   "containerEnv": {
     "BOOT": "cachy",
