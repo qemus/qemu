@@ -98,7 +98,7 @@ RAM_TOTAL=$(free -b | grep -m 1 Mem: | awk '{print $2}')
 RAM_SIZE="${RAM_SIZE// /}"
 [ -z "$RAM_SIZE" ] && error "RAM_SIZE not specified!" && exit 16
 
-if [[ "${RAM_SIZE,,}" != "max" ]]; then
+if [[ "${RAM_SIZE,,}" != "max" && "${RAM_SIZE,,}" != "half" ]]; then
 
   if [ -z "${RAM_SIZE//[0-9. ]}" ]; then
     [ "${RAM_SIZE%%.*}" -lt "130" ] && RAM_SIZE="${RAM_SIZE}G" || RAM_SIZE="${RAM_SIZE}M"
