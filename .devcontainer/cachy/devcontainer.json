@@ -2,10 +2,7 @@
   "name": "CachyOS",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "cachy",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "cachy"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
