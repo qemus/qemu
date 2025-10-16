@@ -475,13 +475,19 @@ addDisk () {
   DIR=$(dirname "$DISK_FILE")
   [ ! -d "$DIR" ] && return 0
 
-  if [[ "${DISK_SPACE,,}" == "max" ]]; then
+  if [[ "${DISK_SPACE,,}" == "max" || "${DISK_SPACE,,}" == "half" ]]; then
 
-    local SPARE=536870912
+    local SPARE=2147483648
     SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
-    (( SPACE < SPARE )) && SPACE="$SPARE" || SPACE=$((SPACE-SPARE))
+
+    if [[ "${DISK_SPACE,,}" == "max" ]]; then
+      SPACE=$((SPACE-SPARE))
+    else
+      SPACE=$(( SPACE / 2 ))
+    fi
+
+    (( SPACE < SPARE )) && SPACE="$SPARE" 
     GB=$(( SPACE/1073741825 ))
-    [[ "${BOOT_MODE:-}" == "windows"* ]] && (( GB < 16 )) && GB="16"
     DISK_SPACE="${GB}G"
 
   fi
