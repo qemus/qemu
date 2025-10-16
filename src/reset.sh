@@ -148,7 +148,7 @@ if [[ "$RAM_CHECK" != [Nn]* && "${RAM_SIZE,,}" != "max" ]]; then
       info "$msg but since ZFS is active this will be ignored."
     else
       RAM_SIZE="max"
-      info "$msg it will automatically be set to a lower amount."
+      info "$msg it will automatically be adjusted to a lower amount."
     fi
   fi
 fi
