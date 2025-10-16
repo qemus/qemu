@@ -138,21 +138,6 @@ if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
   fi
 fi
 
-# Check available memory
-
-if [[ "$RAM_CHECK" != [Nn]* && "${RAM_SIZE,,}" != "max" ]]; then
-  if (( (RAM_WANTED + RAM_SPARE) > RAM_AVAIL )); then
-    AVAIL_MEM=$(formatBytes "$RAM_AVAIL")
-    msg="Your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is too high for the $AVAIL_MEM of memory available,"
-    if [[ "${FS,,}" == "zfs" ]]; then
-      info "$msg but since ZFS is active this will be ignored."
-    else
-      RAM_SIZE="max"
-      info "$msg it will automatically be adjusted to a lower amount."
-    fi
-  fi
-fi
-
 # Check KVM support
 
 if [[ "${PLATFORM,,}" == "x64" ]]; then
