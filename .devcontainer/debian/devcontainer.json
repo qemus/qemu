@@ -1,0 +1,21 @@
+{
+  "name": "Debian",
+  "service": "qemu",
+  "containerEnv": {
+    "BOOT": "debian",
+    "RAM_SIZE": "max",
+    "DISK_SIZE": "max",
+    "CPU_CORES": "max"    
+  },  
+  "forwardPorts": [8006],  
+  "portsAttributes": {
+    "8006": {
+      "label": "Web",
+      "onAutoForward": "openBrowser"
+    }
+  },
+  "otherPortsAttributes": {
+    "onAutoForward": "silent"
+  }, 
+  "dockerComposeFile": "../codespaces.yml"
+}
