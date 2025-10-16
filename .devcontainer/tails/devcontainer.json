@@ -2,10 +2,7 @@
   "name": "Tails",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "tails",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "tails"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
