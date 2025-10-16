@@ -2,10 +2,7 @@
   "name": "NixOS",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "nixos",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "nixos"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
