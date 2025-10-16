@@ -2,10 +2,7 @@
   "name": "Alpine Linux",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "alpine",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "alpine"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
