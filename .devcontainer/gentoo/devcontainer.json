@@ -2,10 +2,7 @@
   "name": "Gentoo",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "gentoo",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "gentoo"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

@@ -2,10 +2,7 @@
   "name": "Ubuntu Desktop",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "ubuntu",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "ubuntu"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

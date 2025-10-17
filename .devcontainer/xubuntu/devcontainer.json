@@ -2,10 +2,7 @@
   "name": "Xubuntu",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "xubuntu",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "xubuntu"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

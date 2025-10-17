@@ -2,10 +2,7 @@
   "name": "Debian",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "debian",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "debian"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

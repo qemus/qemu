@@ -2,10 +2,7 @@
   "name": "Kali Linux",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "kali",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "kali"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

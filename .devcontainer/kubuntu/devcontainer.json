@@ -2,10 +2,7 @@
   "name": "Kubuntu",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "kubuntu",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "kubuntu"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

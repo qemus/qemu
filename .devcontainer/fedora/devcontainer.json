@@ -2,10 +2,7 @@
   "name": "Fedora",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "fedora",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "fedora" 
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

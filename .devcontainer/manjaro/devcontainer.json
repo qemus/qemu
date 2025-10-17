@@ -2,10 +2,7 @@
   "name": "Manjaro",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "manjaro",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "manjaro"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {

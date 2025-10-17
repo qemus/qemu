@@ -2,10 +2,7 @@
   "name": "MX Linux",
   "service": "qemu",
   "containerEnv": {
-    "BOOT": "mx",
-    "RAM_SIZE": "max",
-    "DISK_SIZE": "max",
-    "CPU_CORES": "max"    
+    "BOOT": "mx"
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
