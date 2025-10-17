@@ -580,7 +580,7 @@ addDisk () {
         msg+=" (of which $USED is used),"
       fi
 
-      warn "$msg but there is only $GB of free space left in $DIR, make at least $LEFT of room available!"
+      warn "$msg but there is only $GB of free space left in $DIR, make at least $LEFT more room available!"
 
     fi
 
