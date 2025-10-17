@@ -73,9 +73,11 @@ case "${BOOT_MODE,,}" in
 
     if [ ! -s "$DEST.rom" ] || [ ! -f "$DEST.rom" ]; then
       [ ! -s "$OVMF/$ROM" ] || [ ! -f "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
-      cp "$OVMF/$ROM" "$DEST.rom"
-      if [[ "${LOGO:-}" != [Nn]* ]]; then
-        /run/utk.bin "$DEST.rom" replace_ffs LogoDXE "/var/www/img/${PROCESS,,}.ffs" save "$DEST.rom"
+      if [[ "${LOGO:-}" == [Nn]* ]]; then
+        cp "$OVMF/$ROM" "$DEST.rom"
+      else
+        /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "/var/www/img/${PROCESS,,}.ffs" save "$DEST.tmp"
+        mv "$DEST.tmp" "$DEST.rom"
       fi
     fi
 
