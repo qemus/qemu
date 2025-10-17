@@ -564,15 +564,15 @@ addDisk () {
     CUR_SIZE=$(getSize "$DISK_FILE")
     USED=$(du -sB 1 "$DISK_FILE" | cut -f1)
     FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
-    LEFT=$(( CUR_SIZE - USED ))
+    LEFT=$(( CUR_SIZE - USED - FREE ))
 
-    if (( LEFT > FREE )); then
+    if (( LEFT > 0 )); then
 
       GB=$(formatBytes "$FREE")
       CUR_SIZE=$(formatBytes "$CUR_SIZE")
 
       if [[ "$USED" == "0" ]]; then
-        warn "the virtual size of the ${DISK_DESC,,} is $CUR_SIZE, but there is only $GB of free space left in $DIR, please make more available!"
+        warn "the virtual size of the ${DISK_DESC,,} is $CUR_SIZE, but there is only $GB of free space left in $DIR, please make more room available!"
       else
         LEFT=$(formatBytes "$LEFT")
         USED=$(formatBytes "$USED")
