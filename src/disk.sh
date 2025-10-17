@@ -107,6 +107,7 @@ createDisk() {
       error "Not enough free space to create a $DISK_DESC of ${DISK_SPACE/G/ GB} in $DIR, it has only $GB available..."
       error "Please specify a smaller ${DISK_DESC^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
+
   fi
 
   html "Creating a $DISK_DESC image..."
@@ -194,6 +195,7 @@ resizeDisk() {
       error "Not enough free space to resize $DISK_DESC to ${DISK_SPACE/G/ GB} in $DIR, it has only $GB available.."
       error "Please specify a smaller ${DISK_DESC^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 74
     fi
+
   fi
 
   GB=$(formatBytes "$CUR_SIZE")
@@ -267,6 +269,7 @@ convertDisk() {
       error "Not enough free space to convert $DISK_DESC to $DST_FMT in $DIR, it has only $GB available..."
       error "Please free up some disk space or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
+
   fi
 
   local msg="Converting $DISK_DESC to $DST_FMT"
@@ -467,7 +470,7 @@ addDisk () {
   local DISK_FMT=$7
   local DISK_IO=$8
   local DISK_CACHE=$9
-  local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE
+  local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE FREE USED
 
   DISK_EXT=$(fmt2ext "$DISK_FMT")
   local DISK_FILE="$DISK_BASE.$DISK_EXT"
@@ -478,16 +481,16 @@ addDisk () {
   if [[ "${DISK_SPACE,,}" == "max" || "${DISK_SPACE,,}" == "half" ]]; then
 
     local SPARE=2147483648
-    SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+    FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
 
     if [[ "${DISK_SPACE,,}" == "max" ]]; then
-      SPACE=$((SPACE-SPARE))
+      FREE=$(( FREE - SPARE ))
     else
-      SPACE=$(( SPACE / 2 ))
+      FREE=$(( FREE / 2 ))
     fi
 
-    (( SPACE < SPARE )) && SPACE="$SPARE" 
-    GB=$(( SPACE/1073741825 ))
+    (( FREE < SPARE )) && FREE="$SPARE" 
+    GB=$(( FREE / 1073741825 ))
     DISK_SPACE="${GB}G"
 
   fi
@@ -536,11 +539,26 @@ addDisk () {
 
     if (( DATA_SIZE > CUR_SIZE )); then
       resizeDisk "$DISK_FILE" "$SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
+    else
+      if (( DATA_SIZE < CUR_SIZE )); then
+        info
+      fi
     fi
 
   else
 
     createDisk "$DISK_FILE" "$SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
+
+  fi
+
+  if [[ "$ALLOCATE" == [Nn]* ]]; then
+
+    FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+    USED=
+todo: max/half
+    if (( DATA_SIZE > FREE )); then
+
+    fi
 
   fi
 
