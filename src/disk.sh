@@ -12,7 +12,7 @@ set -Eeuo pipefail
 : "${DISK_ROTATION:="1"}"         # Rotation rate, set to 1 for SSD storage and increase for HDD
 
 fmt2ext() {
-  local DISK_FMT=$1
+  local DISK_FMT="$1"
 
   case "${DISK_FMT,,}" in
     qcow2)
@@ -28,7 +28,7 @@ fmt2ext() {
 }
 
 ext2fmt() {
-  local DISK_EXT=$1
+  local DISK_EXT="$1"
 
   case "${DISK_EXT,,}" in
     qcow2)
@@ -44,7 +44,7 @@ ext2fmt() {
 }
 
 getSize() {
-  local DISK_FILE=$1
+  local DISK_FILE="$1"
   local DISK_EXT DISK_FMT
 
   DISK_EXT=$(echo "${DISK_FILE//*./}" | sed 's/^.*\.//')
@@ -64,7 +64,7 @@ getSize() {
 }
 
 isCow() {
-  local FS=$1
+  local FS="$1"
 
   if [[ "${FS,,}" == "btrfs" ]]; then
     return 0
@@ -74,7 +74,7 @@ isCow() {
 }
 
 supportsDirect() {
-  local FS=$1
+  local FS="$1"
 
   if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
     return 1
@@ -85,15 +85,15 @@ supportsDirect() {
 
 createDisk() {
 
-  local DISK_FILE=$1
-  local DISK_SPACE=$2
-  local DISK_DESC=$3
-  local DISK_FMT=$4
-  local FS=$5
+  local DISK_FILE="$1"
+  local DISK_SPACE="$2"
+  local DISK_DESC="$3"
+  local DISK_FMT="$4"
+  local FS="$5"
   local DATA_SIZE DIR SPACE GB FA
 
   rm -f "$DISK_FILE"
-  
+
   DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
 
   if [[ "$ALLOCATE" != [Nn]* ]]; then
@@ -172,11 +172,11 @@ createDisk() {
 
 resizeDisk() {
 
-  local DISK_FILE=$1
-  local DISK_SPACE=$2
-  local DISK_DESC=$3
-  local DISK_FMT=$4
-  local FS=$5
+  local DISK_FILE="$1"
+  local DISK_SPACE="$2"
+  local DISK_DESC="$3"
+  local DISK_FMT="$4"
+  local FS="$5"
   local CUR_SIZE DATA_SIZE DIR SPACE GB
 
   CUR_SIZE=$(getSize "$DISK_FILE")
@@ -241,13 +241,13 @@ resizeDisk() {
 
 convertDisk() {
 
-  local SOURCE_FILE=$1
-  local SOURCE_FMT=$2
-  local DST_FILE=$3
-  local DST_FMT=$4
-  local DISK_BASE=$5
-  local DISK_DESC=$6
-  local FS=$7
+  local SOURCE_FILE="$1"
+  local SOURCE_FMT="$2"
+  local DST_FILE="$3"
+  local DST_FMT="$4"
+  local DISK_BASE="$5"
+  local DISK_DESC="$6"
+  local FS="$7"
 
   [ -f "$DST_FILE" ] && error "Conversion failed, destination file $DST_FILE already exists?" && exit 79
   [ ! -f "$SOURCE_FILE" ] && error "Conversion failed, source file $SOURCE_FILE does not exists?" && exit 79
@@ -324,9 +324,9 @@ convertDisk() {
 
 checkFS () {
 
-  local FS=$1
-  local DISK_FILE=$2
-  local DISK_DESC=$3
+  local FS="$1"
+  local DISK_FILE="$2"
+  local DISK_DESC="$3"
   local DIR FA
 
   DIR=$(dirname "$DISK_FILE")
@@ -358,15 +358,15 @@ checkFS () {
 
 createDevice () {
 
-  local DISK_FILE=$1
-  local DISK_TYPE=$2
-  local DISK_INDEX=$3
-  local DISK_ADDRESS=$4
-  local DISK_FMT=$5
-  local DISK_IO=$6
-  local DISK_CACHE=$7
-  local DISK_SERIAL=$8
-  local DISK_SECTORS=$9
+  local DISK_FILE="$1"
+  local DISK_TYPE="$2"
+  local DISK_INDEX="$3"
+  local DISK_ADDRESS="$4"
+  local DISK_FMT="$5"
+  local DISK_IO="$6"
+  local DISK_CACHE="$7"
+  local DISK_SERIAL="$8"
+  local DISK_SECTORS="$9"
   local DISK_ID="data$DISK_INDEX"
 
   local index=""
@@ -412,10 +412,10 @@ createDevice () {
 
 addMedia () {
 
-  local DISK_FILE=$1
-  local DISK_TYPE=$2
-  local DISK_INDEX=$3
-  local DISK_ADDRESS=$4
+  local DISK_FILE="$1"
+  local DISK_TYPE="$2"
+  local DISK_INDEX="$3"
+  local DISK_ADDRESS="$4"
 
   local index=""
   local DISK_ID="cdrom$DISK_INDEX"
@@ -461,15 +461,15 @@ addMedia () {
 
 addDisk () {
 
-  local DISK_BASE=$1
-  local DISK_TYPE=$2
-  local DISK_DESC=$3
-  local DISK_SPACE=$4
-  local DISK_INDEX=$5
-  local DISK_ADDRESS=$6
-  local DISK_FMT=$7
-  local DISK_IO=$8
-  local DISK_CACHE=$9
+  local DISK_BASE="$1"
+  local DISK_TYPE="$2"
+  local DISK_DESC="$3"
+  local DISK_SPACE="$4"
+  local DISK_INDEX="$5"
+  local DISK_ADDRESS="$6"
+  local DISK_FMT="$7"
+  local DISK_IO="$8"
+  local DISK_CACHE="$9"
   local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE LEFT FREE USED
 
   DISK_EXT=$(fmt2ext "$DISK_FMT")
@@ -489,7 +489,7 @@ addDisk () {
       FREE=$(( FREE / 2 ))
     fi
 
-    (( FREE < SPARE )) && FREE="$SPARE" 
+    (( FREE < SPARE )) && FREE="$SPARE"
     GB=$(( FREE / 1073741825 ))
     DISK_SPACE="${GB}G"
 
@@ -567,7 +567,7 @@ addDisk () {
     LEFT=$(( CUR_SIZE - USED ))
 
     if (( LEFT > FREE )); then
-    
+
       GB=$(formatBytes "$FREE")
       CUR_SIZE=$(formatBytes "$CUR_SIZE")
 
@@ -590,10 +590,10 @@ addDisk () {
 
 addDevice () {
 
-  local DISK_DEV=$1
-  local DISK_TYPE=$2
-  local DISK_INDEX=$3
-  local DISK_ADDRESS=$4
+  local DISK_DEV="$1"
+  local DISK_TYPE="$2"
+  local DISK_INDEX="$3"
+  local DISK_ADDRESS="$4"
 
   [ -z "$DISK_DEV" ] && return 0
   [ ! -b "$DISK_DEV" ] && error "Device $DISK_DEV cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
