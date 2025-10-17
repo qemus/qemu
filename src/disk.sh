@@ -181,7 +181,7 @@ resizeDisk() {
 
   CUR_SIZE=$(getSize "$DISK_FILE")
   DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
-  local REQ=$((DATA_SIZE-CUR_SIZE))
+  local REQ=$(( DATA_SIZE - CUR_SIZE ))
   (( REQ < 1 )) && error "Shrinking disks is not supported yet, please increase ${DISK_DESC^^}_SIZE." && exit 71
 
   if [[ "$ALLOCATE" != [Nn]* ]]; then
@@ -470,7 +470,7 @@ addDisk () {
   local DISK_FMT=$7
   local DISK_IO=$8
   local DISK_CACHE=$9
-  local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE FREE USED
+  local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE LEFT FREE USED
 
   DISK_EXT=$(fmt2ext "$DISK_FMT")
   local DISK_FILE="$DISK_BASE.$DISK_EXT"
@@ -507,7 +507,7 @@ addDisk () {
   DATA_SIZE=$(numfmt --from=iec "$SPACE")
 
   if (( DATA_SIZE < 104857600 )); then
-    error "Please increase ${DISK_DESC^^}_SIZE to at least 100 MB." && exit 73
+    error "Please increase the ${DISK_DESC^^}_SIZE variable to at least 100 MB." && exit 73
   fi
 
   FS=$(stat -f -c %T "$DIR")
@@ -518,7 +518,7 @@ addDisk () {
     DISK_CACHE="writeback"
   fi
 
-  if ! [ -s "$DISK_FILE" ] ; then
+  if [ ! -s "$DISK_FILE" ] ; then
 
     if [[ "${DISK_FMT,,}" != "raw" ]]; then
       PREV_FMT="raw"
@@ -531,6 +531,7 @@ addDisk () {
     if [ -s "$DISK_BASE.$PREV_EXT" ] ; then
       convertDisk "$DISK_BASE.$PREV_EXT" "$PREV_FMT" "$DISK_FILE" "$DISK_FMT" "$DISK_BASE" "$DISK_DESC" "$FS" || exit $?
     fi
+
   fi
 
   if [ -s "$DISK_FILE" ]; then
@@ -538,10 +539,17 @@ addDisk () {
     CUR_SIZE=$(getSize "$DISK_FILE")
 
     if (( DATA_SIZE > CUR_SIZE )); then
+
       resizeDisk "$DISK_FILE" "$SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
+
     else
+
       if (( DATA_SIZE < CUR_SIZE )); then
-        info
+
+        if [[ "${DISK_SPACE,,}" != "max" && "${DISK_SPACE,,}" != "half" ]]; then
+          info "You decreased the ${DISK_DESC^^}_SIZE variable to ${DISK_SPACE/G/ GB} but shrinking disks is not supported, will be ignored..."
+        fi
+
       fi
     fi
 
@@ -551,12 +559,21 @@ addDisk () {
 
   fi
 
-  if [[ "$ALLOCATE" == [Nn]* ]]; then
+  if [ -f "$DISK_FILE" ] && [[ "$ALLOCATE" == [Nn]* ]]; then
 
+    CUR_SIZE=$(getSize "$DISK_FILE")
+    USED=$(du -sB 1 "$DISK_FILE" | cut -f1)
     FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
-    USED=
-todo: max/half
-    if (( DATA_SIZE > FREE )); then
+    LEFT=$(( CUR_SIZE - USED ))
+
+    if (( LEFT > FREE )); then
+    
+      GB=$(formatBytes "$FREE")
+      LEFT=$(formatBytes "$LEFT")
+      USED=$(formatBytes "$USED")
+      CUR_SIZE=$(formatBytes "$CUR_SIZE")
+
+      warn "the virtual size of ${DISK_DESC^^} is $CUR_SIZE of which $USED is used, but there is only $GB of free space left in $DIR, will need at least $FREE more!"
 
     fi
 
