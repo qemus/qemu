@@ -12,7 +12,7 @@ set -Eeuo pipefail
 : "${DISK_ROTATION:="1"}"         # Rotation rate, set to 1 for SSD storage and increase for HDD
 
 fmt2ext() {
-  local DISK_FMT=$1
+  local DISK_FMT="$1"
 
   case "${DISK_FMT,,}" in
     qcow2)
@@ -28,7 +28,7 @@ fmt2ext() {
 }
 
 ext2fmt() {
-  local DISK_EXT=$1
+  local DISK_EXT="$1"
 
   case "${DISK_EXT,,}" in
     qcow2)
@@ -44,7 +44,7 @@ ext2fmt() {
 }
 
 getSize() {
-  local DISK_FILE=$1
+  local DISK_FILE="$1"
   local DISK_EXT DISK_FMT
 
   DISK_EXT=$(echo "${DISK_FILE//*./}" | sed 's/^.*\.//')
@@ -64,7 +64,7 @@ getSize() {
 }
 
 isCow() {
-  local FS=$1
+  local FS="$1"
 
   if [[ "${FS,,}" == "btrfs" ]]; then
     return 0
@@ -74,7 +74,7 @@ isCow() {
 }
 
 supportsDirect() {
-  local FS=$1
+  local FS="$1"
 
   if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
     return 1
@@ -85,15 +85,15 @@ supportsDirect() {
 
 createDisk() {
 
-  local DISK_FILE=$1
-  local DISK_SPACE=$2
-  local DISK_DESC=$3
-  local DISK_FMT=$4
-  local FS=$5
+  local DISK_FILE="$1"
+  local DISK_SPACE="$2"
+  local DISK_DESC="$3"
+  local DISK_FMT="$4"
+  local FS="$5"
   local DATA_SIZE DIR SPACE GB FA
 
   rm -f "$DISK_FILE"
-  
+
   DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
 
   if [[ "$ALLOCATE" != [Nn]* ]]; then
@@ -107,6 +107,7 @@ createDisk() {
       error "Not enough free space to create a $DISK_DESC of ${DISK_SPACE/G/ GB} in $DIR, it has only $GB available..."
       error "Please specify a smaller ${DISK_DESC^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
+
   fi
 
   html "Creating a $DISK_DESC image..."
@@ -171,16 +172,16 @@ createDisk() {
 
 resizeDisk() {
 
-  local DISK_FILE=$1
-  local DISK_SPACE=$2
-  local DISK_DESC=$3
-  local DISK_FMT=$4
-  local FS=$5
+  local DISK_FILE="$1"
+  local DISK_SPACE="$2"
+  local DISK_DESC="$3"
+  local DISK_FMT="$4"
+  local FS="$5"
   local CUR_SIZE DATA_SIZE DIR SPACE GB
 
   CUR_SIZE=$(getSize "$DISK_FILE")
   DATA_SIZE=$(numfmt --from=iec "$DISK_SPACE")
-  local REQ=$((DATA_SIZE-CUR_SIZE))
+  local REQ=$(( DATA_SIZE - CUR_SIZE ))
   (( REQ < 1 )) && error "Shrinking disks is not supported yet, please increase ${DISK_DESC^^}_SIZE." && exit 71
 
   if [[ "$ALLOCATE" != [Nn]* ]]; then
@@ -194,6 +195,7 @@ resizeDisk() {
       error "Not enough free space to resize $DISK_DESC to ${DISK_SPACE/G/ GB} in $DIR, it has only $GB available.."
       error "Please specify a smaller ${DISK_DESC^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 74
     fi
+
   fi
 
   GB=$(formatBytes "$CUR_SIZE")
@@ -239,13 +241,13 @@ resizeDisk() {
 
 convertDisk() {
 
-  local SOURCE_FILE=$1
-  local SOURCE_FMT=$2
-  local DST_FILE=$3
-  local DST_FMT=$4
-  local DISK_BASE=$5
-  local DISK_DESC=$6
-  local FS=$7
+  local SOURCE_FILE="$1"
+  local SOURCE_FMT="$2"
+  local DST_FILE="$3"
+  local DST_FMT="$4"
+  local DISK_BASE="$5"
+  local DISK_DESC="$6"
+  local FS="$7"
 
   [ -f "$DST_FILE" ] && error "Conversion failed, destination file $DST_FILE already exists?" && exit 79
   [ ! -f "$SOURCE_FILE" ] && error "Conversion failed, source file $SOURCE_FILE does not exists?" && exit 79
@@ -267,6 +269,7 @@ convertDisk() {
       error "Not enough free space to convert $DISK_DESC to $DST_FMT in $DIR, it has only $GB available..."
       error "Please free up some disk space or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
+
   fi
 
   local msg="Converting $DISK_DESC to $DST_FMT"
@@ -321,9 +324,9 @@ convertDisk() {
 
 checkFS () {
 
-  local FS=$1
-  local DISK_FILE=$2
-  local DISK_DESC=$3
+  local FS="$1"
+  local DISK_FILE="$2"
+  local DISK_DESC="$3"
   local DIR FA
 
   DIR=$(dirname "$DISK_FILE")
@@ -355,15 +358,15 @@ checkFS () {
 
 createDevice () {
 
-  local DISK_FILE=$1
-  local DISK_TYPE=$2
-  local DISK_INDEX=$3
-  local DISK_ADDRESS=$4
-  local DISK_FMT=$5
-  local DISK_IO=$6
-  local DISK_CACHE=$7
-  local DISK_SERIAL=$8
-  local DISK_SECTORS=$9
+  local DISK_FILE="$1"
+  local DISK_TYPE="$2"
+  local DISK_INDEX="$3"
+  local DISK_ADDRESS="$4"
+  local DISK_FMT="$5"
+  local DISK_IO="$6"
+  local DISK_CACHE="$7"
+  local DISK_SERIAL="$8"
+  local DISK_SECTORS="$9"
   local DISK_ID="data$DISK_INDEX"
 
   local index=""
@@ -409,10 +412,10 @@ createDevice () {
 
 addMedia () {
 
-  local DISK_FILE=$1
-  local DISK_TYPE=$2
-  local DISK_INDEX=$3
-  local DISK_ADDRESS=$4
+  local DISK_FILE="$1"
+  local DISK_TYPE="$2"
+  local DISK_INDEX="$3"
+  local DISK_ADDRESS="$4"
 
   local index=""
   local DISK_ID="cdrom$DISK_INDEX"
@@ -458,16 +461,16 @@ addMedia () {
 
 addDisk () {
 
-  local DISK_BASE=$1
-  local DISK_TYPE=$2
-  local DISK_DESC=$3
-  local DISK_SPACE=$4
-  local DISK_INDEX=$5
-  local DISK_ADDRESS=$6
-  local DISK_FMT=$7
-  local DISK_IO=$8
-  local DISK_CACHE=$9
-  local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE
+  local DISK_BASE="$1"
+  local DISK_TYPE="$2"
+  local DISK_DESC="$3"
+  local DISK_SPACE="$4"
+  local DISK_INDEX="$5"
+  local DISK_ADDRESS="$6"
+  local DISK_FMT="$7"
+  local DISK_IO="$8"
+  local DISK_CACHE="$9"
+  local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE LEFT FREE USED
 
   DISK_EXT=$(fmt2ext "$DISK_FMT")
   local DISK_FILE="$DISK_BASE.$DISK_EXT"
@@ -478,16 +481,16 @@ addDisk () {
   if [[ "${DISK_SPACE,,}" == "max" || "${DISK_SPACE,,}" == "half" ]]; then
 
     local SPARE=2147483648
-    SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+    FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
 
     if [[ "${DISK_SPACE,,}" == "max" ]]; then
-      SPACE=$((SPACE-SPARE))
+      FREE=$(( FREE - SPARE ))
     else
-      SPACE=$(( SPACE / 2 ))
+      FREE=$(( FREE / 2 ))
     fi
 
-    (( SPACE < SPARE )) && SPACE="$SPARE" 
-    GB=$(( SPACE/1073741825 ))
+    (( FREE < SPARE )) && FREE="$SPARE"
+    GB=$(( FREE / 1073741825 ))
     DISK_SPACE="${GB}G"
 
   fi
@@ -504,7 +507,7 @@ addDisk () {
   DATA_SIZE=$(numfmt --from=iec "$SPACE")
 
   if (( DATA_SIZE < 104857600 )); then
-    error "Please increase ${DISK_DESC^^}_SIZE to at least 100 MB." && exit 73
+    error "Please increase the ${DISK_DESC^^}_SIZE variable to at least 100 MB." && exit 73
   fi
 
   FS=$(stat -f -c %T "$DIR")
@@ -515,7 +518,7 @@ addDisk () {
     DISK_CACHE="writeback"
   fi
 
-  if ! [ -s "$DISK_FILE" ] ; then
+  if [ ! -s "$DISK_FILE" ] ; then
 
     if [[ "${DISK_FMT,,}" != "raw" ]]; then
       PREV_FMT="raw"
@@ -528,6 +531,7 @@ addDisk () {
     if [ -s "$DISK_BASE.$PREV_EXT" ] ; then
       convertDisk "$DISK_BASE.$PREV_EXT" "$PREV_FMT" "$DISK_FILE" "$DISK_FMT" "$DISK_BASE" "$DISK_DESC" "$FS" || exit $?
     fi
+
   fi
 
   if [ -s "$DISK_FILE" ]; then
@@ -535,12 +539,50 @@ addDisk () {
     CUR_SIZE=$(getSize "$DISK_FILE")
 
     if (( DATA_SIZE > CUR_SIZE )); then
+
       resizeDisk "$DISK_FILE" "$SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
+
+    else
+
+      if (( DATA_SIZE < CUR_SIZE )); then
+
+        if [[ "${DISK_SPACE,,}" != "max" && "${DISK_SPACE,,}" != "half" ]]; then
+          info "You decreased the ${DISK_DESC^^}_SIZE variable to ${DISK_SPACE/G/ GB} but shrinking disks is not supported, will be ignored..."
+        fi
+
+      fi
     fi
 
   else
 
     createDisk "$DISK_FILE" "$SPACE" "$DISK_DESC" "$DISK_FMT" "$FS" || exit $?
+
+  fi
+
+  if [ -f "$DISK_FILE" ] && [[ "$ALLOCATE" == [Nn]* ]]; then
+
+    CUR_SIZE=$(getSize "$DISK_FILE")
+    USED=$(du -sB 1 "$DISK_FILE" | cut -f1)
+    FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+    LEFT=$(( CUR_SIZE - USED - FREE ))
+
+    if (( LEFT > 0 )); then
+
+      GB=$(formatBytes "$FREE")
+      LEFT=$(formatBytes "$LEFT")
+      CUR_SIZE=$(formatBytes "$CUR_SIZE")
+      msg="the virtual size of the ${DISK_DESC,,} is $CUR_SIZE"
+
+      if [[ "$USED" == "0" ]]; then
+        msg+=","
+      else
+        USED=$(formatBytes "$USED")
+        msg+=" (of which $USED is used),"
+      fi
+
+      warn "$msg but there is only $GB of free space left in $DIR, make at least $LEFT more room available!"
+
+    fi
 
   fi
 
@@ -551,10 +593,10 @@ addDisk () {
 
 addDevice () {
 
-  local DISK_DEV=$1
-  local DISK_TYPE=$2
-  local DISK_INDEX=$3
-  local DISK_ADDRESS=$4
+  local DISK_DEV="$1"
+  local DISK_TYPE="$2"
+  local DISK_INDEX="$3"
+  local DISK_ADDRESS="$4"
 
   [ -z "$DISK_DEV" ] && return 0
   [ ! -b "$DISK_DEV" ] && error "Device $DISK_DEV cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
