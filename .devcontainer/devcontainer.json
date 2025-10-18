@@ -6,6 +6,10 @@
   },  
   "forwardPorts": [8006],  
   "portsAttributes": {
+    "8004": {
+      "onAutoForward": "silent"
+    },
+    "portsAttributes": {
     "8006": {
       "label": "Web",
       "onAutoForward": "openBrowser"
