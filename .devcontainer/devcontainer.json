@@ -7,7 +7,7 @@
   "forwardPorts": [8006],  
   "portsAttributes": {
     "8004": {
-      "onAutoForward": "silent"
+      "onAutoForward": "ignore"
     },
     "8006": {
       "label": "Web",
@@ -15,7 +15,7 @@
     }
   },
   "otherPortsAttributes": {
-    "onAutoForward": "silent"
+    "onAutoForward": "ignore"
   }, 
   "dockerComposeFile": "codespaces.yml"
 }
