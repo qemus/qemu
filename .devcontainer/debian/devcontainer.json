@@ -3,7 +3,8 @@
   "service": "qemu",
   "containerEnv": {
     "BOOT": "debian"
-  },  
+  },
+  "forwardPorts": [8006],
   "portsAttributes": {
     "8006": {
       "label": "Web",
