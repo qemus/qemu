@@ -3,7 +3,8 @@
   "service": "qemu",
   "containerEnv": {
     "BOOT": "mx"
-  },  
+  },
+  "forwardPorts": [8006],
   "portsAttributes": {
     "8006": {
       "label": "Web",
