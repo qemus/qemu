@@ -662,7 +662,12 @@ esac
 if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
   case "${BOOT,,}" in
     *".iso" )
-        if [[ "${HYBRID:-}" == [Yy]* ]]; then
+        if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
+          hybrid="0000"
+        else
+          hybrid=$(head -c 512 "$BOOT" | tail -c 2 | xxd -p)
+        fi
+        if [[ "$hybrid" != "0000" ]]; then
           DISK_OPTS+=$(addMedia "$BOOT" "usb" "$BOOT_INDEX" "0x5")
         else
           DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "$BOOT_INDEX" "0x5")
