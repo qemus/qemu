@@ -1,9 +1,8 @@
 services:
   qemu:
-    image: qemux/qemu
     container_name: qemu
+    image: ghcr.io/qemus/qemu
     environment:
-      ALLOCATE: "Y"
       RAM_SIZE: "half"
       DISK_SIZE: "max"
       CPU_CORES: "max"
