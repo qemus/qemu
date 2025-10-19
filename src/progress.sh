@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+info="/run/shm/msg.html"
+
 escape () {
     local s
     s=${1//&/\&amp;}
@@ -13,18 +15,18 @@ escape () {
 
 file="$1"
 total="$2"
-bytes="0"
 body=$(escape "$3")
-info="/run/shm/msg.html"
 
 if [[ "$body" == *"..." ]]; then
-  body="<p class=\"loading\">${body/.../}</p>"
+  body="<p class=\"loading\">${body::-3}</p>"
 fi
 
 while true
 do
 
-  if [ -s "$file" ] || [ -d "$file" ]; then
+  if [ ! -s "$file" ] && [ ! -d "$file" ]; then
+    bytes="0"
+  else
     bytes=$(du -sb "$file" | cut -f1)
   fi
   
