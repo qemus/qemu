@@ -91,10 +91,6 @@ detectType() {
     result=$(head -c 512 "$file" | tail -c 2 | xxd -p)
 
     if [[ "$result" != "0000" ]]; then
-      [ -z "${HYBRID:-}" ] && HYBRID="Y"
-    fi
-
-    if [[ "${HYBRID:-}" != [Yy]* ]]; then
 
       result=$(isoinfo -f -i "$file" 2>/dev/null)
 
