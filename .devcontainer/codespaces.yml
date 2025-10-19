@@ -1,7 +1,7 @@
 services:
   qemu:
-    image: qemux/qemu
     container_name: qemu
+    image: ghcr.io/qemus/qemu
     environment:
       ALLOCATE: "Y"
       RAM_SIZE: "half"
