@@ -199,7 +199,7 @@ compat() {
     SAMBA_INTERFACE="$samba"
   else
     msg=$(ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>&1)
-    if [[ "${msg,,}" != *"address already assigned"* ]]; then
+    if [[ "${msg,,}" != *"address already assigned"* && "$PODMAN" != [Yy1]* ]]; then
       echo "$msg" >&2
       warn "failed to configure IP alias for backwards compatibility. $ADD_ERR --cap-add NET_ADMIN"
     fi
@@ -390,6 +390,7 @@ configurePasst() {
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $GATEWAY_MAC"
+  PASST_OPTS+=" --runas $UID:$GID"
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
@@ -747,13 +748,13 @@ getInfo() {
   [ -z "$MTU" ] && MTU="0"
 
   if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
-    if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
+    if [[ "$MTU" != "0" ]] && [ "$MTU" -lt "1500" ]; then
       warn "MTU size is $MTU, but cannot be set for $ADAPTER adapters!" && MTU="0"
     fi
   fi
 
   if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
-    if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
+    if [[ "$MTU" != "0" ]] && [ "$MTU" -lt "1500" ]; then
       warn "MTU size is $MTU, but cannot be set for legacy Windows versions!" && MTU="0"
     fi
   fi
@@ -871,7 +872,7 @@ else
       if [ -z "$USER_PORTS" ]; then
         desc="$APP"
         [[ "${desc,,}" == "qemu" ]] && desc="the VM"
-        info "Notice: because user-mode networking is active, if you want to forward ports to $desc, add them to the \"USER_PORTS\" variable."
+        info "Notice: because user-mode networking is active, when you need to forward custom ports to $desc, add them to the \"USER_PORTS\" variable."
       fi ;;
 
   esac
