@@ -748,13 +748,13 @@ getInfo() {
   [ -z "$MTU" ] && MTU="0"
 
   if [[ "${ADAPTER,,}" != "virtio-net-pci" ]]; then
-    if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
+    if [[ "$MTU" != "0" ]] && [ "$MTU" -lt "1500" ]; then
       warn "MTU size is $MTU, but cannot be set for $ADAPTER adapters!" && MTU="0"
     fi
   fi
 
   if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
-    if [[ "$MTU" != "0" && "$MTU" != "1500" ]]; then
+    if [[ "$MTU" != "0" ]] && [ "$MTU" -lt "1500" ]; then
       warn "MTU size is $MTU, but cannot be set for legacy Windows versions!" && MTU="0"
     fi
   fi
