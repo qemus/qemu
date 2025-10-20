@@ -123,11 +123,11 @@ cpu() {
   fi
 
   cpu="${cpu// CPU/}"
-  cpu="${cpu// [0-9] Core}"
-  cpu="${cpu// [0-9][0-9] Core}"
   cpu="${cpu// [0-9][0-9][0-9] Core}"
-  cpu="${cpu//[0-9]th Gen }"
+  cpu="${cpu// [0-9][0-9] Core}"
+  cpu="${cpu// [0-9] Core}"
   cpu="${cpu//[0-9][0-9]th Gen }"
+  cpu="${cpu//[0-9]th Gen }"
   cpu="${cpu// Processor/}"
   cpu="${cpu// Quad core/}"
   cpu="${cpu// Dual core/}"
