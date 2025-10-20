@@ -90,7 +90,7 @@ fi
 
 if [ ! -w "$STORAGE" ]; then
   msg="Storage folder ($STORAGE) is not writeable!"
-  msg+="If SELinux is active, you need to add the \":Z\" flag to the bind mount."
+  msg+=" If SELinux is active, you need to add the \":Z\" flag to the bind mount."
   error "$msg" && exit 13
 fi
 
