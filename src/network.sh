@@ -258,11 +258,14 @@ getUserPorts() {
 
     for hostport in ${exclude//,/ }; do
 
-      local val="${hostport///tcp}"
+      local port="${hostport///tcp}"
+      port="${port///udp}"
 
-      if [[ "$num" == "${val///udp}" ]]; then
+      if [[ "$num" == "$port" ]]; then
         num=""
-        warn "Could not assign port ${val///udp} to \"USER_PORTS\" because it is already in \"HOST_PORTS\"!"
+        if [[ "$port" != "$WEB_PORT" ]]; then
+          warn "Could not assign port $port to \"USER_PORTS\" because it is already in \"HOST_PORTS\"!"
+        fi
       fi
 
     done
