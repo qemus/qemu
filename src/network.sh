@@ -199,7 +199,7 @@ compat() {
     SAMBA_INTERFACE="$samba"
   else
     msg=$(ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>&1)
-    if [[ "${msg,,}" != *"address already assigned"* ]]; then
+    if [[ "${msg,,}" != *"address already assigned"* && "$PODMAN" != [Yy1]* ]]; then
       echo "$msg" >&2
       warn "failed to configure IP alias for backwards compatibility. $ADD_ERR --cap-add NET_ADMIN"
     fi
