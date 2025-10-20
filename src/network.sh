@@ -869,7 +869,9 @@ else
     "passt" | "slirp" )
 
       if [ -z "$USER_PORTS" ]; then
-        info "Notice: because user-mode networking is active, if you need to expose ports, add them to the \"USER_PORTS\" variable."
+        desc="$APP"
+        [[ "${desc,,}" == "qemu" ]] && desc="the VM"
+        info "Notice: because user-mode networking is active, if you want to forward ports to $desc, add them to the \"USER_PORTS\" variable."
       fi ;;
 
   esac
