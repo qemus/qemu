@@ -872,7 +872,7 @@ else
       if [ -z "$USER_PORTS" ]; then
         desc="$APP"
         [[ "${desc,,}" == "qemu" ]] && desc="the VM"
-        info "Notice: because user-mode networking is active, when you need to forward ports to $desc, add them to the \"USER_PORTS\" variable."
+        info "Notice: because user-mode networking is active, when you need to forward custom ports to $desc, add them to the \"USER_PORTS\" variable."
       fi ;;
 
   esac
