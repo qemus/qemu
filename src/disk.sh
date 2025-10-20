@@ -332,7 +332,7 @@ checkFS () {
   DIR=$(dirname "$DISK_FILE")
   [ ! -d "$DIR" ] && return 0
 
-  if [[ "${FS,,}" == "overlay"* ]]; then
+  if [[ "${FS,,}" == "overlay"* && "$PODMAN" != [Yy1]* ]]; then
     info "Warning: the filesystem of $DIR is OverlayFS, this usually means it was binded to an invalid path!"
   fi
 
