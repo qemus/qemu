@@ -29,6 +29,7 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}            
       - 
         name: Markdown
+        if: false        
         uses: reviewdog/action-markdownlint@v0
         with:
           level: info
@@ -36,7 +37,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - 
         name: Prettier
-        if: false
         uses: EPMatt/reviewdog-action-prettier@v1
         with:
           level: info
@@ -44,7 +44,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}          
       - 
         name: Hadolint
-        if: false
         uses: reviewdog/action-hadolint@v1
         with:
           level: info
@@ -53,7 +52,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - 
         name: YamlLint
-        if: false
         uses: reviewdog/action-yamllint@v1
         with:
           level: info
