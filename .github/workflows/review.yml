@@ -35,12 +35,6 @@ jobs:
           reporter: github-pr-review
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}       
       - 
-        name: Prettier
-        uses: EPMatt/reviewdog-action-prettier@v1
-        with:
-          level: info
-          reporter: github-pr-review          
-      - 
         name: Hadolint
         uses: reviewdog/action-hadolint@v1
         with:
