@@ -109,6 +109,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `ubuntu`   | Ubuntu Desktop  | 6.0 GB  |
   | `ubuntus`  | Ubuntu Server   | 3.0 GB  |
   | `xubuntu`  | Xubuntu         | 4.0 GB  |
+  | `zorin`    | Zorin OS         | 3.8 GB  |
 
 ### How can I use my own image?
 
