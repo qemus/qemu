@@ -1,16 +1,19 @@
 on:
-  workflow_dispatch:
   pull_request:
 
 name: "Review"
 
 jobs:
-  shfmt:
-    name: shfmt
+  review:
+    name: review
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - uses: reviewdog/action-shfmt@v1
+      -
+        name: Checkout
+        uses: actions/checkout@v5
+      -
+        name: Review
+        uses: reviewdog/action-shfmt@v1
         with:
-          shfmt_flags: "-i 2 -ci -bn -s"
+          shfmt_flags: "-i 2 -ci -bn"
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
