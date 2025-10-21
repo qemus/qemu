@@ -67,6 +67,19 @@ fKill() {
   return 0
 }
 
+makeDir() {
+  local uid gid
+  local name="$1"
+
+  ! mkdir -p "$name" && return 1
+
+  uid=$(stat -c '%u' "$STORAGE")
+  gid=$(stat -c '%g' "$STORAGE")
+  ! chown "$uid:$gid" "$name" && return 1
+
+  return 0
+}
+
 escape () {
   local s
   s=${1//&/\&amp;}
