@@ -587,14 +587,9 @@ addDisk () {
   fi
 
   if [ -f "$DISK_FILE" ]; then
-
-    uid=$(stat -c '%u' "$DIR")
-    gid=$(stat -c '%g' "$DIR")
-
-    if ! chown "$uid:$gid" "$DISK_FILE"; then
+    if ! setOwner "$DISK_FILE"; then
       error "Failed to set the owner for \"$DISK_FILE\" !"
     fi
-
   fi
 
   DISK_OPTS+=$(createDevice "$DISK_FILE" "$DISK_TYPE" "$DISK_INDEX" "$DISK_ADDRESS" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" "" "")
