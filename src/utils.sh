@@ -68,28 +68,32 @@ fKill() {
 }
 
 setOwner() {
-  local uid gid
-  local name="$1"
+  local file="$1"
+  local dir uid gid
 
-  [ ! -f "$name" ] && return 1
+  [ ! -f "$file" ] && return 1
 
-  uid=$(stat -c '%u' "$STORAGE")
-  gid=$(stat -c '%g' "$STORAGE")
-  ! chown "$uid:$gid" "$name" && return 1
+  dir=$(dirname -- "$file")
+  uid=$(stat -c '%u' "$dir")
+  gid=$(stat -c '%g' "$dir")
+
+  ! chown "$uid:$gid" "$file" && return 1
 
   return 0
 }
 
 makeDir() {
-  local uid gid
-  local name="$1"
+  local path="$1"
+  local dir uid gid
 
-  [ -d "$name" ] && return 0
-  ! mkdir -p "$name" && return 1
+  [ -d "$path" ] && return 0
+  ! mkdir -p "$path" && return 1
 
-  uid=$(stat -c '%u' "$STORAGE")
-  gid=$(stat -c '%g' "$STORAGE")
-  ! chown "$uid:$gid" "$name" && return 1
+  dir=$(dirname -- "$path")
+  uid=$(stat -c '%u' "$dir")
+  gid=$(stat -c '%g' "$dir")
+
+  ! chown "$uid:$gid" "$path" && return 1
 
   return 0
 }
