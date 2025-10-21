@@ -197,6 +197,11 @@ getURL() {
         version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
         url="https://cdimages.ubuntu.com/xubuntu/releases/${version}/release/xubuntu-${version}-desktop-amd64.iso"
       fi ;;
+    "zorin" | "zorinos" | "zorin-os" )
+      name="Zorin OS"
+      if [[ "$ret" == "url" ]]; then
+        url="https://mirrors.edge.kernel.org/zorinos-isos/18/Zorin-OS-18-Core-64-bit.iso"
+      fi ;;
   esac
 
   case "${ret,,}" in
