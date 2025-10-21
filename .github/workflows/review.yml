@@ -57,6 +57,9 @@ jobs:
           reporter: github-pr-review
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
+        name: Checkout
+        uses: actions/checkout@v5          
+      -
         name: Shellformat
         uses: reviewdog/action-shfmt@v1
         with:
