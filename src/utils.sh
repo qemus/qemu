@@ -71,6 +71,7 @@ makeDir() {
   local uid gid
   local name="$1"
 
+  [ -d "$name" ] && return 0
   ! mkdir -p "$name" && return 1
 
   uid=$(stat -c '%u' "$STORAGE")
