@@ -26,22 +26,7 @@ jobs:
             *.md
             *.sh
           reporter: github-pr-review            
-          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}            
-      - 
-        name: Markdown
-        if: false        
-        uses: reviewdog/action-markdownlint@v0
-        with:
-          level: info
-          reporter: github-pr-review
-          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
-      - 
-        name: Prettier
-        uses: EPMatt/reviewdog-action-prettier@v1
-        with:
-          level: info
-          reporter: github-pr-review
-          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}          
+          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}                 
       - 
         name: Hadolint
         uses: reviewdog/action-hadolint@v1
@@ -59,7 +44,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - 
         name: ActionLint
-        if: false
         uses: reviewdog/action-actionlint@v1
         with:
           level: info
