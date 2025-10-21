@@ -67,6 +67,19 @@ fKill() {
   return 0
 }
 
+setOwner() {
+  local uid gid
+  local name="$1"
+
+  [ ! -f "$name" ] && return 1
+
+  uid=$(stat -c '%u' "$STORAGE")
+  gid=$(stat -c '%g' "$STORAGE")
+  ! chown "$uid:$gid" "$name" && return 1
+
+  return 0
+}
+
 makeDir() {
   local uid gid
   local name="$1"
