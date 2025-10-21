@@ -79,8 +79,7 @@ fi
 
 # Check folder
 
-if [[ "${COMMIT:-}" == [Yy1]* ]]; then
-  STORAGE="/local"
+if [[ "${STORAGE,,}" != "/storage" ]]; then
   mkdir -p "$STORAGE"
 fi
 

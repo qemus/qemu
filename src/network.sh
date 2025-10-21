@@ -390,7 +390,12 @@ configurePasst() {
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $GATEWAY_MAC"
-  PASST_OPTS+=" --runas $UID:$GID"
+
+  local uid gid
+  uid=$(id -u)
+  gid=$(id -g)
+  PASST_OPTS+=" --runas $uid:$gid"
+
   PASST_OPTS+=" -P /var/run/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
@@ -767,6 +772,7 @@ getInfo() {
       # Generate MAC address based on Docker container ID in hostname
       MAC=$(echo "$HOST" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
       echo "${MAC^^}" > "$file"
+      ! setOwner "$file" && error "Failed to set the owner for \"$file\" !"
     fi
   fi
 
