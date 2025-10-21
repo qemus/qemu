@@ -12,3 +12,5 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - uses: reviewdog/action-shfmt@v1
+        with:
+          token: ${{ secrets.REPO_ACCESS_TOKEN }}
