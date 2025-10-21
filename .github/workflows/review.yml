@@ -57,7 +57,6 @@ jobs:
         with:
           level: info        
           shfmt_flags: "-i 2 -ci -bn"
-          reporter: github-pr-review         
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}          
       - 
         name: Shellcheck
