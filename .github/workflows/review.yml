@@ -3,7 +3,6 @@ on:
   pull_request:
 
 name: "Review"
-permissions: {}
 
 jobs:
   shfmt:
@@ -13,4 +12,5 @@ jobs:
       - uses: actions/checkout@v5
       - uses: reviewdog/action-shfmt@v1
         with:
-          token: ${{ secrets.REPO_ACCESS_TOKEN }}
+          shfmt_flags: "-i 2 -ci -bn -s"
+          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
