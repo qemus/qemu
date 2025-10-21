@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
- 
 getBase() {
 
   local base="${1%%\?*}"
