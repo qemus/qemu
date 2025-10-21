@@ -767,6 +767,7 @@ getInfo() {
       # Generate MAC address based on Docker container ID in hostname
       MAC=$(echo "$HOST" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
       echo "${MAC^^}" > "$file"
+      ! setOwner "$file" && error "Failed to set the owner for \"$file\" !"
     fi
   fi
 
