@@ -436,7 +436,7 @@ esac
 case "${base,,}" in
   *".iso" | *".img" | *".raw" | *".qcow2" )
 
-    ! setOwner "$STORAGE/$base" && error "Failed to set the owner for \"$STORAGE/$base\" !" && exit 33
+    ! setOwner "$STORAGE/$base" && error "Failed to set the owner for \"$STORAGE/$base\" !"
     detectType "$STORAGE/$base" && return 0
     error "Cannot read file \"${base}\"" && exit 63 ;;
 esac
@@ -460,7 +460,7 @@ dst="$STORAGE/${base%.*}.$target_ext"
 
 base=$(basename "$dst")
 
-! setOwner "$STORAGE/$base" && error "Failed to set the owner for \"$STORAGE/$base\" !" && exit 33
+! setOwner "$STORAGE/$base" && error "Failed to set the owner for \"$STORAGE/$base\" !"
 detectType "$STORAGE/$base" && return 0
 error "Cannot convert file \"${base}\"" && exit 36
 
