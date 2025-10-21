@@ -16,7 +16,7 @@ jobs:
       -
         name: Checkout
         uses: actions/checkout@v5
-      - 
+      -
         name: Spelling
         uses: reviewdog/action-misspell@v1
         with:
@@ -25,9 +25,9 @@ jobs:
           pattern: |
             *.md
             *.sh
-          reporter: github-pr-review            
-          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}                 
-      - 
+          reporter: github-pr-review
+          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
+      -
         name: Hadolint
         uses: reviewdog/action-hadolint@v1
         with:
@@ -35,14 +35,14 @@ jobs:
           reporter: github-pr-review
           hadolint_ignore: DL3003 DL3006 DL3008
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
-      - 
+      -
         name: YamlLint
         uses: reviewdog/action-yamllint@v1
         with:
           level: warning
           reporter: github-pr-review
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
-      - 
+      -
         name: ActionLint
         uses: reviewdog/action-actionlint@v1
         with:
@@ -53,10 +53,10 @@ jobs:
         name: Shellformat
         uses: reviewdog/action-shfmt@v1
         with:
-          level: warning        
+          level: warning
           shfmt_flags: "-i 2 -ci -bn"
-          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}          
-      - 
+          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
+      -
         name: Shellcheck
         uses: reviewdog/action-shellcheck@v1
         with:
