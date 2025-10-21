@@ -366,7 +366,9 @@ if [[ "${BOOT,,}" != "http"* ]]; then
   error "Invalid BOOT value specified, \"$BOOT\" is not a valid URL!" && exit 64
 fi
 
-makeDir "$STORAGE"
+if ! makeDir "$STORAGE"; then
+  error "Failed to create directory \"$STORAGE\" !" && exit 33
+fi
 
 find "$STORAGE" -maxdepth 1 -type f \( -iname '*.rom' -or -iname '*.vars' \) -delete
 find "$STORAGE" -maxdepth 1 -type f \( -iname 'data.*' -or -iname 'qemu.*' \) -delete
@@ -410,7 +412,11 @@ case "${base,,}" in
 
     tmp="$STORAGE/extract"
     rm -rf "$tmp"
-    makeDir "$tmp"
+
+    if ! makeDir "$tmp"; then
+      error "Failed to create directory \"$tmp\" !" && exit 33
+    fi
+
     7z x "$STORAGE/$base" -o"$tmp" > /dev/null
 
     rm -f "$STORAGE/$base"
