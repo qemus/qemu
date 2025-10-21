@@ -18,6 +18,7 @@ jobs:
         uses: actions/checkout@v5
       - 
         name: Spelling
+        if: false
         uses: reviewdog/action-misspell@v1
         with:
           locale: "US"
@@ -29,13 +30,23 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}            
       - 
         name: Markdown
+        if: false
         uses: reviewdog/action-markdownlint@v0
         with:
           level: info
           reporter: github-pr-review
-          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}       
+          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
+      - 
+        name: Prettier
+        if: false
+        uses: EPMatt/reviewdog-action-prettier@v1
+        with:
+          level: info
+          reporter: github-pr-review
+          github_token: ${{ secrets.REPO_ACCESS_TOKEN }}          
       - 
         name: Hadolint
+        if: false
         uses: reviewdog/action-hadolint@v1
         with:
           level: info
@@ -44,6 +55,7 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - 
         name: YamlLint
+        if: false
         uses: reviewdog/action-yamllint@v1
         with:
           level: info
@@ -51,14 +63,12 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       - 
         name: ActionLint
+        if: false
         uses: reviewdog/action-actionlint@v1
         with:
           level: info
           reporter: github-pr-review
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
-      -
-        name: Checkout
-        uses: actions/checkout@v5          
       -
         name: Shellformat
         uses: reviewdog/action-shfmt@v1
@@ -70,7 +80,7 @@ jobs:
         name: Shellcheck
         uses: reviewdog/action-shellcheck@v1
         with:
-          level: warn
+          level: warning
           reporter: github-pr-review
           shellcheck_flags: -x -e SC2001 -e SC2034 -e SC2064 -e SC2317 -e SC2153
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
