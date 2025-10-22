@@ -333,22 +333,22 @@ checkFS () {
   [ ! -d "$DIR" ] && return 0
 
   if [[ "${FS,,}" == "overlay"* && "$PODMAN" != [Yy1]* ]]; then
-    info "Warning: the filesystem of $DIR is OverlayFS, this usually means it was binded to an invalid path!"
+    warn "the filesystem of $DIR is OverlayFS, this usually means it was binded to an invalid path!"
   fi
 
   if [[ "${FS,,}" == "fuse"* ]]; then
-    info "Warning: the filesystem of $DIR is FUSE, this extra layer will negatively affect performance!"
+    warn "the filesystem of $DIR is FUSE, this extra layer will negatively affect performance!"
   fi
 
   if ! supportsDirect "$FS"; then
-    info "Warning: the filesystem of $DIR is $FS, which does not support O_DIRECT mode, adjusting settings..."
+    warn "the filesystem of $DIR is $FS, which does not support O_DIRECT mode, adjusting settings..."
   fi
 
   if isCow "$FS"; then
     if [ -f "$DISK_FILE" ]; then
       FA=$(lsattr "$DISK_FILE")
       if [[ "$FA" != *"C"* ]]; then
-        info "Warning: COW (copy on write) is not disabled for $DISK_DESC image file $DISK_FILE, this is recommended on ${FS^^} filesystems!"
+        warn "COW (copy on write) is not disabled for $DISK_DESC image file $DISK_FILE, this is recommended on ${FS^^} filesystems!"
       fi
     fi
   fi
@@ -587,14 +587,9 @@ addDisk () {
   fi
 
   if [ -f "$DISK_FILE" ]; then
-
-    uid=$(stat -c '%u' "$DIR")
-    gid=$(stat -c '%g' "$DIR")
-
-    if ! chown "$uid:$gid" "$DISK_FILE"; then
+    if ! setOwner "$DISK_FILE"; then
       error "Failed to set the owner for \"$DISK_FILE\" !"
     fi
-
   fi
 
   DISK_OPTS+=$(createDevice "$DISK_FILE" "$DISK_TYPE" "$DISK_INDEX" "$DISK_ADDRESS" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" "" "")
