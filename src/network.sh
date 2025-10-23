@@ -185,23 +185,28 @@ compat() {
 
   local gateway="$1"
   local interface="$2"
+  local label="compat"
   local samba="20.20.20.1"
+  local err="failed to configure IP alias for backwards compatibility."
 
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
-  if [[ "$interface" != "${interface:0:8}" ]]; then
-    error "Bridge name too long!" && return 1
+  if [[ "$interface" != "${interface:0:9}" ]]; then
+    label="c"
+    if [[ "$interface" != "${interface:14}" ]]; then
+      warn "$err Interface name \"$interface\" exceeds 14 characters!" && return 0
+    fi
   fi
 
   # Backwards compatibility with old installations
-  if ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>/dev/null; then
+  if ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>/dev/null; then
     SAMBA_INTERFACE="$samba"
   else
-    msg=$(ip address add dev "$interface" "$samba/24" label "$interface:compat" 2>&1)
+    msg=$(ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>&1)
     if [[ "${msg,,}" != *"address already assigned"* && "$PODMAN" != [Yy1]* ]]; then
       echo "$msg" >&2
-      warn "failed to configure IP alias for backwards compatibility. $ADD_ERR --cap-add NET_ADMIN"
+      warn "$err $ADD_ERR --cap-add NET_ADMIN"
     fi
   fi
 
