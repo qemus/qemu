@@ -26,12 +26,14 @@ jobs:
             *.md
             *.sh
           reporter: github-pr-review
+          filter-mode: nofilter
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
         name: Hadolint
         uses: reviewdog/action-hadolint@v1
         with:
           level: warning
+          filter-mode: nofilter
           reporter: github-pr-review
           hadolint_ignore: DL3003 DL3006 DL3008
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
@@ -40,6 +42,7 @@ jobs:
         uses: reviewdog/action-yamllint@v1
         with:
           level: warning
+          filter-mode: nofilter
           reporter: github-pr-review
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
@@ -47,6 +50,7 @@ jobs:
         uses: reviewdog/action-actionlint@v1
         with:
           level: warning
+          filter-mode: nofilter
           reporter: github-pr-review
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
@@ -54,6 +58,7 @@ jobs:
         uses: reviewdog/action-shfmt@v1
         with:
           level: warning
+          filter-mode: nofilter
           shfmt_flags: "-i 2 -ci -bn"
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
@@ -61,6 +66,7 @@ jobs:
         uses: reviewdog/action-shellcheck@v1
         with:
           level: warning
+          filter-mode: nofilter
           reporter: github-pr-review
           shellcheck_flags: -x -e SC2001 -e SC2034 -e SC2064 -e SC2317 -e SC2153
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
