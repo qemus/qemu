@@ -329,7 +329,7 @@ configureSlirp() {
   local gateway="${ip%.*}.1"
 
   # Backwards compatibility
-  ! compat "$gateway" "$VM_NET_DEV" && exit 24
+  compat "$gateway" "$VM_NET_DEV" || :
 
   local ipv6=""
   [ -n "$IP6" ] && ipv6="ipv6=on,"
@@ -372,7 +372,7 @@ configurePasst() {
   fi
 
   # Backwards compatibility
-  ! compat "$gateway" "$VM_NET_DEV" && exit 24
+  compat "$gateway" "$VM_NET_DEV" || :
 
   # passt configuration:
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
@@ -451,7 +451,6 @@ configureNAT() {
 
   # Create the necessary file structure for /dev/net/tun
   if [ ! -c /dev/net/tun ]; then
-    [[ "$PODMAN" == [Yy1]* ]] && return 1
     [ ! -d /dev/net ] && mkdir -m 755 /dev/net
     if mknod /dev/net/tun c 10 200; then
       chmod 666 /dev/net/tun
@@ -459,6 +458,7 @@ configureNAT() {
   fi
 
   if [ ! -c /dev/net/tun ]; then
+    [[ "$PODMAN" == [Yy1]* ]] && return 1
     warn "$tuntap" && return 1
   fi
 
@@ -466,6 +466,7 @@ configureNAT() {
   if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
+      [[ "$PODMAN" == [Yy1]* ]] && return 1
       warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
     fi
@@ -492,6 +493,7 @@ configureNAT() {
   { ip link add dev "$VM_NET_BRIDGE" type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
+    [[ "$PODMAN" == [Yy1]* ]] && return 1
     warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
@@ -500,7 +502,7 @@ configureNAT() {
   fi
 
   # Backwards compatibility
-  ! compat "$gateway" "$VM_NET_BRIDGE" && exit 24
+  compat "$gateway" "$VM_NET_BRIDGE" || :
 
   while ! ip link set "$VM_NET_BRIDGE" up; do
     info "Waiting for IP address to become available..."
@@ -794,13 +796,6 @@ getInfo() {
 
   GATEWAY_MAC=$(echo "$VM_NET_MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
 
-  if [[ "$PODMAN" == [Yy1]* && "$DHCP" != [Yy1]* ]]; then
-    if [ -z "$NETWORK" ] || [[ "${NETWORK^^}" == "Y" ]]; then
-      # By default Podman has no permissions for NAT networking
-      NETWORK="user"
-    fi
-  fi
-
   if [[ "$DEBUG" == [Yy1]* ]]; then
     line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu"
     [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
@@ -847,8 +842,12 @@ else
 
         closeBridge
         NETWORK="user"
-        msg="falling back to user-mode networking!"
-        msg="failed to setup NAT networking, $msg"
+
+        if [[ "$PODMAN" != [Yy1]* ]]; then
+          msg="falling back to user-mode networking!"
+          msg="failed to setup NAT networking, $msg"
+          warn "$msg"
+        fi
 
       fi ;;
 
