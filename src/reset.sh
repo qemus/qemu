@@ -128,7 +128,7 @@ TOTAL_MEM=$(formatBytes "$RAM_TOTAL" "up")
 echo "❯ CPU: ${CPU} | RAM: ${AVAIL_MEM/ GB/}/$TOTAL_MEM | DISK: $SPACE_GB (${FS}) | KERNEL: ${SYS}..."
 echo
 
-# Check compatibilty
+# Check compatibility
 
 if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
   DISK_IO="threads"
