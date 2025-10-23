@@ -42,7 +42,6 @@ jobs:
         uses: reviewdog/action-yamllint@v1
         with:
           level: warning
-          filter_mode: nofilter
           reporter: github-pr-review
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
