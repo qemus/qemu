@@ -511,6 +511,7 @@ configureNAT() {
 
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
+    [[ "$PODMAN" == [Yy1]* ]] && return 1
     warn "$tuntap" && return 1
   fi
 
