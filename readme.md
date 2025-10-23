@@ -133,7 +133,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   | `.vhdx`       | Hyper-V     |
   | `.vdi`        | VirtualBox  |
 
-  It will also accept files such as `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, because it will automaticly extract compressed files.
+  It will also accept files such as `.img.gz`, `.qcow2.xz`, `.iso.zip` and many more, because it will automatically extract compressed files.
 
   Alternatively you can use a local image file directly, by binding it in your compose file:
 
@@ -189,7 +189,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I boot macOS?
 
-  Use [dockur/macos](https://github.com/dockur/macos) instead, as it uses all the right settings and automaticly downloads the installation files.
+  Use [dockur/macos](https://github.com/dockur/macos) instead, as it uses all the right settings and automatically downloads the installation files.
 
 ### How do I boot without UEFI?
 
