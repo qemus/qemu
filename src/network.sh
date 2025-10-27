@@ -468,7 +468,7 @@ configureNAT() {
   if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
-      [[ "$PODMAN" == [Yy1]* && "$DEBUG" != [Yy1]* ]] && return 1
+      [[ "$ROOTLESS" == [Yy1]* && "$DEBUG" != [Yy1]* ]] && return 1
       warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
     fi
