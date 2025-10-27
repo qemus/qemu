@@ -33,8 +33,8 @@ PROCESS="${APP,,}"
 PROCESS="${PROCESS// /-}"
 
 if [ -f "/run/.containerenv" ]; then
-  ENGINE="${CONTAINER:-}"
-  if [[ "${ENGINE,,}" == "podman"* ]]; then
+  ENGINE="${container:-}"
+  if [[ "${ENGINE,,}" == *"podman"* ]]; then
     PODMAN="Y"
     ROOTLESS="Y"
     ENGINE="Podman"
