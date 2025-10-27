@@ -846,7 +846,7 @@ else
         closeBridge
         NETWORK="user"
 
-       if [[ "$ROOTLESS" != [Yy1]* || "$DEBUG" == [Yy1]* ]]; then
+        if [[ "$ROOTLESS" != [Yy1]* || "$DEBUG" == [Yy1]* ]]; then
           msg="falling back to user-mode networking!"
           msg="failed to setup NAT networking, $msg"
           warn "$msg"
