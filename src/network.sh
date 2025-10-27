@@ -204,9 +204,11 @@ compat() {
     SAMBA_INTERFACE="$samba"
   else
     msg=$(ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>&1)
-    if [[ "${msg,,}" != *"address already assigned"* && "$PODMAN" != [Yy1]* ]]; then
-      echo "$msg" >&2
-      warn "$err $ADD_ERR --cap-add NET_ADMIN"
+    if [[ "${msg,,}" != *"address already assigned"* ]]; then
+      if [[ "$PODMAN" != [Yy1]* || "$DEBUG" != [Yy1]* ]]; then
+        echo "$msg" >&2
+        warn "$err $ADD_ERR --cap-add NET_ADMIN"
+      fi
     fi
   fi
 
