@@ -26,6 +26,7 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 # Helper variables
 
 PODMAN="N"
+ROOTLESS="N"
 ENGINE="Docker"
 PROCESS="${APP,,}"
 PROCESS="${PROCESS// /-}"
@@ -34,10 +35,13 @@ if [ -f "/run/.containerenv" ]; then
   ENGINE="${CONTAINER:-}"
   if [[ "${ENGINE,,}" == "podman"* ]]; then
     PODMAN="Y"
+    ROOTLESS="Y"
     ENGINE="Podman"
   else
-    ENGINE="Kubernetes"
+    [ -z "$ENGINE" ] && ENGINE="Kubernetes"
   fi
+else
+  ROOTLESS="N"
 fi
 
 echo "❯ Starting $APP for $ENGINE v$(</run/version)..."
