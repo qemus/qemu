@@ -43,6 +43,9 @@ if [ -f "/run/.containerenv" ]; then
   fi
 fi
 
+echo "❯ Starting $APP for $ENGINE v$(</run/version)..."
+echo "❯ For support visit $SUPPORT"
+
 # Get the capability bounding set
 CAP_BND=$(grep '^CapBnd:' /proc/$$/status | awk '{print $2}')
 CAP_BND=$(printf "%d" "0x${CAP_BND}")
@@ -53,19 +56,10 @@ LAST_CAP=$(cat /proc/sys/kernel/cap_last_cap)
 # Calculate the maximum capability value
 MAX_CAP=$(((1 << (LAST_CAP + 1)) - 1))
 
-echo "$CAP_BND"
-echo "$MAX_CAP"
-
 if [ "${CAP_BND}" -eq "${MAX_CAP}" ]; then
-  echo "Container is running in privileged mode."
-else
-  echo "Container is not running in privileged mode."
+  ROOTLESS="N"
+  PRIVILEGED="Y"
 fi
-
-exit 55
-
-echo "❯ Starting $APP for $ENGINE v$(</run/version)..."
-echo "❯ For support visit $SUPPORT"
 
 INFO="/run/shm/msg.html"
 PAGE="/run/shm/index.html"
