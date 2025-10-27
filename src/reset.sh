@@ -31,8 +31,13 @@ PROCESS="${APP,,}"
 PROCESS="${PROCESS// /-}"
 
 if [ -f "/run/.containerenv" ]; then
-  PODMAN="Y"
-  ENGINE="Podman"
+  ENGINE="${CONTAINER:-}"
+  if [[ "${ENGINE,,}" == "podman"* ]]; then
+    PODMAN="Y"
+    ENGINE="Podman"
+  else
+    ENGINE="Kubernetes"
+  fi
 fi
 
 echo "❯ Starting $APP for $ENGINE v$(</run/version)..."
