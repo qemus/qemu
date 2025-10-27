@@ -458,7 +458,7 @@ configureNAT() {
   fi
 
   if [ ! -c /dev/net/tun ]; then
-    [[ "$PODMAN" == [Yy1]* ]] && return 1
+    [[ "$PODMAN" == [Yy1]* && "$DEBUG" != [Yy1]* ]] && return 1
     warn "$tuntap" && return 1
   fi
 
@@ -466,7 +466,7 @@ configureNAT() {
   if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
-      [[ "$PODMAN" == [Yy1]* ]] && return 1
+      [[ "$PODMAN" == [Yy1]* && "$DEBUG" != [Yy1]* ]] && return 1
       warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
     fi
@@ -493,7 +493,7 @@ configureNAT() {
   { ip link add dev "$VM_NET_BRIDGE" type bridge ; rc=$?; } || :
 
   if (( rc != 0 )); then
-    [[ "$PODMAN" == [Yy1]* ]] && return 1
+    [[ "$PODMAN" == [Yy1]* && "$DEBUG" != [Yy1]* ]] && return 1
     warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
   fi
 
@@ -511,7 +511,7 @@ configureNAT() {
 
   # QEMU Works with taps, set tap to the bridge created
   if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
-    [[ "$PODMAN" == [Yy1]* ]] && return 1
+    [[ "$PODMAN" == [Yy1]* && "$DEBUG" != [Yy1]* ]] && return 1
     warn "$tuntap" && return 1
   fi
 
@@ -844,7 +844,7 @@ else
         closeBridge
         NETWORK="user"
 
-        if [[ "$PODMAN" != [Yy1]* ]]; then
+       if [[ "$PODMAN" != [Yy1]* || "$DEBUG" == [Yy1]* ]]; then
           msg="falling back to user-mode networking!"
           msg="failed to setup NAT networking, $msg"
           warn "$msg"
