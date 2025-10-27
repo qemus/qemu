@@ -25,7 +25,6 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 
 # Helper variables
 
-PODMAN="N"
 ROOTLESS="N"
 PRIVILEGED="N"
 ENGINE="Docker"
@@ -35,7 +34,6 @@ PROCESS="${PROCESS// /-}"
 if [ -f "/run/.containerenv" ]; then
   ENGINE="${container:-}"
   if [[ "${ENGINE,,}" == *"podman"* ]]; then
-    PODMAN="Y"
     ROOTLESS="Y"
     ENGINE="Podman"
   else
