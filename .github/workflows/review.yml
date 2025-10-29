@@ -29,15 +29,14 @@ jobs:
           echo "${{ github.triggering_actor }} does not have permissions on this repo."
           echo "Current permission level is ${{ steps.checkAccess.outputs.user-permission }}"
           echo "Job originally triggered by ${{ github.actor }}"
+          exit 1
       - 
         name: Checkout code
-        if: steps.checkAccess.outputs.require-result == 'true'
         uses: actions/checkout@v5
         with:
           ref: ${{ github.event.pull_request.head.sha }}
       - 
         name: Spelling
-        if: steps.checkAccess.outputs.require-result == 'true'
         uses: reviewdog/action-misspell@v1
         with:
           locale: "US"
@@ -49,7 +48,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
         name: Hadolint
-        if: steps.checkAccess.outputs.require-result == 'true'
         uses: reviewdog/action-hadolint@v1
         with:
           level: warning
@@ -58,7 +56,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
         name: YamlLint
-        if: steps.checkAccess.outputs.require-result == 'true'
         uses: reviewdog/action-yamllint@v1
         with:
           level: warning
@@ -66,7 +63,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
         name: ActionLint
-        if: steps.checkAccess.outputs.require-result == 'true'
         uses: reviewdog/action-actionlint@v1
         with:
           level: warning
@@ -74,7 +70,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
         name: Shellformat
-        if: steps.checkAccess.outputs.require-result == 'true'
         uses: reviewdog/action-shfmt@v1
         with:
           level: warning
@@ -82,7 +77,6 @@ jobs:
           github_token: ${{ secrets.REPO_ACCESS_TOKEN }}
       -
         name: Shellcheck
-        if: steps.checkAccess.outputs.require-result == 'true'
         uses: reviewdog/action-shellcheck@v1
         with:
           level: warning
