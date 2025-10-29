@@ -558,6 +558,10 @@ configureNAT() {
     warn "$tables" && return 1
   fi
 
+  if ! iptables -t nat -A POSTROUTING -o "$VM_NET_BRIDGE" -j MASQUERADE; then
+    warn "$tables" && return 1
+  fi
+
   # shellcheck disable=SC2086
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$ip"; then
     warn "failed to configure IP tables!" && return 1
