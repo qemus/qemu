@@ -4,8 +4,8 @@ FROM debian:trixie-slim
 
 ARG TARGETARCH
 ARG VERSION_ARG="0.0"
-ARG VERSION_VNC="1.6.0"
 ARG VERSION_UTK="1.2.0"
+ARG VERSION_VNC="1.7.0-beta"
 ARG VERSION_PASST="2025_09_19"
 
 ARG DEBCONF_NOWARNINGS="yes"
@@ -49,9 +49,9 @@ RUN set -eu && \
     mkdir -p /etc/qemu && \
     echo "allow br0" > /etc/qemu/bridge.conf && \
     mkdir -p /usr/share/novnc && \
-    wget "https://github.com/novnc/noVNC/archive/refs/heads/master.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
+    wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
-    cd "/tmp/noVNC-master" && \
+    cd "/tmp/noVNC-${VERSION_VNC}" && \
     mv app core vendor package.json ./*.html /usr/share/novnc && \
     unlink /etc/nginx/sites-enabled/default && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
