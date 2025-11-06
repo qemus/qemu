@@ -357,7 +357,7 @@ configurePasst() {
   NETWORK="passt"
   [[ "$DEBUG" == [Yy1]* ]] && echo "Configuring user-mode networking..."
 
-  local log="/var/log/passt.log"
+  local log="/tmp/passt.log"
   rm -f "$log"
 
   local pid="/var/run/dnsmasq.pid"
@@ -397,14 +397,9 @@ configurePasst() {
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $GATEWAY_MAC"
-  PASST_OPTS+=" -P /var/run/passt.pid"
+  PASST_OPTS+=" -P /tmp/passt.pid"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
-
-  local uid gid
-  uid=$(id -u)
-  gid=$(id -g)
-  PASST_OPTS+=" --runas $uid:$gid"
 
   if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
     [ ! -f /etc/resolv.dnsmasq ] && cp /etc/resolv.conf /etc/resolv.dnsmasq
@@ -589,11 +584,11 @@ configureNAT() {
 
 closeBridge() {
 
-  local pid="/var/run/dnsmasq.pid"
+  pid="/tmp/passt.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
   rm -f "$pid"
 
-  pid="/var/run/passt.pid"
+  local pid="/var/run/dnsmasq.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
   rm -f "$pid"
 
@@ -651,8 +646,8 @@ closeNetwork() {
 cleanUp() {
 
   # Clean up old files
+  rm -f /tmp/passt.pid
   rm -f /etc/resolv.dnsmasq
-  rm -f /var/run/passt.pid
   rm -f /var/run/dnsmasq.pid
 
   if [[ -d "/sys/class/net/$VM_NET_TAP" ]]; then
