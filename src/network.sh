@@ -584,11 +584,11 @@ configureNAT() {
 
 closeBridge() {
 
-  pid="/tmp/passt.pid"
+  local pid="/tmp/passt.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
   rm -f "$pid"
 
-  local pid="/var/run/dnsmasq.pid"
+  pid="/var/run/dnsmasq.pid"
   [ -s "$pid" ] && pKill "$(<"$pid")"
   rm -f "$pid"
 
