@@ -555,7 +555,7 @@ configureNAT() {
   if ! iptables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE > /dev/null 2>&1; then
     [[ "$ROOTLESS" == [Yy1]* && "$DEBUG" != [Yy1]* ]] && return 1
     if ! iptables -t nat -A POSTROUTING -o "$VM_NET_DEV" -j MASQUERADE; then
-     warn "$tables" && return 1
+      warn "$tables" && return 1
     fi
   fi
 
