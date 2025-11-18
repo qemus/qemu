@@ -59,8 +59,17 @@ RUN set -eu && \
     echo "$VERSION_ARG" > /run/version && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN apt-get update && \
+    apt-get install -y python3 python3-venv && \
+    python3 -m venv /opt/isoenv && \
+    /opt/isoenv/bin/pip install --no-cache-dir pycdlib && \
+    ln -sf /opt/isoenv/bin/python /usr/local/bin/pycdlib-python && \
+    ln -sf /opt/isoenv/bin/pycdlib /usr/local/bin/pycdlib-python && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY --chmod=755 ./src /run/
 COPY --chmod=755 ./web /var/www/
+COPY --chmod=644 ./assets /run/assets
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
@@ -70,7 +79,6 @@ ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK
 VOLUME /storage
 EXPOSE 22 5900 8006
 
-ENV BOOT="alpine"
 ENV CPU_CORES="2"
 ENV RAM_SIZE="2G"
 ENV DISK_SIZE="64G"

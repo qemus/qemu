@@ -11,7 +11,6 @@ cd /run
 . utils.sh      # Load functions
 . reset.sh      # Initialize system
 . server.sh     # Start webserver
-. define.sh     # Define images
 . install.sh    # Download image
 . disk.sh       # Initialize disks
 . display.sh    # Initialize graphics

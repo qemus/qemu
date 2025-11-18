@@ -1,0 +1,30 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  identity:
+    hostname: ubuntu
+    realname: 'Docker'
+    username: docker
+    password: '$6$6D0zLV90NlsL5iPm$BPmXpp1oryQ1/FfonDMRELPxuJrZ7O0KJAcK5pJ8q0jXQcf7YGZiI6C5rPf.1toXHBfuq5Qx3JlQsajSfifxP.'
+  storage:
+    layout:
+      name: lvm
+      sizing-policy: all
+
+  ssh:
+    install-server: true
+    allow-pw: true
+
+  user-data:
+    disable_root: false
+
+  packages:
+    - qemu-guest-agent
+    - ubuntu-desktop-minimal
+
+  late-commands:
+    - curtin in-target --target=/target -- systemctl enable gdm
+    - curtin in-target --target=/target -- systemctl set-default graphical.target
