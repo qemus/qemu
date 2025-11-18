@@ -1,9 +1,11 @@
 services:
-  ubuntu:
+  prepare-ubuntu:
     image: qemu-local:latest
-    container_name: ubuntu
+    container_name: prepare-ubuntu
     environment:
       STORAGE_DIR: "${STORAGE_DIR:?Error: required env var not set}"
+      ISO_FILE: "${ISO_FILE:?Error: required env var not set}"
+      BOOT: "/custom.iso"
     devices:
       - /dev/kvm
     cap_add:
@@ -12,4 +14,5 @@ services:
       - 8006:8006
     stop_grace_period: 2m
     volumes:
+      - ${ISO_FILE}:/custom.iso
       - ${STORAGE_DIR}:/storage
