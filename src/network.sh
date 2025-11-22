@@ -422,7 +422,7 @@ configurePasst() {
     { $PASST ${PASST_OPTS:+ $PASST_OPTS}; rc=$?; } || :
 
     if (( rc != 0 )); then
-      [ -f "$log" ] && cat "$log"
+      [ -f "$log" ] && [ -s "$log" ] && cat "$log"
       warn "failed to start passt ($rc), falling back to slirp networking!"
       configureSlirp && return 0 || return 1
     fi
