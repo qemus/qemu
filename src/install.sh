@@ -3,14 +3,33 @@ set -Eeuo pipefail
 
 echo "DEBUG: install.sh is running, BOOT=$BOOT"
 
-if [ -f "/custom.iso" ]; then
-  echo "DEBUG: Found /custom.iso, remastering with pycdlib..."
+# Check if golden image already exists (ubuntu.boot marker)
+if [ -f "$STORAGE/ubuntu.boot" ] && hasDisk; then
+  echo "DEBUG: Golden image ready, skipping installation"
+  BOOT="none"
+  return 0
+fi
+
+# Check if we have a custom ISO to remaster
+if [ -f "$BOOT" ]; then
+  echo "DEBUG: Found $BOOT, checking for existing remastered ISO..."
+
+  # Get ISO size for naming
+  ISO_SIZE="$(stat -c%s "$BOOT")"
+  STORAGE_ISO="$STORAGE/ubuntu.${ISO_SIZE}.iso"
+
+  # Check if already remastered and saved
+  if [ -f "$STORAGE_ISO" ]; then
+    echo "DEBUG: Using existing remastered ISO at $STORAGE_ISO"
+    BOOT="$STORAGE_ISO"
+    return 0
+  fi
 
   REMASTERED_ISO="/tmp/ubuntu-autoinstall.iso"
 
   info "Remastering Ubuntu ISO for automated installation..."
   /opt/isoenv/bin/python /run/remaster_iso.py \
-    --src /custom.iso \
+    --src "$BOOT" \
     --dst "$REMASTERED_ISO" \
     --config-dir /run/assets
 
@@ -19,10 +38,24 @@ if [ -f "/custom.iso" ]; then
     exit 42
   fi
 
-  info "Remastered ISO created successfully at $REMASTERED_ISO"
-  BOOT="$REMASTERED_ISO"
-  REMASTERED=1
-  echo "DEBUG: BOOT updated to $BOOT"
+  # Move remastered ISO to storage
+  info "Saving remastered ISO to storage..."
+  if ! mv -f "$REMASTERED_ISO" "$STORAGE_ISO"; then
+    error "Failed to move ISO to storage"
+    exit 43
+  fi
+  ! setOwner "$STORAGE_ISO" && error "Failed to set owner for $STORAGE_ISO"
+
+  # Create ubuntu.base file with ISO filename
+  BASE_FILE="$STORAGE/ubuntu.base"
+  echo "ubuntu.${ISO_SIZE}.iso" > "$BASE_FILE"
+  ! setOwner "$BASE_FILE" && error "Failed to set owner for $BASE_FILE"
+
+  touch "$STORAGE/ubuntu.boot"
+  ! setOwner "$STORAGE/ubuntu.boot" && error "Failed to set owner for ubuntu.boot"
+
+  info "Remastered ISO saved to $STORAGE_ISO"
+  BOOT="$STORAGE_ISO"
   return 0
 fi
 
