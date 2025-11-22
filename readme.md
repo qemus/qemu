@@ -48,10 +48,9 @@ docker run -it --rm \
 
 ### How do I use it?
 
-  **Download Ubuntu LTS Server ISO:**
+  **Download Ubuntu 22.04 LTS Server ISO:**
 
-  1. Visit [Ubuntu Server Downloads](https://ubuntu.com/download/server)
-  2. Download Server ISO file [~3GB]
+  1. Visit & download the [server ISO](https://releases.ubuntu.com/22.04/ubuntu-22.04.5-live-server-amd64.iso)
 
   **Then follow these steps:**
 
