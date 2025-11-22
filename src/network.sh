@@ -172,9 +172,11 @@ configureDNS() {
 
   if ! $DNSMASQ ${arguments:+ $arguments}; then
 
-    local msg="Failed to start Dnsmasq, reason: $?"
-    [ -f "$log" ] && cat "$log"
-    error "$msg"
+    if [[ "${NETWORK,,}" == "slirp" || "${NETWORK,,}" == "passt" || "$ROOTLESS" != [Yy1]* || "$DEBUG" == [Yy1]* ]]; then
+      local msg="Failed to start Dnsmasq, reason: $?"
+      [ -f "$log" ] && [ -s "$log" ] && cat "$log"
+      error "$msg"
+    fi
 
     return 1
   fi
@@ -431,7 +433,7 @@ configurePasst() {
     tail -fn +0 "$log" --pid=$$ &
   else
     if [[ "$DEBUG" == [Yy1]* ]]; then
-      [ -f "$log" ] && cat "$log" && echo ""
+      [ -f "$log" ] && [ -s "$log" ] && cat "$log" && echo ""
     fi
   fi
 
@@ -838,7 +840,7 @@ else
 
   case "${NETWORK,,}" in
     "passt" | "slirp" | "user"* ) ;;
-    "tap" | "tun" | "tuntap" | "y" )
+    "tap" | "tun" | "tuntap" | "y" | "" )
 
       # Configure tap interface
       if ! configureNAT; then
@@ -857,7 +859,7 @@ else
   esac
 
   case "${NETWORK,,}" in
-    "tap" | "tun" | "tuntap" | "y" ) ;;
+    "tap" | "tun" | "tuntap" | "y" | "" ) ;;
     "passt" | "user"* )
 
       # Configure for user-mode networking (passt)
