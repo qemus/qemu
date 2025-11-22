@@ -33,6 +33,7 @@ RUN set -eu && \
         dnsmasq \
         xz-utils \
         apt-utils \
+        dos2unix \
         net-tools \
         e2fsprogs \
         qemu-utils \
@@ -68,8 +69,12 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=755 ./src /run/
-COPY --chmod=755 ./web /var/www/
+RUN dos2unix /run/*
+
 COPY --chmod=644 ./assets /run/assets
+RUN dos2unix /run/assets/*
+
+COPY --chmod=755 ./web /var/www/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
@@ -79,8 +84,8 @@ ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK
 VOLUME /storage
 EXPOSE 22 5900 8006
 
-ENV CPU_CORES="2"
-ENV RAM_SIZE="2G"
+ENV RAM_SIZE="8G"
+ENV CPU_CORES="8"
 ENV DISK_SIZE="64G"
 
 ENTRYPOINT ["/usr/bin/tini", "-s", "/run/entry.sh"]
