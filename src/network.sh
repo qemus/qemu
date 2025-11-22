@@ -172,8 +172,9 @@ configureDNS() {
 
   if ! $DNSMASQ ${arguments:+ $arguments}; then
 
+    local msg="Failed to start Dnsmasq, reason: $?"
+
     if [[ "${NETWORK,,}" == "slirp" || "${NETWORK,,}" == "passt" || "$ROOTLESS" != [Yy1]* || "$DEBUG" == [Yy1]* ]]; then
-      local msg="Failed to start Dnsmasq, reason: $?"
       [ -f "$log" ] && [ -s "$log" ] && cat "$log"
       error "$msg"
     fi
