@@ -753,8 +753,8 @@ fi
 [ -z "$DEVICE2" ] && [ -b "/dev/disk2" ] && DEVICE2="/dev/disk2"
 [ -z "$DEVICE3" ] && [ -b "/dev/disk3" ] && DEVICE3="/dev/disk3"
 [ -z "$DEVICE4" ] && [ -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
-[ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE4="/dev/disk5"
-[ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE4="/dev/disk6"
+[ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE5="/dev/disk5"
+[ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE6="/dev/disk6"
 
 if [ -n "$DEVICE" ]; then
   addDevice "$DEVICE" "$DISK_TYPE" "3" "0xa" || exit $?
