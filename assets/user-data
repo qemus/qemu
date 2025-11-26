@@ -62,6 +62,7 @@ autoinstall:
     - curtin in-target --target=/target -- bash -c 'echo "[daemon]" > /etc/gdm3/custom.conf'
     - curtin in-target --target=/target -- bash -c 'echo "AutomaticLoginEnable=true" >> /etc/gdm3/custom.conf'
     - curtin in-target --target=/target -- bash -c 'echo "AutomaticLogin=docker" >> /etc/gdm3/custom.conf'
+    - curtin in-target --target=/target -- bash -c 'echo "WaylandEnable=false" >> /etc/gdm3/custom.conf'
 
     # Set graphical target
     - curtin in-target --target=/target -- systemctl set-default graphical.target
@@ -104,3 +105,6 @@ autoinstall:
 
     # Update dconf database
     - curtin in-target --target=/target -- dconf update
+
+    # OEM Installation Setup (if OEM folder exists on ISO)
+    - curtin in-target --target=/target -- bash -c 'if [ -f /cdrom/oem/setup-oem-install.sh ]; then bash /cdrom/oem/setup-oem-install.sh; fi'
