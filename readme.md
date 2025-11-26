@@ -3,35 +3,87 @@
 
 </div></h1>
 
-Local Ubuntu Desktop inside a Docker container.
+Local Ubuntu Desktop inside a Docker container with automated cloud-init installation.
 
 ## Usage 🐳
 
-### Via Docker Compose:
+### Building the Image
 
-> See [compose.yml](compose.yml) for the complete configuration.
-
-To prepare a golden image from a custom ISO:
 ```bash
-STORAGE_DIR=/path/to/storage ISO_FILE=/path/to/ubuntu.iso \
-  docker compose -f compose.prepare.yml up
+docker build -t qemu-local:latest .
 ```
 
-Start the container (using the golden image):
-```bash
-STORAGE_DIR=/path/to/storage docker compose up
-```
+### Preparing Golden Image (First Time)
 
-### Via Docker CLI:
+Mount your Ubuntu ISO and let it install automatically:
 
 ```bash
 docker run -it --rm \
-  -p 8006:8006 \
+  --name prepare-ubuntu \
   --device=/dev/kvm \
   --cap-add NET_ADMIN \
-  --mount type=bind,source=./ubuntu.iso,target=/custom.iso \
-  --stop-timeout 120 \
+  --mount type=bind,source=/path/to/ubuntu.iso,target=/custom.iso \
+  -v /path/to/storage:/storage \
+  -p 8006:8006 \
+  -e RAM_SIZE=6G \
+  -e CPU_CORES=4 \
+  -e DISK_SIZE=64G \
   qemu-local:latest
+```
+
+The container will automatically:
+- Remaster the ISO with cloud-init autoinstall configuration
+- Install Ubuntu with desktop environment
+- Create a golden image in `/storage`
+- Exit when preparation is complete
+
+### Running from Golden Image
+
+After preparation, start Ubuntu from the saved golden image:
+
+```bash
+docker run -it --rm \
+  --name ubuntu \
+  --device=/dev/kvm \
+  --cap-add NET_ADMIN \
+  -v /path/to/storage:/storage \
+  -p 8006:8006 \
+  -p 5000:5000 \
+  -e RAM_SIZE=8G \
+  -e CPU_CORES=4 \
+  qemu-local:latest
+```
+
+Access the desktop via browser at http://localhost:8006
+
+### Custom Installation with OEM Scripts
+
+You can provide custom installation scripts that run on first boot:
+
+```bash
+docker run -it --rm \
+  --name prepare-ubuntu \
+  --device=/dev/kvm \
+  --cap-add NET_ADMIN \
+  --mount type=bind,source=/path/to/ubuntu.iso,target=/custom.iso \
+  --mount type=bind,source=/path/to/oem,target=/oem \
+  -v /path/to/storage:/storage \
+  -p 8006:8006 \
+  qemu-local:latest
+```
+
+Create an `/oem/install.sh` script that will execute on first boot:
+
+```bash
+#!/bin/bash
+# Example OEM installation script
+
+# Install additional packages
+apt-get update
+apt-get install -y vim htop
+
+# Configure system
+echo "Custom setup complete!"
 ```
 
 ## Compatibility ⚙️
@@ -54,29 +106,30 @@ docker run -it --rm \
 
   **Then follow these steps:**
 
-  - Start the container and connect to [port 8006](http://localhost:8006) using your web browser.
+  - Start the container with preparation command (see above)
 
-  - Sit back and relax while the magic happens, the whole installation will be performed fully automatic with cloud-init autoinstall.
+  - Connect to [port 8006](http://localhost:8006) using your web browser
 
-  - Once you see the desktop, your Ubuntu installation is ready for use.
+  - Watch the automated installation with cloud-init autoinstall
+
+  - Once you see the desktop, your Ubuntu installation is ready
 
   Enjoy your brand new machine, and don't forget to star this repo!
 
 ### How do I change the storage location?
 
-  To change the storage location, modify the `STORAGE_DIR` environment variable:
+  To change the storage location, modify the volume mount:
 
   ```bash
-  STORAGE_DIR=./ubuntu docker compose up
+  -v /custom/storage/path:/storage
   ```
 
 ### How do I change the size of the disk?
 
-  To expand the default size of 64 GB, add the `DISK_SIZE` setting to your compose file and set it to your preferred capacity:
+  To expand the default size of 64 GB, set the `DISK_SIZE` environment variable:
 
-  ```yaml
-  environment:
-    DISK_SIZE: "256G"
+  ```bash
+  -e DISK_SIZE="256G"
   ```
 
 > [!TIP]
@@ -84,16 +137,15 @@ docker run -it --rm \
 
 ### How do I share files with the host?
 
-  To share files with the host, add the following volume to your compose file:
+  To share files with the host, add a volume mount:
 
-  ```yaml
-  volumes:
-    -  /home/user/example:/shared
+  ```bash
+  --mount type=bind,source=/home/user/example,target=/shared
   ```
 
-  Then start the container and execute the following command in Ubuntu:
+  Then execute the following command in Ubuntu:
 
-  ```shell
+  ```bash
   sudo mount -t 9p -o trans=virtio shared /mnt/example
   ```
 
@@ -104,14 +156,13 @@ docker run -it --rm \
 
 ### How do I change the amount of CPU or RAM?
 
-  By default, the container will be allowed to use a maximum of 2 CPU cores and 4 GB of RAM.
+  By default, the container will be allowed to use a maximum of 8 CPU cores and 8 GB of RAM.
 
-  If you want to adjust this, you can specify the desired amount using the following environment variables:
+  If you want to adjust this, specify the desired amount:
 
-  ```yaml
-  environment:
-    RAM_SIZE: "8G"
-    CPU_CORES: "4"
+  ```bash
+  -e RAM_SIZE="16G" \
+  -e CPU_CORES="8"
   ```
 
 ### How do I verify if my system supports KVM?
@@ -133,4 +184,4 @@ docker run -it --rm \
 
   - you are not using a cloud provider, as most of them do not allow nested virtualization for their VPS's.
 
-  If you didn't receive any error from `kvm-ok` at all, but the container still complains that `/dev/kvm` is missing, it might help to add `privileged: true` to your compose file (or `--privileged` to your `run` command), to rule out any permission issue.
+  If you didn't receive any error from `kvm-ok` at all, but the container still complains that `/dev/kvm` is missing, try adding `--privileged` to your `run` command to rule out any permission issue.
