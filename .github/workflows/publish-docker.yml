@@ -43,11 +43,11 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/qemu-local:${{ steps.version_tag.outputs.version }}
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/qemu-local:${{ steps.version_tag.outputs.version }}
       -
         name: Build and push latest tag
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/qemu-local:latest
+          tags: ${{ secrets.DOCKERHUB_USERNAME }}/qemu-local:latest
