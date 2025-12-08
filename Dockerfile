@@ -53,15 +53,14 @@ RUN set -eu && \
     mkdir -p /usr/share/novnc && \
     wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
-    cd "/tmp/noVNC-${VERSION_VNC}" && \
-    mv app core vendor package.json ./*.html /usr/share/novnc && \
+    mv /tmp/noVNC-${VERSION_VNC}/app /tmp/noVNC-${VERSION_VNC}/core /tmp/noVNC-${VERSION_VNC}/vendor /tmp/noVNC-${VERSION_VNC}/package.json /tmp/noVNC-${VERSION_VNC}/*.html /usr/share/novnc && \
     unlink /etc/nginx/sites-enabled/default && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
     echo "$VERSION_ARG" > /run/version && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 RUN apt-get update && \
-    apt-get install -y python3 python3-venv && \
+    apt-get --no-install-recommends install -y python3 python3-venv && \
     python3 -m venv /opt/isoenv && \
     /opt/isoenv/bin/pip install --no-cache-dir pycdlib && \
     ln -sf /opt/isoenv/bin/python /usr/local/bin/pycdlib-python && \
