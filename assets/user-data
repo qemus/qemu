@@ -1,0 +1,110 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  identity:
+    hostname: ubuntu
+    realname: 'Docker'
+    username: docker
+    password: '$6$6D0zLV90NlsL5iPm$BPmXpp1oryQ1/FfonDMRELPxuJrZ7O0KJAcK5pJ8q0jXQcf7YGZiI6C5rPf.1toXHBfuq5Qx3JlQsajSfifxP.'
+
+  storage:
+    layout:
+      name: direct
+
+  late-commands:
+    # Not sure if this is needed, but sometimes the apt-get 
+    # update/install below fails because archive.ubuntu.com is not reachable yet
+    - bash -c 'for i in {1..30}; do ping -c1 archive.ubuntu.com &>/dev/null && break || sleep 2; done'
+    
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get upgrade -y
+    
+    # Disable needrestart during package installation to bypass kernel upgrade prompt
+    - curtin in-target --target=/target -- rm -f /etc/apt/apt.conf.d/99needrestart
+
+    # Install minimal Ubuntu Desktop
+    - curtin in-target --target=/target -- apt-get install -y --no-install-recommends ubuntu-desktop-minimal
+
+    # Enable the boot splash
+    - >-
+      curtin in-target --target=/target --
+      sed -i /etc/default/grub -e
+      's/GRUB_CMDLINE_LINUX_DEFAULT=".*/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/'
+    - curtin in-target --target=/target -- update-grub
+      
+    # Remove default filesystem and related tools not used with the suggested
+    # 'direct' storage layout.  These may yet be required if different
+    # partitioning schemes are used.
+    - >-
+      curtin in-target --target=/target -- apt-get remove -y
+      btrfs-progs cryptsetup* lvm2 xfsprogs
+    
+    # Remove other packages present by default in Ubuntu Server but not
+    # normally present in Ubuntu Desktop.
+    - >-
+      curtin in-target --target=/target -- apt-get remove -y
+      ubuntu-server ubuntu-server-minimal
+      binutils byobu curl dmeventd finalrd gawk
+      kpartx mdadm ncurses-term needrestart open-iscsi openssh-server
+      sg3-utils ssh-import-id sssd thin-provisioning-tools vim tmux
+      sosreport screen open-vm-tools motd-news-config lxd-agent-loader
+      landscape-common htop git fonts-ubuntu-console ethtool
+
+    # Finally, remove things only installed as dependencies of other things
+    # we have already removed.
+    - curtin in-target --target=/target -- apt-get autoremove -y
+    
+    # Enable auto-login
+    - curtin in-target --target=/target -- mkdir -p /etc/gdm3
+    - curtin in-target --target=/target -- bash -c 'echo "[daemon]" > /etc/gdm3/custom.conf'
+    - curtin in-target --target=/target -- bash -c 'echo "AutomaticLoginEnable=true" >> /etc/gdm3/custom.conf'
+    - curtin in-target --target=/target -- bash -c 'echo "AutomaticLogin=docker" >> /etc/gdm3/custom.conf'
+    - curtin in-target --target=/target -- bash -c 'echo "WaylandEnable=false" >> /etc/gdm3/custom.conf'
+
+    # Set graphical target
+    - curtin in-target --target=/target -- systemctl set-default graphical.target
+    
+    # Disable LTS upgrade popup
+    - curtin in-target --target=/target -- sed -i 's/Prompt=lts/Prompt=never/' /etc/update-manager/release-upgrades
+    
+    # Setup automatic updates for the future
+    - curtin in-target --target=/target -- apt-get install -y unattended-upgrades
+    - curtin in-target --target=/target -- bash -c 'echo "APT::Periodic::Update-Package-Lists \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
+    - curtin in-target --target=/target -- bash -c 'echo "APT::Periodic::Unattended-Upgrade \"1\";" >> /etc/apt/apt.conf.d/20auto-upgrades'
+
+    # Disable systemd sleep targets
+    - curtin in-target --target=/target -- systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+
+    # Setup dconf profile
+    - curtin in-target --target=/target -- mkdir -p /etc/dconf/profile
+    - curtin in-target --target=/target -- mkdir -p /etc/dconf/db/local.d
+    - curtin in-target --target=/target -- bash -c 'echo "user-db:user" > /etc/dconf/profile/user'
+    - curtin in-target --target=/target -- bash -c 'echo "system-db:local" >> /etc/dconf/profile/user'
+
+    # Disable idle/session timeout
+    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/desktop/session]" > /etc/dconf/db/local.d/00-power'
+    - curtin in-target --target=/target -- bash -c 'echo "idle-delay=uint32 0" >> /etc/dconf/db/local.d/00-power'
+
+    # Disable screensaver and lock
+    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/desktop/screensaver]" >> /etc/dconf/db/local.d/00-power'
+    - curtin in-target --target=/target -- bash -c 'echo "lock-enabled=false" >> /etc/dconf/db/local.d/00-power'
+    - curtin in-target --target=/target -- bash -c 'echo "idle-activation-enabled=false" >> /etc/dconf/db/local.d/00-power'
+
+    # Disable lock screen
+    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/desktop/lockdown]" >> /etc/dconf/db/local.d/00-power'
+    - curtin in-target --target=/target -- bash -c 'echo "disable-lock-screen=true" >> /etc/dconf/db/local.d/00-power'
+
+    # Disable power management sleep
+    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/settings-daemon/plugins/power]" >> /etc/dconf/db/local.d/00-power'
+    - curtin in-target --target=/target -- bash -c 'echo "sleep-inactive-ac-type=\"nothing\"" >> /etc/dconf/db/local.d/00-power'
+    - curtin in-target --target=/target -- bash -c 'echo "sleep-inactive-battery-type=\"nothing\"" >> /etc/dconf/db/local.d/00-power'
+    - curtin in-target --target=/target -- bash -c 'echo "idle-dim=false" >> /etc/dconf/db/local.d/00-power'
+
+    # Update dconf database
+    - curtin in-target --target=/target -- dconf update
+
+    # OEM Installation Setup (if OEM folder exists on ISO)
+    - curtin in-target --target=/target -- bash -c 'if [ -f /cdrom/oem/setup-oem-install.sh ]; then bash /cdrom/oem/setup-oem-install.sh; fi'
