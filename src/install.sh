@@ -23,15 +23,15 @@ fi
 
 # 3. Remaster ISO
 REMASTERED_ISO="/tmp/ubuntu-autoinstall.iso"
-OEM_ARG=""
-[ -d "/oem" ] && OEM_ARG="--oem-dir /oem"
+OEM_ARGS=()
+[ -d "/oem" ] && OEM_ARGS=("--oem-dir" "/oem")
 
 info "Remastering Ubuntu ISO for automated installation..."
 /opt/isoenv/bin/python /run/remaster_iso.py \
   --src "$BOOT" \
   --dst "$REMASTERED_ISO" \
   --config-dir /run/assets \
-  $OEM_ARG
+  "${OEM_ARGS[@]}"
 
 if [ ! -f "$REMASTERED_ISO" ]; then
   error "Remastered ISO not created"
