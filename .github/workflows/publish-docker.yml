@@ -43,6 +43,7 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/qemu-local:${{ steps.version_tag.outputs.version }}
       -
         name: Build and push latest tag
@@ -50,4 +51,5 @@ jobs:
         with:
           context: .
           push: true
+          platforms: linux/amd64,linux/arm64
           tags: ${{ secrets.DOCKERHUB_USERNAME }}/qemu-local:latest
