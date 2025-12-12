@@ -134,7 +134,7 @@ getURL() {
     "mx" | "mxlinux" | "mx-linux" )
       name="MX Linux"
       if [[ "$ret" == "url" ]]; then
-        version=$(curl --disable -Ils "https://sourceforge.net/projects/mx-linux/files/latest/download" | grep -i 'location:' | cut -d? -f1 | cut -d_ -f1 | cut -d- -f3) || exit 65
+        version=$(curl --disable -Ils "https://sourceforge.net/projects/mx-linux/files/latest/download" | grep -i 'location:' | cut -d? -f1 | cut -d_ -f1-2 | cut -d- -f3) || exit 65
         url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-${version}_x64.iso"
       fi ;;
     "nixos" )
