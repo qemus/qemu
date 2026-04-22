@@ -1,0 +1,66 @@
+#cloud-config
+autoinstall:
+  version: 1
+  locale: en_US.UTF-8
+  keyboard:
+    layout: us
+  identity:
+    hostname: ubuntu
+    realname: 'Cua'
+    username: cua
+    password: '$6$SX98ijbMPHz4cmXc$DZoReOFbp9rjDmKGSZ3fejntSLaG6zhm3KwzTwwGm.yDUkSYaICIKQIinfpPg9G0YkSJNHmeQbiXfJ44fSWPh0'
+
+  storage:
+    layout:
+      name: direct
+
+  late-commands:
+    - bash -c 'for i in {1..30}; do ping -c1 archive.ubuntu.com &>/dev/null && break || sleep 2; done'
+    - curtin in-target --target=/target -- apt-get update
+    - curtin in-target --target=/target -- apt-get upgrade -y
+    - curtin in-target --target=/target -- rm -f /etc/apt/apt.conf.d/99needrestart
+
+    # Install XFCE4 + TigerVNC + themes (no display manager)
+    - curtin in-target --target=/target -- apt-get install -y --no-install-recommends xfce4 xfce4-terminal tigervnc-standalone-server tigervnc-common dbus-x11 xclip gnome-screenshot wmctrl openssh-server elementary-xfce-icon-theme greybird-gtk-theme
+
+    # Serial console in grub for docker logs visibility
+    - >-
+      curtin in-target --target=/target --
+      sed -i /etc/default/grub -e
+      's/GRUB_CMDLINE_LINUX_DEFAULT=".*/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash console=ttyS0,115200n8"/'
+    - curtin in-target --target=/target -- update-grub
+
+    - curtin in-target --target=/target -- sed -i 's/Prompt=lts/Prompt=never/' /etc/update-manager/release-upgrades
+    - curtin in-target --target=/target -- systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target unattended-upgrades.service apt-daily.timer apt-daily-upgrade.timer apt-daily.service apt-daily-upgrade.service
+    - curtin in-target --target=/target -- systemctl enable ssh
+
+    # Write xstartup script (printf avoids YAML indentation issues with heredocs)
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "#!/bin/bash\nexec >> /dev/ttyS0 2>&1\necho [XSTART] D-Bus+XFCE\nif [ -z \"\$DBUS_SESSION_BUS_ADDRESS\" ]; then eval \$(dbus-launch --sh-syntax --exit-with-session); fi\nstartxfce4 &\nsleep 3\nxset s off\nxset -dpms\nxset s noblank\nwait\n" > /usr/local/bin/cua-xstartup.sh && chmod +x /usr/local/bin/cua-xstartup.sh'
+
+    # Write VNC start script (vncserver wrapper keeps process alive via wait on lock file)
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "#!/bin/bash\nrm -rf /tmp/.X1-lock /tmp/.X11-unix/X1\nvncserver :1 -geometry 1024x768 -depth 24 -rfbport 5900 -localhost no -SecurityTypes None --I-KNOW-THIS-IS-INSECURE -AlwaysShared -AcceptPointerEvents -AcceptKeyEvents -xstartup /usr/local/bin/cua-xstartup.sh\nwait \$(cat /tmp/.X1-lock 2>/dev/null) 2>/dev/null || sleep infinity\n" > /usr/local/bin/cua-start-vnc.sh && chmod +x /usr/local/bin/cua-start-vnc.sh'
+
+    # Write firstboot script (runs after reboot when cua user actually exists)
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "#!/bin/bash\nexec >> /dev/ttyS0 2>&1\necho [FIRSTBOOT] start\necho cua:cua | chpasswd && echo [FIRSTBOOT] chpasswd-PASS || echo [FIRSTBOOT] chpasswd-FAIL\necho \"cua ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers\nmkdir -p /home/cua/.vnc /home/cua/.config/xfce4/xfconf/xfce-perchannel-xml\nchown -R cua:cua /home/cua\necho [FIRSTBOOT] applying-xfce-theme\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfconf-query -c xsettings -p /Net/IconThemeName -s elementary-xfce-dark 2>/dev/null || true\"\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfconf-query -c xsettings -p /Net/ThemeName -s Greybird 2>/dev/null || true\"\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/last-image -s /usr/share/backgrounds/xfce/xfce-shapes.svg 2>/dev/null || true\"\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfdesktop --reload 2>/dev/null || true\"\necho [FIRSTBOOT] done\n" > /usr/local/bin/cua-firstboot.sh && chmod +x /usr/local/bin/cua-firstboot.sh'
+
+    # Write and enable firstboot systemd service
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "[Unit]\nDescription=Cua first-boot setup\nAfter=local-fs.target\nConditionPathExists=!/var/lib/cua-firstboot-done\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/cua-firstboot.sh\nExecStartPost=/usr/bin/touch /var/lib/cua-firstboot-done\nRemainAfterExit=yes\n\n[Install]\nWantedBy=multi-user.target\n" > /etc/systemd/system/cua-firstboot.service && systemctl enable cua-firstboot.service && echo FIRSTBOOT-ENABLED'
+
+    # Write and enable VNC systemd service
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "[Unit]\nDescription=Cua VNC Desktop\nAfter=cua-firstboot.service\nRequires=cua-firstboot.service\n\n[Service]\nType=simple\nUser=cua\nEnvironment=HOME=/home/cua\nEnvironment=USER=cua\nEnvironment=DISPLAY=:1\nExecStartPre=/bin/bash -c \"rm -rf /tmp/.X1-lock /tmp/.X11-unix/X1\"\nExecStart=/usr/local/bin/cua-start-vnc.sh\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n" > /etc/systemd/system/cua-vncserver.service && systemctl enable cua-vncserver.service && echo VNC-ENABLED'
+
+    # OEM setup (installs cua-computer-server on first boot)
+    - curtin in-target --target=/target -- bash -c 'if [ -f /cdrom/oem/setup-oem-install.sh ]; then bash /cdrom/oem/setup-oem-install.sh; fi'
+
+    # Use multi-user target (no display manager)
+    - curtin in-target --target=/target -- systemctl set-default multi-user.target

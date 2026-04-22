@@ -33,6 +33,7 @@ RUN set -eu && \
         dnsmasq \
         xz-utils \
         apt-utils \
+        dos2unix \
         net-tools \
         e2fsprogs \
         qemu-utils \
@@ -51,14 +52,24 @@ RUN set -eu && \
     mkdir -p /usr/share/novnc && \
     wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10 && \
     tar -xf /tmp/novnc.tar.gz -C /tmp/ && \
-    cd "/tmp/noVNC-${VERSION_VNC}" && \
-    mv app core vendor package.json ./*.html /usr/share/novnc && \
+    mv /tmp/noVNC-${VERSION_VNC}/app /tmp/noVNC-${VERSION_VNC}/core /tmp/noVNC-${VERSION_VNC}/vendor /tmp/noVNC-${VERSION_VNC}/package.json /tmp/noVNC-${VERSION_VNC}/*.html /usr/share/novnc && \
     unlink /etc/nginx/sites-enabled/default && \
     sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf && \
     echo "$VERSION_ARG" > /run/version && \
     rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
+RUN apt-get update && \
+    apt-get --no-install-recommends install -y python3 python3-venv && \
+    python3 -m venv /opt/isoenv && \
+    /opt/isoenv/bin/pip install --no-cache-dir pycdlib && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY --chmod=755 ./src /run/
+RUN dos2unix /run/*
+
+COPY --chmod=644 ./assets /run/assets
+RUN dos2unix /run/assets/*
+
 COPY --chmod=755 ./web /var/www/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
@@ -66,12 +77,17 @@ COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
 
 ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK}/utk_${VERSION_UTK}_${TARGETARCH}.bin" /run/utk.bin
 
+# Bake in golden pre-installed disk if it was built by build-golden.sh.
+# The /golden path is NOT a VOLUME so it persists in image layers.
+# Each container overlays it with a per-container qcow2 in /storage.
+# golden/ directory must exist (with or without ubuntu.qcow2) for COPY to work.
+COPY --chown=root:root golden/ /golden/
+
 VOLUME /storage
 EXPOSE 22 5900 8006
 
-ENV BOOT="alpine"
-ENV CPU_CORES="2"
-ENV RAM_SIZE="2G"
+ENV RAM_SIZE="8G"
+ENV CPU_CORES="8"
 ENV DISK_SIZE="64G"
 
 ENTRYPOINT ["/usr/bin/tini", "-s", "/run/entry.sh"]
