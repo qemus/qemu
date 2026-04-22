@@ -6,105 +6,61 @@ autoinstall:
     layout: us
   identity:
     hostname: ubuntu
-    realname: 'Docker'
-    username: docker
-    password: '$6$6D0zLV90NlsL5iPm$BPmXpp1oryQ1/FfonDMRELPxuJrZ7O0KJAcK5pJ8q0jXQcf7YGZiI6C5rPf.1toXHBfuq5Qx3JlQsajSfifxP.'
+    realname: 'Cua'
+    username: cua
+    password: '$6$SX98ijbMPHz4cmXc$DZoReOFbp9rjDmKGSZ3fejntSLaG6zhm3KwzTwwGm.yDUkSYaICIKQIinfpPg9G0YkSJNHmeQbiXfJ44fSWPh0'
 
   storage:
     layout:
       name: direct
 
   late-commands:
-    # Not sure if this is needed, but sometimes the apt-get 
-    # update/install below fails because archive.ubuntu.com is not reachable yet
     - bash -c 'for i in {1..30}; do ping -c1 archive.ubuntu.com &>/dev/null && break || sleep 2; done'
-    
     - curtin in-target --target=/target -- apt-get update
     - curtin in-target --target=/target -- apt-get upgrade -y
-    
-    # Disable needrestart during package installation to bypass kernel upgrade prompt
     - curtin in-target --target=/target -- rm -f /etc/apt/apt.conf.d/99needrestart
 
-    # Install minimal Ubuntu Desktop
-    - curtin in-target --target=/target -- apt-get install -y --no-install-recommends ubuntu-desktop-minimal
+    # Install XFCE4 + TigerVNC + themes (no display manager)
+    - curtin in-target --target=/target -- apt-get install -y --no-install-recommends xfce4 xfce4-terminal tigervnc-standalone-server tigervnc-common dbus-x11 xclip gnome-screenshot wmctrl openssh-server elementary-xfce-icon-theme greybird-gtk-theme
 
-    # Enable the boot splash
+    # Serial console in grub for docker logs visibility
     - >-
       curtin in-target --target=/target --
       sed -i /etc/default/grub -e
-      's/GRUB_CMDLINE_LINUX_DEFAULT=".*/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash"/'
+      's/GRUB_CMDLINE_LINUX_DEFAULT=".*/GRUB_CMDLINE_LINUX_DEFAULT="quiet splash console=ttyS0,115200n8"/'
     - curtin in-target --target=/target -- update-grub
-      
-    # Remove default filesystem and related tools not used with the suggested
-    # 'direct' storage layout.  These may yet be required if different
-    # partitioning schemes are used.
-    - >-
-      curtin in-target --target=/target -- apt-get remove -y
-      btrfs-progs cryptsetup* lvm2 xfsprogs
-    
-    # Remove other packages present by default in Ubuntu Server but not
-    # normally present in Ubuntu Desktop.
-    - >-
-      curtin in-target --target=/target -- apt-get remove -y
-      ubuntu-server ubuntu-server-minimal
-      binutils byobu curl dmeventd finalrd gawk
-      kpartx mdadm ncurses-term needrestart open-iscsi openssh-server
-      sg3-utils ssh-import-id sssd thin-provisioning-tools vim tmux
-      sosreport screen open-vm-tools motd-news-config lxd-agent-loader
-      landscape-common htop git fonts-ubuntu-console ethtool
 
-    # Finally, remove things only installed as dependencies of other things
-    # we have already removed.
-    - curtin in-target --target=/target -- apt-get autoremove -y
-    
-    # Enable auto-login
-    - curtin in-target --target=/target -- mkdir -p /etc/gdm3
-    - curtin in-target --target=/target -- bash -c 'echo "[daemon]" > /etc/gdm3/custom.conf'
-    - curtin in-target --target=/target -- bash -c 'echo "AutomaticLoginEnable=true" >> /etc/gdm3/custom.conf'
-    - curtin in-target --target=/target -- bash -c 'echo "AutomaticLogin=docker" >> /etc/gdm3/custom.conf'
-    - curtin in-target --target=/target -- bash -c 'echo "WaylandEnable=false" >> /etc/gdm3/custom.conf'
-
-    # Set graphical target
-    - curtin in-target --target=/target -- systemctl set-default graphical.target
-    
-    # Disable LTS upgrade popup
     - curtin in-target --target=/target -- sed -i 's/Prompt=lts/Prompt=never/' /etc/update-manager/release-upgrades
-    
-    # Setup automatic updates for the future
-    - curtin in-target --target=/target -- apt-get install -y unattended-upgrades
-    - curtin in-target --target=/target -- bash -c 'echo "APT::Periodic::Update-Package-Lists \"1\";" > /etc/apt/apt.conf.d/20auto-upgrades'
-    - curtin in-target --target=/target -- bash -c 'echo "APT::Periodic::Unattended-Upgrade \"1\";" >> /etc/apt/apt.conf.d/20auto-upgrades'
-
-    # Disable systemd sleep targets
     - curtin in-target --target=/target -- systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+    - curtin in-target --target=/target -- systemctl enable ssh
 
-    # Setup dconf profile
-    - curtin in-target --target=/target -- mkdir -p /etc/dconf/profile
-    - curtin in-target --target=/target -- mkdir -p /etc/dconf/db/local.d
-    - curtin in-target --target=/target -- bash -c 'echo "user-db:user" > /etc/dconf/profile/user'
-    - curtin in-target --target=/target -- bash -c 'echo "system-db:local" >> /etc/dconf/profile/user'
+    # Write xstartup script (printf avoids YAML indentation issues with heredocs)
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "#!/bin/bash\nexec >> /dev/ttyS0 2>&1\necho [XSTART] D-Bus+XFCE\nif [ -z \"\$DBUS_SESSION_BUS_ADDRESS\" ]; then eval \$(dbus-launch --sh-syntax --exit-with-session); fi\nstartxfce4 &\nsleep 3\nxset s off\nxset -dpms\nxset s noblank\nwait\n" > /usr/local/bin/cua-xstartup.sh && chmod +x /usr/local/bin/cua-xstartup.sh'
 
-    # Disable idle/session timeout
-    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/desktop/session]" > /etc/dconf/db/local.d/00-power'
-    - curtin in-target --target=/target -- bash -c 'echo "idle-delay=uint32 0" >> /etc/dconf/db/local.d/00-power'
+    # Write VNC start script (vncserver wrapper keeps process alive via wait on lock file)
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "#!/bin/bash\nrm -rf /tmp/.X1-lock /tmp/.X11-unix/X1\nvncserver :1 -geometry 1024x768 -depth 24 -rfbport 5900 -localhost no -SecurityTypes None --I-KNOW-THIS-IS-INSECURE -AlwaysShared -AcceptPointerEvents -AcceptKeyEvents -xstartup /usr/local/bin/cua-xstartup.sh\nwait \$(cat /tmp/.X1-lock 2>/dev/null) 2>/dev/null || sleep infinity\n" > /usr/local/bin/cua-start-vnc.sh && chmod +x /usr/local/bin/cua-start-vnc.sh'
 
-    # Disable screensaver and lock
-    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/desktop/screensaver]" >> /etc/dconf/db/local.d/00-power'
-    - curtin in-target --target=/target -- bash -c 'echo "lock-enabled=false" >> /etc/dconf/db/local.d/00-power'
-    - curtin in-target --target=/target -- bash -c 'echo "idle-activation-enabled=false" >> /etc/dconf/db/local.d/00-power'
+    # Write firstboot script (runs after reboot when cua user actually exists)
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "#!/bin/bash\nexec >> /dev/ttyS0 2>&1\necho [FIRSTBOOT] start\necho cua:cua | chpasswd && echo [FIRSTBOOT] chpasswd-PASS || echo [FIRSTBOOT] chpasswd-FAIL\necho \"cua ALL=(ALL) NOPASSWD:ALL\" >> /etc/sudoers\nmkdir -p /home/cua/.vnc /home/cua/.config/xfce4/xfconf/xfce-perchannel-xml\nchown -R cua:cua /home/cua\necho [FIRSTBOOT] applying-xfce-theme\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfconf-query -c xsettings -p /Net/IconThemeName -s elementary-xfce-dark 2>/dev/null || true\"\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfconf-query -c xsettings -p /Net/ThemeName -s Greybird 2>/dev/null || true\"\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfconf-query -c xfce4-desktop -p /backdrop/screen0/monitorVNC-0/workspace0/last-image -s /usr/share/backgrounds/xfce/xfce-shapes.svg 2>/dev/null || true\"\nrunuser -u cua -- bash -c \"DISPLAY=:1 xfdesktop --reload 2>/dev/null || true\"\necho [FIRSTBOOT] done\n" > /usr/local/bin/cua-firstboot.sh && chmod +x /usr/local/bin/cua-firstboot.sh'
 
-    # Disable lock screen
-    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/desktop/lockdown]" >> /etc/dconf/db/local.d/00-power'
-    - curtin in-target --target=/target -- bash -c 'echo "disable-lock-screen=true" >> /etc/dconf/db/local.d/00-power'
+    # Write and enable firstboot systemd service
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "[Unit]\nDescription=Cua first-boot setup\nAfter=local-fs.target\nConditionPathExists=!/var/lib/cua-firstboot-done\n\n[Service]\nType=oneshot\nExecStart=/usr/local/bin/cua-firstboot.sh\nExecStartPost=/usr/bin/touch /var/lib/cua-firstboot-done\nRemainAfterExit=yes\n\n[Install]\nWantedBy=multi-user.target\n" > /etc/systemd/system/cua-firstboot.service && systemctl enable cua-firstboot.service && echo FIRSTBOOT-ENABLED'
 
-    # Disable power management sleep
-    - curtin in-target --target=/target -- bash -c 'echo "[org/gnome/settings-daemon/plugins/power]" >> /etc/dconf/db/local.d/00-power'
-    - curtin in-target --target=/target -- bash -c 'echo "sleep-inactive-ac-type=\"nothing\"" >> /etc/dconf/db/local.d/00-power'
-    - curtin in-target --target=/target -- bash -c 'echo "sleep-inactive-battery-type=\"nothing\"" >> /etc/dconf/db/local.d/00-power'
-    - curtin in-target --target=/target -- bash -c 'echo "idle-dim=false" >> /etc/dconf/db/local.d/00-power'
+    # Write and enable VNC systemd service
+    - >-
+      curtin in-target --target=/target -- bash -c
+      'printf "[Unit]\nDescription=Cua VNC Desktop\nAfter=cua-firstboot.service\nRequires=cua-firstboot.service\n\n[Service]\nType=simple\nUser=cua\nEnvironment=HOME=/home/cua\nEnvironment=USER=cua\nEnvironment=DISPLAY=:1\nExecStartPre=/bin/bash -c \"rm -rf /tmp/.X1-lock /tmp/.X11-unix/X1\"\nExecStart=/usr/local/bin/cua-start-vnc.sh\nRestart=on-failure\nRestartSec=5\n\n[Install]\nWantedBy=multi-user.target\n" > /etc/systemd/system/cua-vncserver.service && systemctl enable cua-vncserver.service && echo VNC-ENABLED'
 
-    # Update dconf database
-    - curtin in-target --target=/target -- dconf update
-
-    # OEM Installation Setup (if OEM folder exists on ISO)
+    # OEM setup (installs cua-computer-server on first boot)
     - curtin in-target --target=/target -- bash -c 'if [ -f /cdrom/oem/setup-oem-install.sh ]; then bash /cdrom/oem/setup-oem-install.sh; fi'
+
+    # Use multi-user target (no display manager)
+    - curtin in-target --target=/target -- systemctl set-default multi-user.target
