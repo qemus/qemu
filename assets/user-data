@@ -31,7 +31,7 @@ autoinstall:
     - curtin in-target --target=/target -- update-grub
 
     - curtin in-target --target=/target -- sed -i 's/Prompt=lts/Prompt=never/' /etc/update-manager/release-upgrades
-    - curtin in-target --target=/target -- systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target
+    - curtin in-target --target=/target -- systemctl mask sleep.target suspend.target hibernate.target hybrid-sleep.target unattended-upgrades.service apt-daily.timer apt-daily-upgrade.timer apt-daily.service apt-daily-upgrade.service
     - curtin in-target --target=/target -- systemctl enable ssh
 
     # Write xstartup script (printf avoids YAML indentation issues with heredocs)

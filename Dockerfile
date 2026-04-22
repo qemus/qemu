@@ -62,8 +62,6 @@ RUN apt-get update && \
     apt-get --no-install-recommends install -y python3 python3-venv && \
     python3 -m venv /opt/isoenv && \
     /opt/isoenv/bin/pip install --no-cache-dir pycdlib && \
-    ln -sf /opt/isoenv/bin/python /usr/local/bin/pycdlib-python && \
-    ln -sf /opt/isoenv/bin/pycdlib /usr/local/bin/pycdlib-python && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=755 ./src /run/
@@ -78,6 +76,12 @@ COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
 
 ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK}/utk_${VERSION_UTK}_${TARGETARCH}.bin" /run/utk.bin
+
+# Bake in golden pre-installed disk if it was built by build-golden.sh.
+# The /golden path is NOT a VOLUME so it persists in image layers.
+# Each container overlays it with a per-container qcow2 in /storage.
+# golden/ directory must exist (with or without ubuntu.qcow2) for COPY to work.
+COPY --chown=root:root golden/ /golden/
 
 VOLUME /storage
 EXPOSE 22 5900 8006
