@@ -1,0 +1,21 @@
+services:
+  qemu:
+    image: ${IMAGE:-qemux/qemu}
+    container_name: qemu-multinet-repro
+    environment:
+      BOOT: "alpine"
+      DEBUG: "Y"
+    devices:
+      - /dev/kvm
+      - /dev/net/tun
+    cap_add:
+      - NET_ADMIN
+    ports:
+      - "8006:8006"
+    stop_grace_period: 2m
+    networks:
+      - netA
+
+networks:
+  netA:
+    external: true

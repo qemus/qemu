@@ -563,6 +563,22 @@ configureNAT() {
     fi
   fi
 
+  # When the container is attached to additional Docker networks, the kernel
+  # may route VM traffic out of any of them depending on destination. Without
+  # a MASQUERADE rule on each, packets leave with the VM's bridge-local source
+  # IP and get dropped by the peer. Add MASQUERADE for every extra external
+  # interface so cross-network reachability is not silently broken.
+  local path extra
+  for path in /sys/class/net/*; do
+    extra=$(basename "$path")
+    [ "$extra" = "lo" ] && continue
+    [ "$extra" = "$VM_NET_DEV" ] && continue
+    [ "$extra" = "$VM_NET_BRIDGE" ] && continue
+    [ "$extra" = "$VM_NET_TAP" ] && continue
+    [ -z "$(ip -4 -o addr show dev "$extra" scope global 2>/dev/null)" ] && continue
+    iptables -t nat -A POSTROUTING -o "$extra" -j MASQUERADE > /dev/null 2>&1 || :
+  done
+
   # shellcheck disable=SC2086
   if ! iptables -t nat -A PREROUTING -i "$VM_NET_DEV" -d "$IP" -p tcp${exclude} -j DNAT --to "$ip"; then
     warn "failed to configure IP tables!" && return 1
