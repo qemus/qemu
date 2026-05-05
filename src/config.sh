@@ -27,9 +27,7 @@ MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},d
 if [[ "${MACHINE,,}" != "pc"* ]]; then
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
   DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=pcie.0"
-  if [[ "${BOOT_MODE,,}" != "windows"* ]]; then
-    DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0"
-  fi
+  DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
 fi
 
 if [ -d "/shared" ] && [[ "${BOOT_MODE,,}" != "windows"* ]]; then
