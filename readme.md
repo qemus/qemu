@@ -364,6 +364,12 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   Now the `./example` directory on the host will be available as `/mnt/example` in the guest.
 
+### How do I enable dynamic memory allocation?
+
+  By default, the VM is allocated the full amount of RAM configured via `RAM_SIZE` for its entire lifetime.
+
+  However, you can enable [memory ballooning](dynamic.md) if you want the container to dynamically reclaim unused guest RAM based on host memory pressure.
+
 ### How can I provide custom arguments to QEMU?
 
   You can create the `ARGUMENTS` environment variable to provide additional arguments to QEMU at runtime:

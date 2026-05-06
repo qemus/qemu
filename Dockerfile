@@ -5,8 +5,8 @@ FROM debian:trixie-slim
 ARG TARGETARCH
 ARG VERSION_ARG="0.0"
 ARG VERSION_UTK="1.2.0"
-ARG VERSION_VNC="1.7.0-beta"
-ARG VERSION_PASST="2025_09_19"
+ARG VERSION_VNC="1.7.0"
+ARG VERSION_PASST="2026_01_20"
 
 ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -42,7 +42,10 @@ RUN set -eu && \
         inotify-tools \
         netcat-openbsd \
         ca-certificates \
-        qemu-system-x86 && \
+        qemu-system-x86 \
+        python3 \
+        python3-pip && \
+    pip3 install --no-cache-dir --break-system-packages qemu.qmp==0.0.6 && \
     wget "https://github.com/qemus/passt/releases/download/v${VERSION_PASST}/passt_${VERSION_PASST}_${TARGETARCH}.deb" -O /tmp/passt.deb -q && \
     dpkg -i /tmp/passt.deb && \
     apt-get clean && \
