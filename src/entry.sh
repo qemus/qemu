@@ -19,8 +19,8 @@ cd /run
 . boot.sh       # Configure boot
 . proc.sh       # Initialize processor
 . memory.sh     # Check available memory
+. balloon.sh    # Initialize ballooning
 . config.sh     # Configure arguments
-. ballooning.sh # Initialize ballooning
 . finish.sh     # Finish initialization
 
 trap - ERR
