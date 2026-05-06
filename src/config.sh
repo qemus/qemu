@@ -18,7 +18,7 @@ DEF_OPTS="-nodefaults"
 SERIAL_OPTS="-serial $SERIAL"
 CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
 RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on"
+MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on -pidfile $QEMU_PID"
 MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 
 [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
@@ -27,8 +27,9 @@ MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},d
 if [[ "${MACHINE,,}" != "pc"* ]]; then
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
   DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=pcie.0"
-  if [[ "${BOOT_MODE,,}" != "windows"* ]]; then
-    DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0"
+  if [[ "${BOOT_MODE,,}" != "windows"* || "${BALLOONING:-}" == [Yy1]* ]]; then
+    [[ "${BALLOONING:-}" == [Yy1]* ]] && MON_OPTS+=" -qmp unix:${QEMU_DIR}/qemu-qmp-ballooning.sock,server,nowait"
+    DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
   fi
 fi
 
