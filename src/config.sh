@@ -18,7 +18,7 @@ DEF_OPTS="-nodefaults"
 SERIAL_OPTS="-serial $SERIAL"
 CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
 RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on"
+MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on -pidfile $QEMU_PID"
 MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 
 [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
