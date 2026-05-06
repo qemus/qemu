@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-[[ "${BALLOONING:-}" != [Yy1]* ]] && return 0
+: "${BALLOONING:="N"}"
+
+[[ "$BALLOONING" != [Yy1]* ]] && return 0
 
 # By default, the VM is allocated the full amount of RAM configured via RAM_SIZE for its entire lifetime, but if you want
 # the container to dynamically reclaim unused guest RAM based on host memory pressure, you can enable memory ballooning.

@@ -28,8 +28,12 @@ if [[ "${MACHINE,,}" != "pc"* ]]; then
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
   DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=pcie.0"
   if [[ "${BOOT_MODE,,}" != "windows"* || "${BALLOONING:-}" == [Yy1]* ]]; then
-    [[ "${BALLOONING:-}" == [Yy1]* ]] && MON_OPTS+=" -qmp unix:${QEMU_DIR}/qemu-qmp-ballooning.sock,server,nowait"
-    DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
+    if [[ "${BALLOONING:-}" != [Yy1]* ]]; then
+      DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0"
+    else
+      MON_OPTS+=" -qmp unix:${QEMU_DIR}/qemu-qmp-ballooning.sock,server,nowait"
+      DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
+    fi
   fi
 fi
 
