@@ -14,7 +14,6 @@ html "$msg"
 [[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
 
 DEV_OPTS=""
-BAL_OPTS=""
 DEF_OPTS="-nodefaults"
 SERIAL_OPTS="-serial $SERIAL"
 CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
@@ -29,7 +28,7 @@ if [[ "${MACHINE,,}" != "pc"* ]]; then
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
   DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=pcie.0"
   if [[ "${BOOT_MODE,,}" != "windows"* || "${BALLOONING:-}" == [Yy1]* ]]; then
-    [[ "${BALLOONING:-}" == [Yy1]* ]] && BAL_OPTS="-qmp unix:/run/shm/qemu-qmp-ballooning.sock,server,nowait"
+    [[ "${BALLOONING:-}" == [Yy1]* ]] && MON_OPTS+=" -qmp unix:${QEMU_DIR}/qemu-qmp-ballooning.sock,server,nowait"
     DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
   fi
 fi
@@ -41,7 +40,7 @@ fi
 
 [ -n "$USB" ] && [[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
 
-ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $BAL_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
+ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
 ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 
 return 0
