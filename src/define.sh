@@ -31,7 +31,7 @@ getURL() {
 
   case "${id,,}" in
     "alma" | "almalinux" | "alma-linux" )
-      version="9"
+      version="10"
       name="AlmaLinux"
       if [[ "$ret" == "url" ]]; then
         url="https://repo.almalinux.org/almalinux/${version}/live/x86_64/AlmaLinux-${version}-latest-x86_64-Live-GNOME.iso"
@@ -98,9 +98,9 @@ getURL() {
       name="Kali Linux"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://cdimage.kali.org/current/?C=M;O=D") || exit 65
-        version=$(echo "$body" | grep -o ">kali-linux-.*-live-amd64.iso" | head -n 1 | cut -c 2-)
+        version=$(echo "$body" | grep -o ">kali-linux-.*-installer-amd64.iso" | head -n 1 | cut -c 2-)
         url="https://cdimage.kali.org/current/$version"
-        version=$(echo "$body" | grep -o ">kali-linux-.*-live-arm64.iso" | head -n 1 | cut -c 2-)
+        version=$(echo "$body" | grep -o ">kali-linux-.*-installer-arm64.iso" | head -n 1 | cut -c 2-)
         arm="https://cdimage.kali.org/current/$version"
       fi ;;
     "kubuntu" )
@@ -111,7 +111,7 @@ getURL() {
         url="https://cdimage.ubuntu.com/kubuntu/releases/${version}/release/kubuntu-${version}-desktop-amd64.iso"
       fi ;;
     "lmde" )
-      version="6"
+      version="7"
       name="Linux Mint Debian Edition"
       if [[ "$ret" == "url" ]]; then
         url="https://pub.linuxmint.io/debian/lmde-${version}-cinnamon-64bit.iso"
@@ -120,7 +120,7 @@ getURL() {
       name="macOS"
       error "To install $name use: https://github.com/dockur/macos" && return 1 ;;
     "mint" | "linuxmint" | "linux-mint" )
-      version="22.2"
+      version="22.3"
       name="Linux Mint"
       if [[ "$ret" == "url" ]]; then
         url="https://pub.linuxmint.io/stable/${version}/linuxmint-${version}-cinnamon-64bit.iso"
@@ -134,16 +134,16 @@ getURL() {
     "mx" | "mxlinux" | "mx-linux" )
       name="MX Linux"
       if [[ "$ret" == "url" ]]; then
-        version=$(curl --disable -Ils "https://sourceforge.net/projects/mx-linux/files/latest/download" | grep -i 'location:' | cut -d? -f1 | cut -d_ -f1-2 | cut -d- -f3) || exit 65
-        url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-${version}_x64.iso"
+        version=$(curl --disable -Ils "https://sourceforge.net/projects/mx-linux/files/latest/download" | grep -i 'location:' | cut -d? -f1 | cut -d_ -f1 | cut -d- -f3) || exit 65
+        url="https://mirror.umd.edu/mxlinux-iso/MX/Final/Xfce/MX-${version}_Xfce_x64.iso"
       fi ;;
     "nixos" )
       name="NixOS"
       if [[ "$ret" == "url" ]]; then
         body=$(pipe "https://nix-channels.s3.amazonaws.com/?delimiter=/") || exit 65
         version=$(echo "$body" | grep -o -E 'nixos-[[:digit:]]+\.[[:digit:]]+' | cut -d- -f2 | sort -nru | head -n 1)
-        url="https://channels.nixos.org/nixos-$version/latest-nixos-gnome-x86_64-linux.iso"
-        arm="https://channels.nixos.org/nixos-$version/latest-nixos-gnome-aarch64-linux.iso"
+        url="https://channels.nixos.org/nixos-$version/latest-nixos-graphical-x86_64-linux.iso"
+        arm="https://channels.nixos.org/nixos-$version/latest-nixos-graphical-aarch64-linux.iso"
       fi ;;
     "opensuse" | "open-suse" | "suse" )
       name="OpenSUSE"
@@ -154,7 +154,7 @@ getURL() {
         arm="https://download.opensuse.org/distribution/leap/$version/installer/iso/agama-installer.aarch64-Leap_${version}.iso"
       fi ;;
     "rocky" | "rockylinux" | "rocky-linux" )
-      version="9"
+      version="10"
       name="Rocky Linux"
       if [[ "$ret" == "url" ]]; then
         url="https://dl.rockylinux.org/pub/rocky/${version}/live/x86_64/Rocky-${version}-Workstation-x86_64-latest.iso"
@@ -198,9 +198,10 @@ getURL() {
         url="https://cdimages.ubuntu.com/xubuntu/releases/${version}/release/xubuntu-${version}-desktop-amd64.iso"
       fi ;;
     "zorin" | "zorinos" | "zorin-os" )
+      version="18"
       name="Zorin OS"
       if [[ "$ret" == "url" ]]; then
-        url="https://mirrors.edge.kernel.org/zorinos-isos/18/Zorin-OS-18-Core-64-bit.iso"
+        url="https://mirrors.edge.kernel.org/zorinos-isos/${version}/Zorin-OS-${version}-Core-64-bit.iso"
       fi ;;
   esac
 
