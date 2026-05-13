@@ -1,0 +1,58 @@
+name: "Links"
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  check:
+    name: Check links
+    runs-on: ubuntu-latest
+    steps:
+      -
+        name: Checkout
+        uses: actions/checkout@v6
+      -
+        name: Verify download links
+        run: |
+          set -Eeuo pipefail
+
+          # error() is required by define.sh and called internally on failure
+          error() { printf "%b%s%b" "\E[1;31m❯ " "ERROR: ${1:-}" "\E[0m\n" >&2; }
+          export PLATFORM="x86_64"
+          source src/define.sh
+
+          distros=(
+            "alma" "alpine" "arch" "cachy" "centos" "debian"
+            "fedora" "gentoo" "kali" "kubuntu" "lmde" "mint"
+            "manjaro" "mx" "nixos" "opensuse" "rocky" "slack"
+            "tails" "ubuntu" "ubuntus" "xubuntu" "zorin"
+          )
+
+          failed=0
+          for distro in "${distros[@]}"; do
+            url=$(getURL "$distro" "url") || { echo "SKIP: $distro (no URL returned)"; continue; }
+            if [ -z "$url" ]; then
+              echo "SKIP: $distro (empty URL)"
+              continue
+            fi
+            name=$(getURL "$distro" "name")
+            printf "%-30s %s\n" "Checking $name..." "$url"
+            if curl --disable --silent --max-time 30 --head --fail --location "$url" -o /dev/null; then
+              echo "  ✔ OK"
+            else
+              echo "  ✘ FAILED"
+              echo "::error::Link broken for $name: $url"
+              failed=$((failed + 1))
+            fi
+          done
+
+          if [ "$failed" -gt 0 ]; then
+            echo "::error::$failed download link(s) failed verification."
+            exit 1
+          fi
+
+          echo "All download links verified successfully."
