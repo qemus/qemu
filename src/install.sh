@@ -419,14 +419,44 @@ case "${base,,}" in
     7z x "$STORAGE/$base" -o"$tmp" > /dev/null
 
     rm -f "$STORAGE/$base"
-    base="${base%.*}"
 
-    if [ ! -s "$tmp/$base" ]; then
+    img=""
+
+    case "${base%.*}" in
+      *".iso" | *".img" | *".raw" | *".qcow2" | *".vdi" | *".vhd" | *".vhdx" | *".vmdk" )
+
+        if [ -s "$tmp/${base%.*}" ]; then
+          img="$tmp/${base%.*}"
+        fi
+
+        ;;
+    esac
+
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.iso" ] && img="$tmp/${base%.*}.iso"
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.img" ] && img="$tmp/${base%.*}.img"
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.raw" ] && img="$tmp/${base%.*}.raw"
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.qcow2" ] && img="$tmp/${base%.*}.qcow2"
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vdi" ] && img="$tmp/${base%.*}.vdi"
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vhd" ] && img="$tmp/${base%.*}.vhd"
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vhdx" ] && img="$tmp/${base%.*}.vhdx"
+    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vmdk" ] && img="$tmp/${base%.*}.vmdk"
+
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.iso" -print -quit)
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.img" -print -quit)
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.raw" -print -quit)
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.qcow2" -print -quit)
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vdi" -print -quit)
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vhd" -print -quit)
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vhdx" -print -quit)
+    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vmdk" -print -quit)
+
+    if [ ! -s "$img" ] || [ ! -f "$img" ]; then
       rm -rf "$tmp"
-      error "Cannot find file \"${base}\" in .${BOOT/*./} archive!" && exit 32
+      error "Cannot find any image file in archive: .${BOOT/*./}" && exit 32
     fi
 
-    mv "$tmp/$base" "$STORAGE/$base"
+    base=$(basename "$img")
+    mv "$img" "$STORAGE/$base"
     rm -rf "$tmp"
 
     ;;
