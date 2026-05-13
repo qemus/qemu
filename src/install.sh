@@ -429,7 +429,7 @@ case "${base,,}" in
           img="$tmp/${base%.*}"
         fi
 
-      ;;
+        ;;
     esac
 
     [ -z "$img" ] && [ -s "$tmp/${base%.*}.iso" ] && img="$tmp/${base%.*}.iso"
