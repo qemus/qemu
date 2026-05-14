@@ -16,6 +16,8 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 : "${ALLOCATE:=""}"        # Preallocate diskspace
 : "${ARGUMENTS:=""}"       # Extra QEMU parameters
 : "${CPU_CORES:="2"}"      # Amount of CPU cores
+: "${CPU_THREADS:="1"}"
+: "${CPU_SOCKETS:="1"}"
 : "${RAM_SIZE:="2G"}"      # Maximum RAM amount
 : "${RAM_CHECK:="Y"}"      # Check available RAM
 : "${DISK_SIZE:="64G"}"    # Initial data disk size
@@ -72,6 +74,7 @@ KERNEL=$(echo "$SYS" | cut -b 1)
 MINOR=$(echo "$SYS" | cut -d '.' -f2)
 ARCH=$(dpkg --print-architecture)
 CORES=$(grep -c '^processor' /proc/cpuinfo)
+THREADS=$(lscpu | grep -i "thread(s) per core" | awk '{print $4}')
 
 if ! grep -qi "socket(s)" <<< "$(lscpu)"; then
   SOCKETS=1
@@ -85,8 +88,25 @@ CPU_CORES="${CPU_CORES// /}"
 [[ "${CPU_CORES,,}" == "0" ]] && CPU_CORES="1"
 [ -n "${CPU_CORES//[0-9 ]}" ] && error "Invalid amount of CPU_CORES: $CPU_CORES" && exit 15
 
-if [ "$CPU_CORES" -gt "$CORES" ]; then
-  warn "The amount for CPU_CORES (${CPU_CORES}) exceeds the amount of logical cores available, so will be limited to ${CORES}."
+CPU_THREADS="${CPU_THREADS// /}"
+[[ "${CPU_THREADS,,}" == "max" ]] && CPU_THREADS="$THREADS"
+[[ "${CPU_THREADS,,}" == "half" ]] && CPU_THREADS=$(( THREADS / 2 ))
+[[ "${CPU_THREADS,,}" == "0" ]] && CPU_THREADS="1"
+[ -n "${CPU_THREADS//[0-9 ]}" ] && error "Invalid amount of CPU_THREADS: $CPU_THREADS" && exit 15
+
+CPU_SOCKETS="${CPU_SOCKETS// /}"
+[[ "${CPU_SOCKETS,,}" == "max" ]] && CPU_SOCKETS="$SOCKETS"
+[[ "${CPU_SOCKETS,,}" == "half" ]] && CPU_SOCKETS=$(( SOCKETS / 2 ))
+[[ "${CPU_SOCKETS,,}" == "0" ]] && CPU_SOCKETS="1"
+[ -n "${CPU_SOCKETS//[0-9 ]}" ] && error "Invalid amount of CPU_SOCKETS: $CPU_SOCKETS" && exit 15
+
+VCPUS=$(($CPU_CORES * $CPU_THREADS * $CPU_SOCKETS))
+
+if [ "$VCPUS" -gt "$CORES" ]; then
+  warn "The amount for VCPUS (${VCPUS} = ${CPU_SOCKETS} sockets * ${CPU_CORES} cores * ${CPU_THREADS} threads) exceeds the amount of logical cores available, so will be limited to ${CORES}."
+  VCPUS="$CORES"
+  CPU_SOCKETS=1
+  CPU_THREADS=1
   CPU_CORES="$CORES"
 fi
 
