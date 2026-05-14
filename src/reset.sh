@@ -15,9 +15,9 @@ trap 'error "Status $? while: $BASH_COMMAND (line $LINENO/$BASH_LINENO)"' ERR
 : "${MACHINE:="q35"}"      # Machine selection
 : "${ALLOCATE:=""}"        # Preallocate diskspace
 : "${ARGUMENTS:=""}"       # Extra QEMU parameters
-: "${CPU_CORES:="2"}"      # Amount of CPU cores
-: "${CPU_THREADS:="1"}"
-: "${CPU_SOCKETS:="1"}"
+: "${CPU_CORES:="2"}"      # Amount of CPU cores per socket
+: "${CPU_THREADS:="1"}"    # Amount of threads per core
+: "${CPU_SOCKETS:="1"}"    # Amount of sockets
 : "${RAM_SIZE:="2G"}"      # Maximum RAM amount
 : "${RAM_CHECK:="Y"}"      # Check available RAM
 : "${DISK_SIZE:="64G"}"    # Initial data disk size
