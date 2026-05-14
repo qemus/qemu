@@ -100,7 +100,7 @@ CPU_SOCKETS="${CPU_SOCKETS// /}"
 [[ "${CPU_SOCKETS,,}" == "0" ]] && CPU_SOCKETS="1"
 [ -n "${CPU_SOCKETS//[0-9 ]}" ] && error "Invalid amount of CPU_SOCKETS: $CPU_SOCKETS" && exit 15
 
-VCPUS=$(($CPU_CORES * $CPU_THREADS * $CPU_SOCKETS))
+VCPUS=$(( CPU_CORES * CPU_THREADS * CPU_SOCKETS ))
 
 if [ "$VCPUS" -gt "$CORES" ]; then
   warn "The amount for VCPUS (${VCPUS} = ${CPU_SOCKETS} sockets * ${CPU_CORES} cores * ${CPU_THREADS} threads) exceeds the amount of logical cores available, so will be limited to ${CORES}."
