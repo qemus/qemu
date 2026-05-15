@@ -4,6 +4,7 @@ FROM debian:trixie-slim
 
 ARG TARGETARCH
 ARG VERSION_ARG="0.0"
+ARG VERSION_QMP="0.0.6"
 ARG VERSION_UTK="1.2.0"
 ARG VERSION_VNC="1.7.0"
 ARG VERSION_PASST="2026_05_07"
@@ -45,7 +46,7 @@ RUN set -eu && \
         qemu-system-x86 \
         python3 \
         python3-pip && \
-    pip3 install --no-cache-dir --break-system-packages qemu.qmp==0.0.6 && \
+    pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore "qemu.qmp==${VERSION_QMP}" && \
     wget "https://github.com/qemus/passt/releases/download/v${VERSION_PASST}/passt_${VERSION_PASST}_${TARGETARCH}.deb" -O /tmp/passt.deb -q --timeout=10 && \
     dpkg -i /tmp/passt.deb && \
     apt-get clean && \
