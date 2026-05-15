@@ -402,7 +402,7 @@ configurePasst() {
 
   PASST_OPTS+=" -H $VM_NET_HOST"
   PASST_OPTS+=" -M $GATEWAY_MAC"
-  PASST_OPTS+=" -P  $PASST_PID"
+  PASST_OPTS+=" -P $PASST_PID"
   PASST_OPTS+=" -l $log"
   PASST_OPTS+=" -q"
 
@@ -412,7 +412,10 @@ configurePasst() {
   fi
 
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
-  [[ "$DEBUG" == [Yy1]* ]] && printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
+
+  if [[ "$DEBUG" == [Yy1]* || "$PASST_DEBUG" == [Yy1]* ]]; then
+    printf "Passt arguments:\n\n%s\n\n" "${PASST_OPTS// -/$'\n-'}"
+  fi
 
   [ ! -f "$PASST" ] && cp /usr/bin/passt* /run
 
