@@ -39,7 +39,7 @@ if [[ "${RAM_SIZE,,}" == "half" ]]; then
   if (( (RAM_AVAIL / 2) > RAM_SPARE )); then
     wanted=$(( (RAM_AVAIL / 2) / 1048577 ))
     RAM_SIZE="${wanted}M"
-    echo "Allocated a total of $wanted MB of RAM for the virtual machine, which is half of the $AVAIL_MEM of free memory available."
+    info "Allocated a total of $wanted MB of RAM for the virtual machine."
   else
     RAM_SIZE="max"
   fi
@@ -65,7 +65,7 @@ if [[ "${RAM_SIZE,,}" == "max" ]]; then
   wanted=$(( wanted / 1048577 ))
   RAM_SIZE="${wanted}M"
 
-  echo "Allocated a total of $wanted MB of RAM for the virtual machine, as there was $AVAIL_MEM of free memory available."
+  info "Allocated a total of $wanted MB of RAM for the virtual machine."
 
 fi
 
