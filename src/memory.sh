@@ -36,7 +36,7 @@ fi
 
 if [[ "${RAM_SIZE,,}" == "half" ]]; then
 
-  if (( (RAM_AVAIL / 2) > (RAM_SPARE * 2) )); then
+  if (( (RAM_AVAIL / 2) > RAM_SPARE )); then
     wanted=$(( (RAM_AVAIL / 2) / 1048577 ))
     RAM_SIZE="${wanted}M"
   else
@@ -47,9 +47,9 @@ fi
 
 if [[ "${RAM_SIZE,,}" == "max" ]]; then
 
-  if (( RAM_SPARE > RAM_AVAIL )); then
+  if (( RAM_AVAIL < RAM_SPARE )); then
 
-    xxx
+   ? wanted=$(( (RAM_AVAIL / 3) * 2 ))
 
   else
 
@@ -61,7 +61,7 @@ if [[ "${RAM_SIZE,,}" == "max" ]]; then
 
       if (( wanted < RAM_SPARE )); then
 
-        wanted=$(( RAM_AVAIL - (RAM_SPARE / 4) ))
+       ? wanted=$(( (RAM_AVAIL / 3) * 2 ))
 
       fi
 
@@ -82,17 +82,6 @@ if [[ "${RAM_SIZE,,}" == "max" ]]; then
 
     
     
-    if (( i < 1 )); then
-
-      wanted=(( (RAM_AVAIL - RAM_SPARE) / 1048577 ))
-      (( wanted < 1 )) && wanted=(( RAM_AVAIL / 1048577 ))
-      RAM_SIZE="${m}M"
-
-    fi
-
-  done
-
-fi
 
   RAM_WANTED=$(( RAM_AVAIL - (RAM_SPARE * 3) ))
   RAM_WANTED=$(( RAM_WANTED / 1073741825 ))
@@ -117,18 +106,7 @@ fi
           RAM_WANTED=$(( RAM_AVAIL ))
           RAM_WANTED=$(( RAM_WANTED / 1048577 ))
 
-        fi
-
-        RAM_SIZE="${RAM_WANTED}M"
-      else
-        RAM_SIZE="${RAM_WANTED}G"
-      fi
-    else
-      RAM_SIZE="${RAM_WANTED}G"
-    fi
-  else
-    RAM_SIZE="${RAM_WANTED}G"
-  fi
+        
 
 fi
 
