@@ -65,6 +65,7 @@ TEMPLATE="/var/www/index.html"
 FOOTER1="$APP for $ENGINE v$(</run/version)"
 FOOTER2="<a href='$SUPPORT'>$SUPPORT</a>"
 
+SOCKETS=1
 CPU=$(cpu)
 SYS=$(uname -r)
 HOST=$(hostname -s)
@@ -73,10 +74,9 @@ MINOR=$(echo "$SYS" | cut -d '.' -f2)
 ARCH=$(dpkg --print-architecture)
 CORES=$(grep -c '^processor' /proc/cpuinfo)
 
-if ! grep -qi "socket(s)" <<< "$(lscpu)"; then
-  SOCKETS=1
-else
+if grep -qi "socket(s)" <<< "$(lscpu)"; then
   SOCKETS=$(lscpu | grep -m 1 -i 'socket(s)' | awk '{print $2}')
+  [ -z "${SOCKETS##*[!0-9]*}" ] && SOCKETS=1
 fi
 
 CPU_CORES="${CPU_CORES// /}"
