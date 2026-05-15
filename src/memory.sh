@@ -47,79 +47,31 @@ fi
 
 if [[ "${RAM_SIZE,,}" == "max" ]]; then
 
-  if (( RAM_AVAIL < RAM_SPARE )); then
+  if (( RAM_AVAIL < (RAM_SPARE * 2) )); then
 
-   ? wanted=$(( (RAM_AVAIL / 3) * 2 ))
+    wanted=$(( RAM_AVAIL / 2 ))
 
   else
 
     wanted=$(( RAM_AVAIL - (RAM_SPARE * 3) ))
 
     if (( wanted < (RAM_SPARE * 6) )); then
-
       wanted=$(( RAM_AVAIL - RAM_SPARE ))
-
-      if (( wanted < RAM_SPARE )); then
-
-       ? wanted=$(( (RAM_AVAIL / 3) * 2 ))
-
-      fi
-
     fi
 
   fi
 
-
-  
-
-
-
-
-
-
-
-  
-
-    
-    
-
-  RAM_WANTED=$(( RAM_AVAIL - (RAM_SPARE * 3) ))
-  RAM_WANTED=$(( RAM_WANTED / 1073741825 ))
-
-  if (( "$RAM_WANTED" < 1 )); then
-
-    RAM_WANTED=$(( RAM_AVAIL - (RAM_SPARE * 2) ))
-    RAM_WANTED=$(( RAM_WANTED / 1073741825 ))
-
-    if (( "$RAM_WANTED" < 1 )); then
-
-      RAM_WANTED=$(( RAM_AVAIL - RAM_SPARE ))
-      RAM_WANTED=$(( RAM_WANTED / 1073741825 ))
-
-      if (( "$RAM_WANTED" < 1 )); then
-
-        RAM_WANTED=$(( RAM_AVAIL - RAM_SPARE ))
-        RAM_WANTED=$(( RAM_WANTED / 1048577 ))
-
-        if (( "$RAM_WANTED" < 1 )); then
-
-          RAM_WANTED=$(( RAM_AVAIL ))
-          RAM_WANTED=$(( RAM_WANTED / 1048577 ))
-
-        
+  wanted=$(( wanted / 1048577 ))
+  RAM_SIZE="${wanted}M"
 
 fi
 
-if [[ "$RAM_CHECK" != [Nn]* ]]; then
+wanted=$(numfmt --from=iec "$RAM_SIZE")
 
-  wanted=$(numfmt --from=iec "$RAM_SIZE")
-
-  if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
-    wanted=$(( wanted / 1048577 ))
-    error "Not enough memory available, only $wanted MB left!"
-    exit 16
-  fi
-
+if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
+  wanted=$(( wanted / 1048577 ))
+  error "Not enough memory available, there is only $wanted MB left!"
+  exit 16
 fi
 
 return 0
