@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 : "${BALLOONING:="N"}"
+: "${BALLOONING_DEBUG:="N"}"
 
 [[ "$BALLOONING" != [Yy1]* ]] && return 0
 
@@ -31,29 +32,29 @@ set -Eeuo pipefail
 
 ballooning() {
 
-    # Wait for qemu PID file to be created
-    while [ ! -f "$QEMU_PID" ]; do
-        sleep 1
-    done
+  # Wait for qemu PID file to be created
+  while [ ! -f "$QEMU_PID" ]; do
+    sleep 1
+  done
 
-    BALLOON_ARGS=()
-    [[ -n "${BALLOONING_MIN_MEM:-}" ]] && BALLOON_ARGS+=(--min-mem "$BALLOONING_MIN_MEM")
-    [[ -n "${BALLOONING_PSI_PRESSURE:-}" ]] && BALLOON_ARGS+=(--psi-pressure "$BALLOONING_PSI_PRESSURE")
-    [[ -n "${BALLOONING_PSI_PRESSURE_MAX:-}" ]] && BALLOON_ARGS+=(--psi-pressure-max "$BALLOONING_PSI_PRESSURE_MAX")
-    [[ -n "${BALLOONING_RAM_THRESHOLD:-}" ]] && BALLOON_ARGS+=(--ram-threshold "$BALLOONING_RAM_THRESHOLD")
-    [[ -n "${BALLOONING_RAM_THRESHOLD_HARD:-}" ]] && BALLOON_ARGS+=(--ram-threshold-hard "$BALLOONING_RAM_THRESHOLD_HARD")
-    [[ -n "${BALLOONING_HYSTERESIS:-}" ]] && BALLOON_ARGS+=(--hysteresis "$BALLOONING_HYSTERESIS")
-    [[ -n "${BALLOONING_KP:-}" ]] && BALLOON_ARGS+=(--kp "$BALLOONING_KP")
-    [[ -n "${BALLOONING_KI:-}" ]] && BALLOON_ARGS+=(--ki "$BALLOONING_KI")
-    [[ -n "${BALLOONING_INTERVAL:-}" ]] && BALLOON_ARGS+=(--interval "$BALLOONING_INTERVAL")
-    local _ballooning_debug="${BALLOONING_DEBUG:-${DEBUG:-}}"
-    if [[ "$_ballooning_debug" == [Yy1]* ]]; then
-        BALLOON_ARGS+=(--debug)
-    elif [[ -n "$_ballooning_debug" && "$_ballooning_debug" != [Nn0]* ]]; then
-        BALLOON_ARGS+=(--debug "$_ballooning_debug")
-    fi
+  BALLOON_ARGS=()
+  [[ -n "${BALLOONING_MIN_MEM:-}" ]] && BALLOON_ARGS+=(--min-mem "$BALLOONING_MIN_MEM")
+  [[ -n "${BALLOONING_PSI_PRESSURE:-}" ]] && BALLOON_ARGS+=(--psi-pressure "$BALLOONING_PSI_PRESSURE")
+  [[ -n "${BALLOONING_PSI_PRESSURE_MAX:-}" ]] && BALLOON_ARGS+=(--psi-pressure-max "$BALLOONING_PSI_PRESSURE_MAX")
+  [[ -n "${BALLOONING_RAM_THRESHOLD:-}" ]] && BALLOON_ARGS+=(--ram-threshold "$BALLOONING_RAM_THRESHOLD")
+  [[ -n "${BALLOONING_RAM_THRESHOLD_HARD:-}" ]] && BALLOON_ARGS+=(--ram-threshold-hard "$BALLOONING_RAM_THRESHOLD_HARD")
+  [[ -n "${BALLOONING_HYSTERESIS:-}" ]] && BALLOON_ARGS+=(--hysteresis "$BALLOONING_HYSTERESIS")
+  [[ -n "${BALLOONING_KP:-}" ]] && BALLOON_ARGS+=(--kp "$BALLOONING_KP")
+  [[ -n "${BALLOONING_KI:-}" ]] && BALLOON_ARGS+=(--ki "$BALLOONING_KI")
+  [[ -n "${BALLOONING_INTERVAL:-}" ]] && BALLOON_ARGS+=(--interval "$BALLOONING_INTERVAL")
 
-    python3 ./balloon.py --qmp-sock "$QEMU_DIR/qemu-qmp-ballooning.sock" --qemu-pid-file "$QEMU_PID" "${BALLOON_ARGS[@]}"
+  if [[ "$BALLOONING_DEBUG" == [Yy1]* ]]; then
+    BALLOON_ARGS+=(--debug)
+  elif [[ -n "$BALLOONING_DEBUG" && "$BALLOONING_DEBUG" != [Nn0]* ]]; then
+    BALLOON_ARGS+=(--debug "$BALLOONING_DEBUG")
+  fi
+
+  python3 ./balloon.py --qmp-sock "$QEMU_DIR/qemu-qmp-ballooning.sock" --qemu-pid-file "$QEMU_PID" "${BALLOON_ARGS[@]}"
 }
 
 msg="Starting memory ballooning monitor..."
