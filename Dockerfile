@@ -46,7 +46,7 @@ RUN set -eu && \
         qemu-system-x86 \
         python3 \
         python3-pip && \
-    pip3 install --no-cache-dir --break-system-packages --root-user-action "qemu.qmp==${VERSION_QMP}" && \
+    pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore "qemu.qmp==${VERSION_QMP}" && \
     wget "https://github.com/qemus/passt/releases/download/v${VERSION_PASST}/passt_${VERSION_PASST}_${TARGETARCH}.deb" -O /tmp/passt.deb -q --timeout=10 && \
     dpkg -i /tmp/passt.deb && \
     apt-get clean && \
