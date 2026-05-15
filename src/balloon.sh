@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 : "${BALLOONING:="N"}"
+: "${BALLOONING_DEBUG:="N"}"
 
 [[ "$BALLOONING" != [Yy1]* ]] && return 0
 
@@ -46,11 +47,11 @@ ballooning() {
     [[ -n "${BALLOONING_KP:-}" ]] && BALLOON_ARGS+=(--kp "$BALLOONING_KP")
     [[ -n "${BALLOONING_KI:-}" ]] && BALLOON_ARGS+=(--ki "$BALLOONING_KI")
     [[ -n "${BALLOONING_INTERVAL:-}" ]] && BALLOON_ARGS+=(--interval "$BALLOONING_INTERVAL")
-    local _ballooning_debug="${BALLOONING_DEBUG:-${DEBUG:-}}"
-    if [[ "$_ballooning_debug" == [Yy1]* ]]; then
+
+    if [[ "$BALLOONING_DEBUG" == [Yy1]* ]]; then
         BALLOON_ARGS+=(--debug)
-    elif [[ -n "$_ballooning_debug" && "$_ballooning_debug" != [Nn0]* ]]; then
-        BALLOON_ARGS+=(--debug "$_ballooning_debug")
+    elif [[ -n "$BALLOONING_DEBUG" && "$BALLOONING_DEBUG" != [Nn0]* ]]; then
+        BALLOON_ARGS+=(--debug "$BALLOONING_DEBUG")
     fi
 
     python3 ./balloon.py --qmp-sock "$QEMU_DIR/qemu-qmp-ballooning.sock" --qemu-pid-file "$QEMU_PID" "${BALLOON_ARGS[@]}"
