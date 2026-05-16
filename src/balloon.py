@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 CONTAINER_MEM_MARGIN = 128 * (1024 ** 2)  # 128 MB
 
+SMAPS_BLOCK_SIZE_TOLERANCE = 2 * (1024 ** 2) # 2MB: accounts for page alignment/hugepages
 
 
 # ==========================================================
@@ -166,12 +167,12 @@ async def _get_host_qemu_guest_mem_rss(qmp: QMPClient, qemu_pid: int) -> Optiona
 
         def check_block(block_size: int) -> int:
             # Check if this block matches one of our expected QMP memory backends.
-            # Use a 2MB (2048 kB) tolerance to account for page alignment/hugepages.
+            # Use a 2MB tolerance to account for page alignment/hugepages.
             matched_target = next(
                 (
                     target 
                     for target in target_sizes 
-                    if abs(block_size - target) <= 2048
+                    if abs(block_size - target) <= SMAPS_BLOCK_SIZE_TOLERANCE
                 ), 
                 None
             )
