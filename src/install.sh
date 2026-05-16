@@ -309,7 +309,7 @@ if hasDisk; then
 fi
 
 if [[ "${BOOT}" == \"*\" || "${BOOT}" == \'*\' ]]; then
-  VERSION="${BOOT:1:-1}"
+  BOOT="${BOOT:1:-1}"
 fi
 
 [ -n "$BOOT" ] && BOOT=$(expr "$BOOT" : "^\ *\(.*[^ ]\)\ *$")
