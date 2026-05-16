@@ -71,8 +71,8 @@ case "${BOOT_MODE,,}" in
     OVMF="/usr/share/OVMF"
     DEST="$STORAGE/${BOOT_MODE,,}"
 
-    if [ ! -s "$DEST.rom" ] || [ ! -f "$DEST.rom" ]; then
-      [ ! -s "$OVMF/$ROM" ] || [ ! -f "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
+    if [ ! -s "$DEST.rom" ]; then
+      [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
       if [[ "${LOGO:-}" == [Nn]* ]]; then
         cp "$OVMF/$ROM" "$DEST.tmp"
       else
@@ -85,8 +85,8 @@ case "${BOOT_MODE,,}" in
       ! setOwner "$DEST.rom" && error "Failed to set the owner for \"$DEST.rom\" !"
     fi
 
-    if [ ! -s "$DEST.vars" ] || [ ! -f "$DEST.vars" ]; then
-      [ ! -s "$OVMF/$VARS" ] || [ ! -f "$OVMF/$VARS" ]&& error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
+    if [ ! -s "$DEST.vars" ]; then
+      [ ! -s "$OVMF/$VARS" ] && error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
       cp "$OVMF/$VARS" "$DEST.tmp"
       mv "$DEST.tmp" "$DEST.vars"
       ! setOwner "$DEST.vars" && error "Failed to set the owner for \"$DEST.vars\" !"
