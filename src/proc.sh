@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 # Docker environment variables
 
-: "${HV="Y"}"
+: "${HV:="Y"}"
 : "${VMX:="N"}"
 : "${CPU_FLAGS:=""}"
 : "${CPU_MODEL:=""}"
