@@ -21,6 +21,7 @@ log = logging.getLogger(__name__)
 
 CONTAINER_MEM_MARGIN = 128 * (1024 ** 2)  # 128 MB
 
+SMAPS_BLOCK_HEADER_PATTERN = re.compile(r'^([0-9a-f]+-[0-9a-f]+)')
 SMAPS_BLOCK_SIZE_TOLERANCE = 2 * (1024 ** 2) # 2MB: accounts for page alignment/hugepages
 
 
@@ -139,8 +140,6 @@ def byte_size_or_fraction(string: str) -> float | int:
         raise argparse.ArgumentTypeError(f"Size must be greater than 1 byte: '{string}'")
 
     return bytes_value
-
-SMAPS_BLOCK_HEADER_PATTERN = re.compile(r'^([0-9a-f]+-[0-9a-f]+)')
 
 async def _get_host_qemu_guest_mem_rss(qmp: QMPClient, qemu_pid: int) -> Optional[int]:
     """Returns bytes of guest RAM currently in rss, by parsing /proc/<pid>/smaps looking for
