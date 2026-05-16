@@ -153,32 +153,30 @@ async def _get_host_qemu_guest_mem_rss(qmp: QMPClient, qemu_pid: int) -> Optiona
             log.debug("No memory devices found")
             return None
 
-        target_sizes = [
+        unmatched_targets = [
             size_bytes
-            for node in qemu_mem_devices 
+            for node in qemu_mem_devices
             if (size_bytes := node.get("size", 0)) > 0
-        ] 
+        ]
 
-        if len(target_sizes) == 0:
+        if not unmatched_targets:
             log.debug("No valid memory targets found from memory devices")
             return None
-        
-        unmatched_targets = target_sizes.copy()
 
         def check_block(block_size: int) -> int:
-            # Check if this block matches one of our expected QMP memory backends.
+            # Check if this block matches one of our expected remaining QMP memory backends.
             # Use a 2MB tolerance to account for page alignment/hugepages.
             matched_target = next(
                 (
                     target 
-                    for target in target_sizes 
+                    for target in unmatched_targets 
                     if abs(block_size - target) <= SMAPS_BLOCK_SIZE_TOLERANCE
                 ), 
                 None
             )
-                    
+            
             if matched_target is not None:
-                unmatched_targets.remove(matched_target) # Remove matched target
+                unmatched_targets.remove(matched_target)
                 return True
             
             return False
@@ -201,7 +199,7 @@ async def _get_host_qemu_guest_mem_rss(qmp: QMPClient, qemu_pid: int) -> Optiona
                 guest_mem_rss += current_block.get("Rss", 0)
 
         # Do note return a value if we have unmatched memory targets (as calculated data would be partial).
-        if len(unmatched_targets) > 0:
+        if unmatched_targets:
             log.debug("Unmatched memory targets: %s", unmatched_targets)
             return None
         
