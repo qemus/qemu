@@ -50,7 +50,7 @@ case "${BOOT_MODE,,}" in
     BOOT_DESC=" with SeaBIOS"
     ;;
   "custom" )
-    BOOT_OPTS="-bios $BIOS"
+    BOOT_OPTS="-bios \"$BIOS\""
     BOOT_DESC=" with custom BIOS file"
     ;;
   *)
