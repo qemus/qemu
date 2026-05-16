@@ -203,9 +203,9 @@ compat() {
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
-  if [[ "$interface" != "${interface:0:9}" ]]; then
+  if [[ ${#interface} -gt 9 ]]; then
     label="c"
-    if [[ "$interface" != "${interface:14}" ]]; then
+    if [[ ${#interface} -gt 14 ]]; then
       warn "$err Interface name \"$interface\" exceeds 14 characters!" && return 0
     fi
   fi
@@ -324,9 +324,7 @@ getSlirp() {
     args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
   done
 
-  args=$(echo "$args" | sed 's/,*$//g')
-
-  echo "${args%?}"
+  echo "$args" | sed 's/,*$//g'
   return 0
 }
 
@@ -610,11 +608,11 @@ closeBridge() {
     "user"* | "passt" | "slirp" ) return 0 ;;
   esac
 
-  ip link set "$VM_NET_TAP" down promisc off &> null || true
-  ip link delete "$VM_NET_TAP" &> null || true
+  ip link set "$VM_NET_TAP" down promisc off &> /dev/null || true
+  ip link delete "$VM_NET_TAP" &> /dev/null || true
 
-  ip link set "$VM_NET_BRIDGE" down &> null || true
-  ip link delete "$VM_NET_BRIDGE" &> null || true
+  ip link set "$VM_NET_BRIDGE" down &> /dev/null || true
+  ip link delete "$VM_NET_BRIDGE" &> /dev/null || true
 
   return 0
 }
