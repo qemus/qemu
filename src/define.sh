@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 pipe() {
   local code="99"
-  msg="Failed to connect to $1, reason:"
+  local msg="Failed to connect to $1, reason:"
 
   curl --disable --silent --max-time 15 --fail --location "${1}" || {
     code="$?"
