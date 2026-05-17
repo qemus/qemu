@@ -674,21 +674,22 @@ cleanUp() {
 
 checkOS() {
 
-  local kernel
   local os=""
-  local if="macvlan"
+  local kernel=""
+  local iface="macvlan"
+
   kernel=$(uname -a)
 
   [[ "${kernel,,}" == *"darwin"* ]] && os="$ENGINE Desktop for macOS"
   [[ "${kernel,,}" == *"microsoft"* ]] && os="$ENGINE Desktop for Windows"
 
   if [[ "$DHCP" == [Yy1]* ]]; then
-    if="macvtap"
+    iface="macvtap"
     [[ "${kernel,,}" == *"synology"* ]] && os="Synology Container Manager"
   fi
 
   if [ -n "$os" ]; then
-    warn "you are using $os which does not support $if, please revert to bridge networking!"
+    warn "you are using $os which does not support $iface, please revert to bridge networking!"
   fi
 
   return 0
