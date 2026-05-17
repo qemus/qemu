@@ -312,7 +312,8 @@ if [[ "${BOOT}" == \"*\" || "${BOOT}" == \'*\' ]]; then
   BOOT="${BOOT:1:-1}"
 fi
 
-[ -n "$BOOT" ] && BOOT=$(expr "$BOOT" : "^\ *\(.*[^ ]\)\ *$")
+BOOT="${BOOT#"${BOOT%%[! ]*}"}"
+BOOT="${BOOT%"${BOOT##*[! ]}"}"
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/"* ]]; then
 
