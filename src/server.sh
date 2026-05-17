@@ -22,13 +22,17 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
   mkdir -p /etc/nginx/sites-enabled
   cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
 
-  user="admin"
-  [ -n "${USER:-}" ] && user="${USER:-}"
+  if [[ "${PROTECT:-}" == [Yy1]* ]] || [ -n "${PASS:-}" ]; then
 
-  if [ -n "${PASS:-}" ]; then
+    user="Docker"
+    pass="admin"
+
+    [ -n "${USERNAME:-}" ] && user="$USERNAME"
+    [ -n "${PASSWORD:-}" ] && pass="$PASSWORD"
+    [ -n "${PASS:-}" ] && pass="$PASS"
 
     # Set password
-    echo "$user:{PLAIN}${PASS:-}" > /etc/nginx/.htpasswd
+    echo "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd
 
     sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
 
