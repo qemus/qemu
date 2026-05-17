@@ -302,6 +302,7 @@ getUserPorts() {
 
 getSlirp() {
 
+  local ip="$1"
   local args=""
   local list=""
 
@@ -317,12 +318,12 @@ getSlirp() {
       proto="udp"
       num="${port%/udp}"
     elif [[ "$port" != *"/tcp" ]]; then
-      args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
+      args+="hostfwd=$proto::$num-$ip:$num,"
       proto="udp"
       num="${port%/udp}"
     fi
 
-    args+="hostfwd=$proto::$num-$VM_NET_IP:$num,"
+    args+="hostfwd=$proto::$num-$ip:$num,"
   done
 
   echo "$args" | sed 's/,*$//g'
@@ -349,7 +350,7 @@ configureSlirp() {
   NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/24,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
 
   local forward=""
-  forward=$(getSlirp)
+  forward=$(getSlirp "$ip")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
   if [[ "${DNSMASQ_DISABLE:-}" != [Yy1]* ]]; then
