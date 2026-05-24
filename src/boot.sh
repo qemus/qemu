@@ -76,7 +76,9 @@ case "${BOOT_MODE,,}" in
       if [[ "${LOGO:-}" == [Nn]* ]]; then
         cp "$OVMF/$ROM" "$DEST.tmp"
       else
-        if ! /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "/var/www/img/${PROCESS,,}.ffs" save "$DEST.tmp"; then
+        logo="/var/www/img/${PROCESS,,}.ffs"
+        [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
+        if ! /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "$logo" save "$DEST.tmp"; then
           warn "failed to add custom logo to BIOS!"
           cp "$OVMF/$ROM" "$DEST.tmp"
         fi
