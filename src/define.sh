@@ -197,6 +197,12 @@ getURL() {
         version=$(echo "$body" | jq -r '.entries | .[] | select(.status=="Current Stable Release").version')
         url="https://cdimages.ubuntu.com/xubuntu/releases/${version}/release/xubuntu-${version}-desktop-amd64.iso"
       fi ;;
+    "zima" | "zimaos" | "zima-os" )
+      version="1.6.1"
+      name="ZimaOS"
+      if [[ "$ret" == "url" ]]; then
+        url="https://github.com/IceWhaleTech/ZimaOS/releases/download/${version}/zimaos-x86_64-${version}_installer.iso"
+      fi ;;
     "zorin" | "zorinos" | "zorin-os" )
       version="18"
       name="Zorin OS"
