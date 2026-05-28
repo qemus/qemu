@@ -734,8 +734,8 @@ getInfo() {
   GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
   { IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1); rc=$?; } 2>/dev/null || :
 
-  if (( rc != 0 )) && [[ "$DHCP" != [Yy1]* ]]; then
-    error "Could not determine container IP address!" && exit 26
+  if [ -z "$IP" ] || (( rc != 0 )); then
+    [[ "$DHCP" != [Yy1]* ]] && error "Could not determine container IP address!" && exit 26
   fi
 
   IP6=""
