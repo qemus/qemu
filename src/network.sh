@@ -484,6 +484,7 @@ configureNAT() {
 
   local ip base gateway
   base=$(echo "$IP" | sed -r 's/([^.]*.){2}//')
+
   if [[ "$IP" != "172.30."* ]]; then
     ip="172.30.$base"
   else
