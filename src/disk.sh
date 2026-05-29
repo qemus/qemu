@@ -250,12 +250,12 @@ convertDisk() {
   local FS="$7"
 
   [ -f "$DST_FILE" ] && error "Conversion failed, destination file $DST_FILE already exists?" && exit 79
-  [ ! -f "$SOURCE_FILE" ] && error "Conversion failed, source file $SOURCE_FILE does not exists?" && exit 79
+  [ ! -f "$SOURCE_FILE" ] && error "Conversion failed, source file $SOURCE_FILE does not exist?" && exit 79
 
   local TMP_FILE="$DISK_BASE.tmp"
   rm -f "$TMP_FILE"
 
-  local DIR
+  local DIR FA
   DIR=$(dirname "$TMP_FILE")
 
   if [[ "$ALLOCATE" != [Nn]* ]]; then
@@ -793,7 +793,10 @@ else
   addDisk "$DISK6_FILE" "$DISK_TYPE" "disk6" "$DISK6_SIZE" "8" "0xf" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
-DISK_OPTS+=" -object iothread,id=io2"
+case "${DISK_TYPE,,}" in
+  "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
+    DISK_OPTS+=" -object iothread,id=io2" ;;
+esac
 
 html "Initialized disks successfully..."
 return 0
