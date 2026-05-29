@@ -741,10 +741,7 @@ getInfo() {
 
   GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
   { IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1); } 2>/dev/null || :
-
-  if [ -z "$IP" ]; then
-    [[ "$DHCP" != [Yy1]* ]] && error "Could not determine container IPv4 address!" && exit 26
-  fi
+  [ -z "$IP" ] && [[ "$DHCP" != [Yy1]* ]] && error "Could not determine container IPv4 address!" && exit 26
 
   IP6=""
   # shellcheck disable=SC2143
