@@ -41,7 +41,7 @@ if [ -f "/run/.containerenv" ]; then
   fi
 fi
 
-echo "❯ Starting $APP for $ENGINE v$(</run/version)..."
+echo "❯ Starting $APP for $ENGINE v$(</etc/version)..."
 echo "❯ For support visit $SUPPORT"
 
 # Get the capability bounding set
@@ -62,7 +62,7 @@ fi
 INFO="/run/shm/msg.html"
 PAGE="/run/shm/index.html"
 TEMPLATE="/var/www/index.html"
-FOOTER1="$APP for $ENGINE v$(</run/version)"
+FOOTER1="$APP for $ENGINE v$(</etc/version)"
 FOOTER2="<a href='$SUPPORT'>$SUPPORT</a>"
 
 SOCKETS=1
