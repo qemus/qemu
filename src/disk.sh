@@ -615,7 +615,7 @@ addDevice () {
   physical=$(echo "$result" | grep -m 1 -o "/ .*" | cut -c 3-)
   physical="${physical%% *}"
 
- if [ -n "$physical" ]; then
+  if [ -n "$physical" ]; then
     if [[ "$physical" != "512" ]]; then
       sectors=",logical_block_size=$logical,physical_block_size=$physical"
     fi
