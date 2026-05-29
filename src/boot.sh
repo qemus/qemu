@@ -158,7 +158,7 @@ if [[ "$TPM" == [Yy1]* ]]; then
     error "Failed to start TPM emulator, reason: $rc"
   else
 
-    for (( i = 1; i < 20; i++ )); do
+    for (( i = 1; i < 25; i++ )); do
 
       [ -S "/run/swtpm-sock" ] && break
 
@@ -166,7 +166,7 @@ if [[ "$TPM" == [Yy1]* ]]; then
         echo "Waiting for TPM emulator to become available..."
       fi
 
-      sleep 0.1
+      sleep 0.2
 
     done
 
