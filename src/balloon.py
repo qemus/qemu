@@ -609,6 +609,18 @@ class BalloonMonitor:
         _, host_available, _ = host_info
         await self._handle_pi_control(qmp, host_available, target_max)
 
+    async def _loop_wait(self, timeout) -> None:
+        futures = (
+            asyncio.create_task(self._stop.wait()),
+            asyncio.create_task(self._cgroup_event.wait())
+        )
+        try:
+            await asyncio.wait(futures, return_when=asyncio.FIRST_COMPLETED, timeout=timeout)
+        finally:
+            for future in futures:
+                future.cancel()
+            await asyncio.gather(*futures, return_exceptions=True)
+
     async def start(self) -> None:
         log.debug("Starting QEMU Memory Balloon Monitor")
         log.debug("QMP socket: %s", self.args.qmp_sock)
@@ -660,13 +672,7 @@ class BalloonMonitor:
                     else:
                         log.error("Unexpected error in main loop: %s", e, exc_info=e)
                 self._cgroup_event.clear()
-                try:
-                    await asyncio.wait_for(
-                        asyncio.wait({asyncio.ensure_future(self._stop.wait()), asyncio.ensure_future(self._cgroup_event.wait())}, return_when=asyncio.FIRST_COMPLETED),
-                        timeout=self.args.interval,
-                    )
-                except asyncio.TimeoutError:
-                    pass
+                await self._loop_wait(self.args.interval)
         except Exception as e:
             log.error("Error while waiting: %s", e, exc_info=e)
         finally:
