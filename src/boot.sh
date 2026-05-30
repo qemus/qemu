@@ -5,6 +5,8 @@ set -Eeuo pipefail
 : "${BIOS:=""}"         # BIOS file
 : "${TPM:="N"}"         # Disable TPM
 : "${SMM:="N"}"         # Disable SMM
+: "${LOGO:="Y"}"        # Enable logo
+: "${CLEAR:="N"}"       # Persist NVRAM
 
 BOOT_DESC=""
 BOOT_OPTS=""
@@ -65,11 +67,17 @@ if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
   BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
 fi
 
+DEST="$STORAGE/${BOOT_MODE,,}"
+    
+if [[ "$CLEAR" == [Yy1]* ]]; then
+  # Clear NVRAM (helps to fix corruptions)
+  rm -f "$DEST.rom" "$DEST.vars" "$DEST.tpm"
+fi
+
 case "${BOOT_MODE,,}" in
   "uefi" | "secure" | "windows" | "windows_plain" | "windows_secure" )
 
     OVMF="/usr/share/OVMF"
-    DEST="$STORAGE/${BOOT_MODE,,}"
 
     if [ ! -s "$DEST.rom" ]; then
       [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
@@ -78,7 +86,7 @@ case "${BOOT_MODE,,}" in
       [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
       [ ! -s "$logo" ] && LOGO="N"
     
-      if [[ "${LOGO:-}" == [Nn]* ]]; then
+      if [[ "$LOGO" == [Nn]* ]]; then
         cp "$OVMF/$ROM" "$DEST.tmp"
       else
         if ! /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "$logo" save "$DEST.tmp"; then
@@ -129,7 +137,7 @@ else
     "${CLOCKSOURCE,,}" ) ;;
     "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
     "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
-    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOC KSOURCE'." ;;
     *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
   esac
 fi
@@ -152,7 +160,8 @@ rm -f /var/run/tpm.pid
 
 if [[ "$TPM" == [Yy1]* ]]; then
 
-  { swtpm socket -t -d --tpmstate "backend-uri=file://$STORAGE/${BOOT_MODE,,}.tpm" --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; rc=$?; } || :
+  { swtpm socket -t -d --tpmstate "backend-uri=file://$DEST.tpm" \
+     --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; rc=$?; } || :
 
   if (( rc != 0 )); then
     error "Failed to start TPM emulator, reason: $rc"
