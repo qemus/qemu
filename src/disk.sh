@@ -666,7 +666,7 @@ case "${MEDIA_TYPE,,}" in
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
-if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
+if [ -s "$BOOT" ]; then
   case "${BOOT,,}" in
     *".iso" )
         if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
