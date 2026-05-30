@@ -13,8 +13,9 @@ QEMU_OUT="$QEMU_DIR/qemu.out"
 QEMU_END="$QEMU_DIR/qemu.end"
 
 _trap() {
-  func="$1" ; shift
-  for sig ; do
+  local func="$1"; shift
+  local sig
+  for sig; do
     trap "$func $sig" "$sig"
   done
 }
