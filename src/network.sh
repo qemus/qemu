@@ -453,6 +453,7 @@ configurePasst() {
 }
 
 clearTables() {
+  local table="" line rules
 
   # Choose between iptables or nftables
   if command -v iptables-nft >/dev/null 2>&1 && iptables-nft -V >/dev/null 2>&1; then
@@ -463,11 +464,11 @@ clearTables() {
     update-alternatives --set ip6tables /usr/sbin/ip6tables-legacy > /dev/null
   fi
 
-  ! rules=$(iptables-save &> /dev/null) && return 0
+  # Store the current iptables ruleset
+  ! rules=$(iptables-save 2> /dev/null) && return 0
   [ -z "$rules" ] && return 0
 
   # Delete every rule tagged with our unique identifier, leaving all other rules intact.
-  local table="" line
   while IFS= read -r line; do
     case "$line" in
       \*nat)    table="nat" ;;
