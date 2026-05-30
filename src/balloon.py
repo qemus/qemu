@@ -255,7 +255,7 @@ async def qmp_get_guest_ram_stats(qmp: QMPClient) -> Optional[Tuple[int, int, Op
         free_mem = _qmp_int(stats.get("stat-free-memory", -1))
         cache_mem = _qmp_int(stats.get("stat-disk-caches", -1))
         if free_mem >= 0 and cache_mem >= 0:
-            return free_mem - cache_mem, tot_mem, last_update
+            return free_mem + cache_mem, tot_mem, last_update
     return None
 
 async def qmp_get_memory_dev(qmp: QMPClient) -> Optional[list[Dict[str, Any]]]:
