@@ -635,6 +635,7 @@ html "$msg"
 [ -z "${DISK_OPTS:-}" ] && DISK_OPTS=""
 [ -z "${DISK_TYPE:-}" ] && DISK_TYPE="scsi"
 [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
+[ -z "${DISK_DISABLE:-}" ] && DISK_DISABLE=""
 
 case "${DISK_TYPE,,}" in
   "ide" | "sata" | "nvme" | "usb" | "scsi" | "blk" | "auto" | "none" ) ;;
@@ -728,6 +729,14 @@ if [[ "$ALLOCATE" == [Nn]* ]]; then
 else
   DISK_STYLE="preallocated"
   DISK_ALLOC="preallocation=falloc"
+fi
+
+if [[ "$DISK_DISABLE" == [Yy1]* ]]; then
+  case "${DISK_TYPE,,}" in
+    "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
+      DISK_OPTS+=" -object iothread,id=io2" ;;
+  esac
+  return 0
 fi
 
 : "${DISK2_SIZE:=""}"
