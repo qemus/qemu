@@ -103,7 +103,6 @@ else
 fi
 
 QEMU_PID="$QEMU_DIR/qemu.pid"
-rm -f "$QEMU_PID"
 
 # Check folder
 
@@ -226,5 +225,11 @@ if [[ "$KVM" != [Nn]* ]]; then
   fi
 
 fi
+
+# Cleanup dirs
+rm -rf "$STORAGE/tmp"
+
+# Cleanup files
+rm -f "$QEMU_DIR"/qemu.*
 
 return 0

@@ -18,6 +18,7 @@ cd /run
 . network.sh    # Initialize network
 . boot.sh       # Configure boot
 . proc.sh       # Initialize processor
+. power.sh      # Configure shutdown
 . memory.sh     # Check available memory
 . balloon.sh    # Initialize ballooning
 . config.sh     # Configure arguments
