@@ -944,7 +944,7 @@ fi
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$VM_NET_MAC"
 [[ "$MTU" != "0" && "$MTU" != "1500" ]] && NET_OPTS+=",host_mtu=$MTU"
-echo "$VM_NET_IP" > /run/shm/qemu.ip
+echo "$VM_NET_IP" > /run/shm/remote.ip
 
 html "Initialized network successfully..."
 return 0
