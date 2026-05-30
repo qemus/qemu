@@ -461,6 +461,16 @@ addMedia () {
   return 0
 }
 
+finishDisks () {
+
+  case "${DISK_TYPE,,}" in
+    "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
+      DISK_OPTS+=" -object iothread,id=io2" ;;
+  esac
+
+  return 0
+}
+
 addDisk () {
 
   local DISK_BASE="$1"
@@ -732,11 +742,7 @@ else
 fi
 
 if [[ "$DISK_DISABLE" == [Yy1]* ]]; then
-  case "${DISK_TYPE,,}" in
-    "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
-      DISK_OPTS+=" -object iothread,id=io2" ;;
-  esac
-  return 0
+  finishDisks && return 0
 fi
 
 : "${DISK2_SIZE:=""}"
@@ -803,10 +809,7 @@ else
   addDisk "$DISK6_FILE" "$DISK_TYPE" "disk6" "$DISK6_SIZE" "8" "0xf" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
 fi
 
-case "${DISK_TYPE,,}" in
-  "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
-    DISK_OPTS+=" -object iothread,id=io2" ;;
-esac
+finishDisks
 
 html "Initialized disks successfully..."
 return 0
