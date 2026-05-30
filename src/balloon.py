@@ -297,8 +297,7 @@ class BalloonMonitor:
         self._cgroup_event = asyncio.Event()
         self._inotify_fd: int = -1
         self._inotify_wd: int = -1
-        with args.qemu_pid_file as f:
-            self.qemu_pid = int(f.read().strip())
+        self.qemu_pid: int = -1
 
     def _setup_cgroup_watch(self) -> None:
         path = next((p for p in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes") if os.path.exists(p)), None)
@@ -624,12 +623,24 @@ class BalloonMonitor:
     async def start(self) -> None:
         log.debug("Starting QEMU Memory Balloon Monitor")
         log.debug("QMP socket: %s", self.args.qmp_sock)
-        log.debug("QMP pid: %s", self.qemu_pid)
         log.debug("PSI Pressure threshold: >=%.2f%% (max: %.2f%%)", self.args.psi_pressure, self.args.psi_pressure_max)
         log.debug("Host RAM threshold: %.2f%% (hard: %.2f%%)", self.args.ram_threshold, self.args.ram_threshold_hard)
         log.debug("Adaptive PI Kp: %.4f", self.args.kp)
         log.debug("Adaptive PI Ki: %.4f", self.args.ki)
         log.debug("Polling every %ds", self.args.interval)
+
+        if not os.path.exists(self.args.qemu_pid_file):
+            log.critical("Qemu pid file does not exists: %s", self.args.qemu_pid_file)
+            sys.exit(1)
+
+        with open(self.args.qemu_pid_file, 'r') as f:
+            try:
+                self.qemu_pid = int(f.read().strip())
+            except:
+                log.critical("Qemu pid file malformed or cannot be read", exc_info=True)
+                sys.exit(1)
+
+        log.debug("QMP pid: %s", self.qemu_pid)
 
         host_info = get_host_ram_info()
         if not host_info:
@@ -694,7 +705,7 @@ def main() -> None:
 
     parser.add_argument("--qmp-sock", type=str, required=True,
                         help="Path to QEMU QMP Unix socket")
-    parser.add_argument("--qemu-pid-file", type=argparse.FileType('r'), required=True,
+    parser.add_argument("--qemu-pid-file", type=str, required=True,
                         help="Path to QEMU PID file")
     parser.add_argument("--min-mem", type=byte_size_or_fraction, default="33%",
                         help="Minimum VM memory as a percentage of max (e.g. 33%%) or absolute "
