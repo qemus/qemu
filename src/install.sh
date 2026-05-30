@@ -42,7 +42,7 @@ getFolder() {
   return 0
 }
 
-moveFile() {
+bootFile() {
 
   local file="$1"
   local ext="${file##*.}"
@@ -73,7 +73,6 @@ detectType() {
   local result=""
   local hybrid=""
 
-  [ ! -f "$file" ] && return 1
   [ ! -s "$file" ] && return 1
 
   case "${file,,}" in
@@ -82,7 +81,8 @@ detectType() {
   esac
 
   if [ -n "$BOOT_MODE" ] || [[ "${file,,}" == *".qcow2" ]]; then
-    moveFile "$file" && return 0
+    # Do not need to detect type (or cannot with .qcow2)
+    bootFile "$file" && return 0
     return 1
   fi
 
@@ -102,7 +102,7 @@ detectType() {
       result=$(echo "${result^^}" | grep "^/EFI")
       [ -z "$result" ] && BOOT_MODE="legacy"
 
-      moveFile "$file" && return 0
+      bootFile "$file" && return 0
       return 1
 
     fi
@@ -111,7 +111,7 @@ detectType() {
   result=$(fdisk -l "$file" 2>/dev/null)
   [[ "${result^^}" != *"EFI "* ]] && BOOT_MODE="legacy"
 
-  moveFile "$file" && return 0
+  bootFile "$file" && return 0
   return 1
 }
 

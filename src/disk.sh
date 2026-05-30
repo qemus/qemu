@@ -666,7 +666,7 @@ case "${MEDIA_TYPE,,}" in
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
 
-if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
+if [ -s "$BOOT" ]; then
   case "${BOOT,,}" in
     *".iso" )
         if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
@@ -688,17 +688,18 @@ if [ -f "$BOOT" ] && [ -s "$BOOT" ]; then
   esac
 fi
 
-DRIVERS="/drivers.iso"
-[ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
+DRIVERS="/mount.iso"
+[ ! -s "$DRIVERS" ] && DRIVERS="/drivers.iso"
+[ ! -s "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
-if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
+if [ -s "$DRIVERS" ]; then
   DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "" "0x6")
 fi
 
 RESCUE="/start.iso"
-[ ! -f "$RESCUE" ] || [ ! -s "$RESCUE" ] && RESCUE="$STORAGE/start.iso"
+[ ! -s "$RESCUE" ] && RESCUE="$STORAGE/start.iso"
 
-if [ -f "$RESCUE" ] && [ -s "$RESCUE" ]; then
+if [ -s "$RESCUE" ]; then
   DISK_OPTS+=$(addMedia "$RESCUE" "$FALLBACK" "1" "0x6")
 fi
 
