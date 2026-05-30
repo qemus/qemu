@@ -7,7 +7,6 @@ set -Eeuo pipefail
 # Configure QEMU for graceful shutdown
 
 QEMU_TERM=""
-QEMU_PTY="$QEMU_DIR/qemu.pty"
 QEMU_LOG="$QEMU_DIR/qemu.log"
 QEMU_OUT="$QEMU_DIR/qemu.out"
 QEMU_END="$QEMU_DIR/qemu.end"
