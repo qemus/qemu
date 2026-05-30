@@ -255,7 +255,7 @@ async def qmp_get_guest_ram_stats(qmp: QMPClient) -> Optional[Tuple[int, int, Op
         free_mem = _qmp_int(stats.get("stat-free-memory", -1))
         cache_mem = _qmp_int(stats.get("stat-disk-caches", -1))
         if free_mem >= 0 and cache_mem >= 0:
-            return free_mem - cache_mem, tot_mem, last_update
+            return free_mem + cache_mem, tot_mem, last_update
     return None
 
 async def qmp_get_memory_dev(qmp: QMPClient) -> Optional[list[Dict[str, Any]]]:
@@ -297,8 +297,7 @@ class BalloonMonitor:
         self._cgroup_event = asyncio.Event()
         self._inotify_fd: int = -1
         self._inotify_wd: int = -1
-        with args.qemu_pid_file as f:
-            self.qemu_pid = int(f.read().strip())
+        self.qemu_pid: int = -1
 
     def _setup_cgroup_watch(self) -> None:
         path = next((p for p in ("/sys/fs/cgroup/memory.max", "/sys/fs/cgroup/memory/memory.limit_in_bytes") if os.path.exists(p)), None)
@@ -429,7 +428,7 @@ class BalloonMonitor:
                 c_limit // (1024**2),
                 c_used // (1024**2),
                 c_cache // (1024**2),
-                guest_mem_rss // (1024**2)  if guest_mem_rss is not None else None,
+                guest_mem_rss // (1024**2) if guest_mem_rss is not None else -1,
                 c_overhead // (1024**2),
             )
             
@@ -487,7 +486,7 @@ class BalloonMonitor:
                     log.debug(
                         "Guest RAM usage: %dMB (balloon working mode: reserve-memory; fallback; rss: %dMB/%dMB, stats: %dMB/%dMB)",
                         guest_ram_usage // (1024 ** 2),
-                        guest_mem_rss // (1024 ** 2) if guest_mem_rss is not None else None,
+                        guest_mem_rss // (1024 ** 2) if guest_mem_rss is not None else -1,
                         self.max_mem // (1024 ** 2),
                         guest_stats_mem_used // (1024 ** 2),
                         guest_stats_mem_total // (1024 ** 2),
@@ -609,15 +608,39 @@ class BalloonMonitor:
         _, host_available, _ = host_info
         await self._handle_pi_control(qmp, host_available, target_max)
 
+    async def _loop_wait(self, timeout) -> None:
+        futures = (
+            asyncio.create_task(self._stop.wait()),
+            asyncio.create_task(self._cgroup_event.wait())
+        )
+        try:
+            await asyncio.wait(futures, return_when=asyncio.FIRST_COMPLETED, timeout=timeout)
+        finally:
+            for future in futures:
+                future.cancel()
+            await asyncio.gather(*futures, return_exceptions=True)
+
     async def start(self) -> None:
         log.debug("Starting QEMU Memory Balloon Monitor")
         log.debug("QMP socket: %s", self.args.qmp_sock)
-        log.debug("QMP pid: %s", self.qemu_pid)
         log.debug("PSI Pressure threshold: >=%.2f%% (max: %.2f%%)", self.args.psi_pressure, self.args.psi_pressure_max)
         log.debug("Host RAM threshold: %.2f%% (hard: %.2f%%)", self.args.ram_threshold, self.args.ram_threshold_hard)
         log.debug("Adaptive PI Kp: %.4f", self.args.kp)
         log.debug("Adaptive PI Ki: %.4f", self.args.ki)
         log.debug("Polling every %ds", self.args.interval)
+
+        if not os.path.exists(self.args.qemu_pid_file):
+            log.critical("Qemu pid file does not exists: %s", self.args.qemu_pid_file)
+            sys.exit(1)
+
+        with open(self.args.qemu_pid_file, 'r') as f:
+            try:
+                self.qemu_pid = int(f.read().strip())
+            except:
+                log.critical("Qemu pid file malformed or cannot be read", exc_info=True)
+                sys.exit(1)
+
+        log.debug("QMP pid: %s", self.qemu_pid)
 
         host_info = get_host_ram_info()
         if not host_info:
@@ -660,13 +683,7 @@ class BalloonMonitor:
                     else:
                         log.error("Unexpected error in main loop: %s", e, exc_info=e)
                 self._cgroup_event.clear()
-                try:
-                    await asyncio.wait_for(
-                        asyncio.wait({asyncio.ensure_future(self._stop.wait()), asyncio.ensure_future(self._cgroup_event.wait())}, return_when=asyncio.FIRST_COMPLETED),
-                        timeout=self.args.interval,
-                    )
-                except asyncio.TimeoutError:
-                    pass
+                await self._loop_wait(self.args.interval)
         except Exception as e:
             log.error("Error while waiting: %s", e, exc_info=e)
         finally:
@@ -688,7 +705,7 @@ def main() -> None:
 
     parser.add_argument("--qmp-sock", type=str, required=True,
                         help="Path to QEMU QMP Unix socket")
-    parser.add_argument("--qemu-pid-file", type=argparse.FileType('r'), required=True,
+    parser.add_argument("--qemu-pid-file", type=str, required=True,
                         help="Path to QEMU PID file")
     parser.add_argument("--min-mem", type=byte_size_or_fraction, default="33%",
                         help="Minimum VM memory as a percentage of max (e.g. 33%%) or absolute "
