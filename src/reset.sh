@@ -231,6 +231,5 @@ rm -rf "$STORAGE/tmp"
 
 # Cleanup files
 rm -f "$QEMU_DIR"/qemu.*
-rm -f "$QEMU_DIR"/remote.ip
 
 return 0
