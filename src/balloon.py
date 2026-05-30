@@ -429,7 +429,7 @@ class BalloonMonitor:
                 c_limit // (1024**2),
                 c_used // (1024**2),
                 c_cache // (1024**2),
-                guest_mem_rss // (1024**2)  if guest_mem_rss is not None else None,
+                guest_mem_rss // (1024**2) if guest_mem_rss is not None else -1,
                 c_overhead // (1024**2),
             )
             
@@ -487,7 +487,7 @@ class BalloonMonitor:
                     log.debug(
                         "Guest RAM usage: %dMB (balloon working mode: reserve-memory; fallback; rss: %dMB/%dMB, stats: %dMB/%dMB)",
                         guest_ram_usage // (1024 ** 2),
-                        guest_mem_rss // (1024 ** 2) if guest_mem_rss is not None else None,
+                        guest_mem_rss // (1024 ** 2) if guest_mem_rss is not None else -1,
                         self.max_mem // (1024 ** 2),
                         guest_stats_mem_used // (1024 ** 2),
                         guest_stats_mem_total // (1024 ** 2),
