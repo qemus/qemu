@@ -12,7 +12,7 @@ file="/run/shm/qemu.url"
 
 url=$(<"$file")
 
-if ! curl -m 20 -ILfSs "$url" > /dev/null; then
+if ! curl -m 20 -LfSs -o /dev/null "$url"; then
   echo "Failed to reach VM at $url" && exit 1
 fi
 
