@@ -118,13 +118,12 @@ _graceful_shutdown() {
     SIGQUIT) code=131 ;;
   esac
 
-  set +e
-
   if [ -f "$QEMU_END" ]; then
     info "Received $1 while already shutting down..."
     return
   fi
 
+  set +e
   touch "$QEMU_END"
   info "Received $1, sending ACPI shutdown signal..."
 
