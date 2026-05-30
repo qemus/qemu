@@ -9,6 +9,7 @@ set -Eeuo pipefail
 : "${NETWORK:="Y"}"
 : "${HOST_PORTS:=""}"
 : "${USER_PORTS:=""}"
+: "${CHECK_PORT:="80"}"
 : "${ADAPTER:="virtio-net-pci"}"
 
 : "${VM_NET_IP:=""}"
@@ -944,7 +945,9 @@ fi
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$VM_NET_MAC"
 [[ "$MTU" != "0" && "$MTU" != "1500" ]] && NET_OPTS+=",host_mtu=$MTU"
-echo "$VM_NET_IP" > "$QEMU_DIR"/remote.ip
+
+echo "$VM_NET_IP" > "$QEMU_DIR"/qemu.ip
+echo "http://$VM_NET_IP:$CHECK_PORT" > "$QEMU_DIR"/qemu.url
 
 html "Initialized network successfully..."
 return 0
