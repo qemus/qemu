@@ -160,7 +160,7 @@ _graceful_shutdown() {
 
 [[ "$SHUTDOWN" != [Yy1]* ]] && return 0
 
-rm -f "$QEMU_DIR/qemu.*"
+rm -f "$QEMU_DIR"/qemu.*
 touch "$QEMU_LOG"
 
 SERIAL="pty"
