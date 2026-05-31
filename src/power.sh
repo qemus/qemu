@@ -146,7 +146,7 @@ _graceful_shutdown() {
   local cnt=0
 
   # Shutdown loop
-  while (( cnt < QEMU_TIMEOUT )); do
+  while [ "$cnt" -lt "$QEMU_TIMEOUT" ]; do
 
     sleep 1
     (( cnt++ ))
@@ -162,7 +162,7 @@ _graceful_shutdown() {
 
   done
 
-  if (( cnt >= QEMU_TIMEOUT )); then
+  if [ "$cnt" -ge "$QEMU_TIMEOUT" ]; then
     error "Shutdown timeout reached, aborting..."
   fi
 
