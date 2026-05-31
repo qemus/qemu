@@ -136,12 +136,9 @@ _graceful_shutdown() {
   # Send ACPI shutdown signal
   echo 'system_powerdown' | nc -q 1 -w 1 localhost "$MON_PORT" > /dev/null
 
-  # Compensate for additional duration of calling finish
-  if (( QEMU_TIMEOUT > 30 )); then
-    QEMU_TIMEOUT=$(( QEMU_TIMEOUT - 10 ))
-  fi
-
   local cnt=0
+
+  # Shutdown loop
   while (( cnt < QEMU_TIMEOUT )); do
 
     sleep 1
@@ -158,7 +155,7 @@ _graceful_shutdown() {
 
   done
 
-  if (( cnt > QEMU_TIMEOUT )); then
+  if (( cnt >= QEMU_TIMEOUT )); then
     error "Shutdown timeout reached, aborting..."
   fi
 
