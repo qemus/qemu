@@ -108,8 +108,15 @@ terminal() {
 _graceful_shutdown() {
 
   local sig="$1"
-  local code=128
-  code=$((sig + code))
+  local code=0
+
+  case "$sig" in
+    SIGTERM) code=143 ;;
+    SIGINT)  code=130 ;;
+    SIGHUP)  code=129 ;;
+    SIGABRT) code=134 ;;
+    SIGQUIT) code=131 ;;
+  esac
 
   if [ -f "$QEMU_END" ]; then
     info "Received $1 while already shutting down..."
