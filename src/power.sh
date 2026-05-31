@@ -129,7 +129,6 @@ _graceful_shutdown() {
   local cnt=0 abort=0 factor=2 offset=1
 
   [ "$QEMU_TIMEOUT" -ge 10 ] && factor=5
-  [ "$QEMU_TIMEOUT" -gt 25 ] && factor=10
 
   if [ "$QEMU_TIMEOUT" -lt $((factor + offset + 1)) ]; then
     QEMU_TIMEOUT=$((factor + offset + 1))
