@@ -24,6 +24,7 @@ finish() {
   local pid
   local cnt=0
   local reason=$1
+  local timeout=5
   local pids=( "/var/run/tpm.pid" )
 
   touch "$QEMU_END"
@@ -42,7 +43,7 @@ finish() {
       # Workaround for zombie pid
       [ ! -s "$QEMU_PID" ] && break
 
-      if [ "$cnt" -eq 5 ]; then
+      if [ "$cnt" -eq "$timeout" ]; then
         echo && error "QEMU did not terminate itself, forcefully killing process..."
         { kill -9 "$pid" || true; } 2>/dev/null
       fi
@@ -107,15 +108,8 @@ terminal() {
 _graceful_shutdown() {
 
   local sig="$1"
-  local code=0
-
-  case "$sig" in
-    SIGTERM) code=143 ;;
-    SIGINT)  code=130 ;;
-    SIGHUP)  code=129 ;;
-    SIGABRT) code=134 ;;
-    SIGQUIT) code=131 ;;
-  esac
+  local code=128
+  code=$((sig + code))
 
   if [ -f "$QEMU_END" ]; then
     info "Received $1 while already shutting down..."
@@ -142,8 +136,13 @@ _graceful_shutdown() {
   # Send ACPI shutdown signal
   echo 'system_powerdown' | nc -q 1 -w 1 localhost "$MON_PORT" > /dev/null
 
+  # Compensate for additional duration of calling finish
+  if (( QEMU_TIMEOUT > 30 )); then
+    QEMU_TIMEOUT=$(( QEMU_TIMEOUT - 10 ))
+  fi
+
   local cnt=0
-  while [ "$cnt" -lt "$QEMU_TIMEOUT" ]; do
+  while (( cnt < QEMU_TIMEOUT )); do
 
     sleep 1
     (( cnt++ ))
@@ -159,7 +158,7 @@ _graceful_shutdown() {
 
   done
 
-  if [ "$cnt" -ge "$QEMU_TIMEOUT" ]; then
+  if (( cnt > QEMU_TIMEOUT )); then
     error "Shutdown timeout reached, aborting..."
   fi
 
