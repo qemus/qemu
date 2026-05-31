@@ -22,7 +22,6 @@ _trap() {
 finish() {
 
   local pid
-  local cnt=0
   local reason=$1
   local pids=( "/var/run/tpm.pid" )
 
@@ -33,21 +32,6 @@ finish() {
     pid=$(<"$QEMU_PID")
     echo && error "Forcefully terminating QEMU, reason: $reason..."
     { kill -15 "$pid" || true; } 2>/dev/null
-
-    while isAlive "$pid"; do
-
-      sleep 1
-      (( cnt++ ))
-
-      # Workaround for zombie pid
-      [ ! -s "$QEMU_PID" ] && break
-
-      if [ "$cnt" -eq 5 ]; then
-        echo && error "QEMU did not terminate itself, forcefully killing process..."
-        { kill -9 "$pid" || true; } 2>/dev/null
-      fi
-
-    done
 
   fi
 
@@ -143,6 +127,18 @@ _graceful_shutdown() {
   echo 'system_powerdown' | nc -q 1 -w 1 localhost "$MON_PORT" > /dev/null
 
   local cnt=0
+  local kill_lead=10
+  local kill_at=0
+  local kill_sent=0
+
+  if [ "$QEMU_TIMEOUT" -lt 30 ]; then
+    kill_lead=$((QEMU_TIMEOUT / 2))
+    [ "$kill_lead" -lt 1 ] && kill_lead=1
+  fi
+
+  kill_at=$((QEMU_TIMEOUT - kill_lead))
+  [ "$kill_at" -lt 1 ] && kill_at=1
+
   while [ "$cnt" -lt "$QEMU_TIMEOUT" ]; do
 
     sleep 1
@@ -152,6 +148,12 @@ _graceful_shutdown() {
     # Workaround for zombie pid
     [ ! -s "$QEMU_PID" ] && break
 
+    if [ "$kill_sent" -eq 0 ] && [ "$cnt" -ge "$kill_at" ]; then
+      error "QEMU is still running, sending SIGTERM... ($cnt/$QEMU_TIMEOUT)"
+      { kill -15 "$pid" || true; } 2>/dev/null
+      kill_sent=1
+    fi
+
     info "Waiting for VM to shutdown... ($cnt/$QEMU_TIMEOUT)"
 
     # Send ACPI shutdown signal
@@ -159,8 +161,9 @@ _graceful_shutdown() {
 
   done
 
-  if [ "$cnt" -ge "$QEMU_TIMEOUT" ]; then
+  if [ "$cnt" -ge "$QEMU_TIMEOUT" ] && isAlive "$pid"; then
     error "Shutdown timeout reached, aborting..."
+    { kill -9 "$pid" || true; } 2>/dev/null
   fi
 
   finish "$code" && return "$code"
