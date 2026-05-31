@@ -149,7 +149,7 @@ _graceful_shutdown() {
     [ ! -s "$QEMU_PID" ] && break
 
     if [ "$kill_sent" -eq 0 ] && [ "$cnt" -ge "$kill_at" ]; then
-      error "QEMU is still running, sending SIGTERM... ($cnt/$QEMU_TIMEOUT)"
+      info "QEMU is still running, sending SIGTERM... ($cnt/$QEMU_TIMEOUT)"
       { kill -15 "$pid" || true; } 2>/dev/null
       kill_sent=1
     fi
