@@ -148,13 +148,13 @@ _graceful_shutdown() {
     # Workaround for zombie pid
     [ ! -s "$QEMU_PID" ] && break
 
+    info "Waiting for VM to shutdown... ($cnt/$QEMU_TIMEOUT)"
+
     if [ "$kill_sent" -eq 0 ] && [ "$cnt" -ge "$kill_at" ]; then
       info "QEMU is still running, sending SIGTERM... ($cnt/$QEMU_TIMEOUT)"
       { kill -15 "$pid" || true; } 2>/dev/null
       kill_sent=1
     fi
-
-    info "Waiting for VM to shutdown... ($cnt/$QEMU_TIMEOUT)"
 
     # Send ACPI shutdown signal
     echo 'system_powerdown' | nc -q 1 -w 1 localhost "$MON_PORT" > /dev/null
@@ -162,7 +162,7 @@ _graceful_shutdown() {
   done
 
   if [ "$cnt" -ge "$QEMU_TIMEOUT" ] && isAlive "$pid"; then
-    error "Shutdown timeout reached, aborting..."
+    error "Shutdown timeout reached, forcefully killing process..."
     { kill -9 "$pid" || true; } 2>/dev/null
   fi
 
