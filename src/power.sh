@@ -30,8 +30,11 @@ finish() {
   if [ -s "$QEMU_PID" ]; then
 
     pid=$(<"$QEMU_PID")
-    echo && error "Forcefully terminating QEMU, reason: $reason..."
-    { kill -15 "$pid" || true; } 2>/dev/null
+
+    if isAlive "$pid"; then
+      echo && error "Forcefully terminating QEMU, reason: $reason..."
+      { kill -9 "$pid" || true; } 2>/dev/null
+    fi
 
   fi
 
@@ -123,48 +126,39 @@ _graceful_shutdown() {
     finish "$code" && return "$code"
   fi
 
-  # Send ACPI shutdown signal
-  echo 'system_powerdown' | nc -q 1 -w 1 localhost "$MON_PORT" > /dev/null
+  local cnt=0 abort=0 factor=2 offset=1
 
-  local cnt=0
-  local kill_lead=10
-  local kill_at=0
-  local kill_sent=0
+  [ "$QEMU_TIMEOUT" -ge 10 ] && factor=5
+  [ "$QEMU_TIMEOUT" -gt 25 ] && factor=10
 
-  if [ "$QEMU_TIMEOUT" -lt 30 ]; then
-    kill_lead=$((QEMU_TIMEOUT / 2))
-    [ "$kill_lead" -lt 1 ] && kill_lead=1
+  if [ "$QEMU_TIMEOUT" -lt $((factor + offset + 1)) ]; then
+    QEMU_TIMEOUT=$((factor + offset + 1))
   fi
 
-  kill_at=$((QEMU_TIMEOUT - kill_lead))
-  [ "$kill_at" -lt 1 ] && kill_at=1
+  abort=$(( QEMU_TIMEOUT - factor - offset ))
 
-  while [ "$cnt" -lt "$QEMU_TIMEOUT" ]; do
-
-    sleep 1
-    (( cnt++ ))
-
+  while [ "$cnt" -lt $(( QEMU_TIMEOUT - offset )) ]; do
+  
     ! isAlive "$pid" && break
     # Workaround for zombie pid
     [ ! -s "$QEMU_PID" ] && break
 
-    info "Waiting for VM to shutdown... ($cnt/$QEMU_TIMEOUT)"
-
-    if [ "$kill_sent" -eq 0 ] && [ "$cnt" -ge "$kill_at" ]; then
+    if [ "$cnt" -ne "$abort" ]; then
+      if [ "$cnt" -gt 0 ]; then
+        info "Waiting for VM to shutdown... ($cnt/$QEMU_TIMEOUT)"
+      fi
+    else
       info "QEMU is still running, sending SIGTERM... ($cnt/$QEMU_TIMEOUT)"
       { kill -15 "$pid" || true; } 2>/dev/null
-      kill_sent=1
     fi
 
     # Send ACPI shutdown signal
     echo 'system_powerdown' | nc -q 1 -w 1 localhost "$MON_PORT" > /dev/null
 
-  done
+    sleep 1
+    (( cnt++ ))
 
-  if [ "$cnt" -ge "$QEMU_TIMEOUT" ] && isAlive "$pid"; then
-    error "Shutdown timeout reached, forcefully killing process..."
-    { kill -9 "$pid" || true; } 2>/dev/null
-  fi
+  done
 
   finish "$code" && return "$code"
 }
