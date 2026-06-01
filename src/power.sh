@@ -33,9 +33,8 @@ finish() {
     fi
   fi
 
-  mKill "${pids[@]}"
-
   closeNetwork
+  mKill "${pids[@]}"
 
   while [ -n "$pid" ] && isAlive "$pid"; do
     sleep 0.2
