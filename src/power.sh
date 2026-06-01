@@ -80,7 +80,7 @@ _graceful_shutdown() {
     finish "$code" && return "$code"
   fi
 
-  local cnt=0 abort=0 factor=2 offset=3 min
+  local cnt=0 abort=0 factor=2 offset=3 min max
   [ "$TIMEOUT" -ge 15 ] && factor=3 && offset=4
   [ "$TIMEOUT" -ge 30 ] && factor=4 && offset=5
   min=$((factor + offset + 1))
