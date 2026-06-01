@@ -100,9 +100,12 @@ mKill() {
     if [ -s "$file" ]; then
 
       i=0
-      pid="$(<"$file")"
 
-      while isAlive "$pid"; do
+      if ! pid="$(<"$file")" 2>/dev/null; then
+        pid=""
+      fi
+
+      while [ -n "$pid" ] && isAlive "$pid"; do
         sleep 0.2
         i=$((i + 1))
         if [ "$i" -ge 50 ]; then
@@ -110,7 +113,7 @@ mKill() {
           break
         fi
       done
-
+  
     fi
 
     rm -f -- "$file"
