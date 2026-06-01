@@ -241,8 +241,6 @@ getHostPorts() {
     list+="$VNC_PORT,"
   fi
 
-  list+="$MON_PORT,"
-
   if [[ "${WEB:-}" != [Nn]* ]]; then
     list+="$WEB_PORT,"
     list+="$WSD_PORT,"
