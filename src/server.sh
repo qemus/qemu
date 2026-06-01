@@ -2,7 +2,6 @@
 set -Eeuo pipefail
 
 : "${VNC_PORT:="5900"}"    # VNC port
-: "${MON_PORT:="7100"}"    # Monitor port
 : "${WEB_PORT:="8006"}"    # Webserver port
 : "${WSD_PORT:="8004"}"    # Websockets port
 : "${WSS_PORT:="5700"}"    # Websockets port
