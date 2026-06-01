@@ -162,7 +162,7 @@ rm -f "$TPM_PID"
 if [[ "$TPM" == [Yy1]* ]]; then
 
   { swtpm socket -t -d --tpmstate "backend-uri=file://$DEST.tpm" \
-     --ctrl type=unixio,path=/run/swtpm-sock --pid file="$TPM_PID" --tpm2; rc=$?; } || :
+     --ctrl type=unixio,path=/run/swtpm-sock --pid "file=$TPM_PID" --tpm2; rc=$?; } || :
 
   if (( rc != 0 )); then
     error "Failed to start TPM emulator, reason: $rc"
