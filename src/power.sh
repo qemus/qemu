@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-: "${SHUTDOWN:="N"}"        # Graceful ACPI shutdown
-: "${QEMU_TIMEOUT:="110"}"  # QEMU Termination timeout
+: "${SHUTDOWN:="Y"}"        # Graceful ACPI shutdown
+: "${TIMEOUT:="10"}"        # QEMU Termination timeout
 
 # Configure QEMU for graceful shutdown
 
@@ -126,17 +126,17 @@ _graceful_shutdown() {
     finish "$code" && return "$code"
   fi
 
-  local cnt=0 abort=0 factor=2 offset=1
+  local cnt=0 abort=0 factor=3 offset=1
 
-  [ "$QEMU_TIMEOUT" -ge 10 ] && factor=5
+  [ "$TIMEOUT" -ge 10 ] && factor=5
 
-  if [ "$QEMU_TIMEOUT" -lt $((factor + offset + 1)) ]; then
-    QEMU_TIMEOUT=$((factor + offset + 1))
+  if [ "$TIMEOUT" -lt $((factor + offset + 1)) ]; then
+    TIMEOUT=$((factor + offset + 1))
   fi
 
-  abort=$(( QEMU_TIMEOUT - factor - offset ))
+  abort=$(( TIMEOUT - factor - offset ))
 
-  while [ "$cnt" -lt $(( QEMU_TIMEOUT - offset )) ]; do
+  while [ "$cnt" -lt $(( TIMEOUT - offset )) ]; do
   
     ! isAlive "$pid" && break
     # Workaround for zombie pid
@@ -144,10 +144,10 @@ _graceful_shutdown() {
 
     if [ "$cnt" -ne "$abort" ]; then
       if [ "$cnt" -gt 0 ]; then
-        info "Waiting for VM to shutdown... ($cnt/$QEMU_TIMEOUT)"
+        info "Waiting for VM to shutdown... ($cnt/$TIMEOUT)"
       fi
     else
-      info "QEMU is still running, sending SIGTERM... ($cnt/$QEMU_TIMEOUT)"
+      info "QEMU is still running, sending SIGTERM... ($cnt/$TIMEOUT)"
       { kill -15 "$pid" || true; } 2>/dev/null
     fi
 
