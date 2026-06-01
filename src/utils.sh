@@ -82,7 +82,7 @@ fKill() {
 }
 
 mKill() {
-  local pid="" files=("$@")
+  local pid="" i=0 files=("$@")
 
   for file in "${files[@]}"; do
 
