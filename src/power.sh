@@ -36,15 +36,10 @@ finish() {
 
   mKill "${pids[@]}"
   closeNetwork
-
-  while [ -n "$pid" ] && isAlive "$pid"; do
-    sleep 0.2
-    i=$((i + 1))
-    if [ "$i" -ge 100 ]; then
-      error "Timed out waiting for QEMU to exit!"
-      break
-    fi
-  done
+  
+  if [ -n "$pid" ] && ! waitPid "$pid" 100 then
+    warn "Timed out while waiting for QEMU to exit!"
+  fi
 
   echo && echo "❯ Shutdown completed!"
 
