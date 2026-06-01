@@ -36,7 +36,7 @@ finish() {
 
   closeNetwork
 
-  while [ -s "$QEMU_PID" ] && [ -n "$pid" ] && isAlive "$pid"; do
+  while [ -n "$pid" ] && isAlive "$pid"; do
     sleep 0.2
   done
 
