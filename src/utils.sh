@@ -96,10 +96,10 @@ mKill() {
   for file in "${files[@]}"; do
 
     [ ! -s "$file" ] && continue
-    pid="$(<"$file")"
+    read -r pid <"$file" || pid=""
+    [[ "$pid" =~ ^[0-9]+$ ]] || continue
 
-    { [ -n "$pid" ] && kill -15 "$pid" || :; } 2>/dev/null
-
+    { kill -15 -- "$pid" || :; } 2>/dev/null
   done
 
   for file in "${files[@]}"; do
