@@ -91,7 +91,7 @@ fKill() {
 }
 
 mKill() {
-  local pid="" i=0 files=("$@")
+  local pid="" files=("$@")
 
   for file in "${files[@]}"; do
 
@@ -108,9 +108,7 @@ mKill() {
 
     if [ -s "$file" ]; then
 
-      i=0
-
-      if ! pid="$(<"$file")" 2>/dev/null; then
+      if ! pid="$(<"$file")" &>/dev/null; then
         pid=""
       fi
 
