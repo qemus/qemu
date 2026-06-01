@@ -87,6 +87,7 @@ _graceful_shutdown() {
   fi
 
   local cnt=0 abort=0 factor=2 offset=3 min max
+  [[ "$TIMEOUT" =~ ^[0-9]+$ ]] || TIMEOUT=13
   [ "$TIMEOUT" -ge 15 ] && factor=3 && offset=4
   [ "$TIMEOUT" -ge 30 ] && factor=4 && offset=5
   min=$((factor + offset + 1))
