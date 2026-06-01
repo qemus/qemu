@@ -24,6 +24,7 @@ finish() {
   local pids=( "$TPM_PID" "$WSD_PID" "$WEB_PID" "$PASST_PID" "$DNSMASQ_PID" )
 
   touch "$QEMU_END"
+  (( reason != 0 )) && echo "QEMU exitcode: $reason"
 
   if [ -s "$QEMU_PID" ]; then
     pid=$(<"$QEMU_PID")
