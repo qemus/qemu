@@ -110,13 +110,16 @@ mKill() {
 
     if [ -s "$file" ]; then
       if read -r pid <"$file"; then
-        if [ -n "$pid" ] && ! waitPid "$pid" 50; then
-          warn "Timed out while waiting for PID file: $file"
+        if [ -n "$pid" ]; then
+          if waitPid "$pid" 50; then
+            rm -f -- "$file"
+          else
+            warn "Timed out while waiting for PID file: $file"
+          fi
         fi
       fi
     fi
 
-    rm -f -- "$file"
   done
 
   return 0
