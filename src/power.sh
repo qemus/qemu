@@ -114,8 +114,8 @@ _graceful_shutdown() {
     fi
 
     # Send ACPI shutdown signal
-    if [ -S "${QEMU_MONITOR_SOCK:-$QEMU_DIR/qmp.sock}" ]; then
-      nc -q 1 -w 1 -U "${QEMU_MONITOR_SOCK:-$QEMU_DIR/qmp.sock}" > /dev/null <<<'system_powerdown' || :
+    if [ -S "$QEMU_DIR/qmp.sock" ]; then
+      nc -q 1 -w 1 -U "$QEMU_DIR/qmp.sock" > /dev/null <<<'system_powerdown' || :
     fi
 
     wait $slp
