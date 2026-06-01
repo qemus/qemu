@@ -29,9 +29,6 @@ finish() {
     if [ -n "$pid" ] && isAlive "$pid"; then
       echo && error "Forcefully terminating QEMU, reason: $reason..."
       { kill -9 "$pid" || :; } 2>/dev/null
-      while isAlive "$pid"; do
-        sleep 0.2
-      done
     fi
   fi
 
@@ -39,6 +36,10 @@ finish() {
 
   closeNetwork
 
+  while [ -s "$QEMU_PID" ] && [ -n "$pid" ] && isAlive "$pid"; do
+    sleep 0.2
+  done
+      
   echo && echo "❯ Shutdown completed!"
 
   exit "$reason"
