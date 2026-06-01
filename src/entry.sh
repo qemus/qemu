@@ -37,7 +37,12 @@ else
    qemu-system-x86_64 ${ARGS:+ $ARGS} </dev/tty >/dev/tty &
 fi
  
-wait $!
+rc=0
+wait $! || rc=$?
 sleep 1 & wait $!
+
+if [ "$rc" -ne 0 ]; then
+  warn "QEMU exitcode was: $rc"
+fi
 
 [ ! -f "$QEMU_END" ] && finish 0
