@@ -156,7 +156,7 @@ if [ -s "$PS" ] && [ -r "$PS" ]; then
 
 fi
 
-TPM_PID="$QEMU_DIR/tpm.pid"
+TPM_PID="/var/run/tpm.pid"
 rm -f "$TPM_PID"
 
 if [[ "$TPM" == [Yy1]* ]]; then
