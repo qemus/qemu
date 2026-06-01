@@ -85,6 +85,8 @@ mKill() {
 
   for file in "${files[@]}"; do
 
+    [ -z "$file" ] && continue
+
     if [ -s "$file" ]; then
 
       pid="$(<"$file")"
@@ -95,7 +97,7 @@ mKill() {
 
     fi
 
-    rm -f "$file"
+    rm -f -- "$file"
   done
 
   return 0
