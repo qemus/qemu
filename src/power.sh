@@ -18,6 +18,7 @@ _trap() {
 
 finish() {
 
+  local i=0
   local pid=""
   local reason=$1
   local pids=( "$TPM_PID" "$WSD_PID" "$WEB_PID" "$PASST_PID" "$DNSMASQ_PID" )
@@ -38,6 +39,11 @@ finish() {
 
   while [ -n "$pid" ] && isAlive "$pid"; do
     sleep 0.2
+    i=$((i + 1))
+    if [ "$i" -ge 100 ]; then
+      error "Timed out waiting for QEMU to exit!"
+      break
+    fi
   done
 
   echo && echo "❯ Shutdown completed!"
