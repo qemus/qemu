@@ -28,6 +28,7 @@ formatBytes() {
 
 isAlive() {
   local pid="$1"
+  [ -z "$pid" ] && return 1
 
   if kill -0 "$pid" 2>/dev/null; then
     return 0
@@ -38,8 +39,9 @@ isAlive() {
 
 pKill() {
   local pid="$1"
+  [ -z "$pid" ] && return 0
 
-  { kill -15 "$pid" || true; } 2>/dev/null
+  { kill -15 "$pid" || :; } 2>/dev/null
 
   while isAlive "$pid"; do
     sleep 0.2
@@ -50,6 +52,7 @@ pKill() {
 
 fWait() {
   local name="$1"
+  [ -z "$name" ] && return 0
 
   while pgrep -f -l "$name" >/dev/null; do
     sleep 0.2
@@ -60,9 +63,37 @@ fWait() {
 
 fKill() {
   local name="$1"
+  [ -z "$name" ] && return 0
 
-  { pkill -f "$name" || true; } 2>/dev/null
+  { pkill -f "$name" || :; } 2>/dev/null
   fWait "$name"
+
+  return 0
+}
+
+mKill() {
+  local pid="" files=("$@")
+
+  for file in "${files[@]}"; do
+
+    [ ! -s "$file" ] && continue
+    pid="$(<"$file")"
+
+    { [ -n "$pid" ] && kill -15 "$pid" || :; } 2>/dev/null
+
+  done
+
+  for file in "${files[@]}"; do
+
+    [ ! -s "$file" ] && continue
+    pid="$(<"$file")"
+
+    while isAlive "$pid"; do
+      sleep 0.2
+    done
+
+    rm -f "$file"
+  done
 
   return 0
 }
