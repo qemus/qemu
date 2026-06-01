@@ -37,8 +37,7 @@ isAlive() {
   return 1
 }
 
-waitPid()
-{
+waitPid() {
   local i=0
   local pid="$1"
   local timeout="$2"
