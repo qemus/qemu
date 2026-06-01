@@ -6,13 +6,17 @@ set -Eeuo pipefail
 : "${WSD_PORT:="8004"}"    # Websockets port
 : "${WSS_PORT:="5700"}"    # Websockets port
 
+WEB_PID="/run/nginx.pid"
+WSD_PID="$QEMU_DIR/websocketd.pid"
+
 if (( VNC_PORT < 5900 )); then
   warn "VNC port cannot be set lower than 5900, ignoring value $VNC_PORT."
   VNC_PORT="5900"
 fi
 
-cp -r /var/www/* /run/shm
-rm -f /var/run/websocketd.pid
+cp -r /var/www/* "$QEMU_DIR"
+rm -f "$WSD_PID"
+rm -f "$WEB_PID"
 
 html "Starting $APP for $ENGINE..."
 
@@ -53,7 +57,7 @@ if [[ "${WEB:-}" != [Nn]* ]]; then
 
   # Start websocket server
   websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh >/var/log/websocketd.log &
-  echo "$!" > /var/run/websocketd.pid
+  echo "$!" > "$WSD_PID"
 
 fi
 
