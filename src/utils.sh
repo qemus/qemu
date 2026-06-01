@@ -38,24 +38,34 @@ isAlive() {
 }
 
 pKill() {
-  local pid="$1"
+  local pid="$1" i=0
   [ -z "$pid" ] && return 0
 
   { kill -15 "$pid" || :; } 2>/dev/null
 
   while isAlive "$pid"; do
     sleep 0.2
+    i=$((i + 1))
+    if [ "$i" -ge 50 ]; then
+      warn "Timed out waiting for PID $pid"
+      break
+    fi
   done
 
   return 0
 }
 
 fWait() {
-  local name="$1"
+  local name="$1" i=0
   [ -z "$name" ] && return 0
 
   while pgrep -f -l "$name" >/dev/null; do
     sleep 0.2
+    i=$((i + 1))
+    if [ "$i" -ge 50 ]; then
+      warn "Timed out waiting for process: $name"
+      break
+    fi
   done
 
   return 0
@@ -89,10 +99,16 @@ mKill() {
 
     if [ -s "$file" ]; then
 
+      i=0
       pid="$(<"$file")"
 
       while isAlive "$pid"; do
         sleep 0.2
+        i=$((i + 1))
+        if [ "$i" -ge 50 ]; then
+          warn "Timed out waiting for PID file: $file"
+          break
+        fi
       done
 
     fi
