@@ -41,7 +41,7 @@ rc=0
 wait $! || rc=$?
 sleep 1 & wait $!
 
-if [ "$rc" -ne 0 ]; then
+if (( rc != 0 )); then
   warn "QEMU exitcode was: $rc"
 fi
 
