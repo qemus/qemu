@@ -85,12 +85,15 @@ mKill() {
 
   for file in "${files[@]}"; do
 
-    [ ! -s "$file" ] && continue
-    pid="$(<"$file")"
+    if [ -s "$file" ]; then
 
-    while isAlive "$pid"; do
-      sleep 0.2
-    done
+      pid="$(<"$file")"
+
+      while isAlive "$pid"; do
+        sleep 0.2
+      done
+
+    fi
 
     rm -f "$file"
   done
