@@ -27,10 +27,11 @@ finish() {
   (( reason != 0 )) && (( reason != 143 )) && echo "QEMU exitcode: $reason"
 
   if [ -s "$QEMU_PID" ]; then
-    pid=$(<"$QEMU_PID")
-    if [ -n "$pid" ] && isAlive "$pid"; then
-      echo && error "Forcefully terminating QEMU, reason: $reason..."
-      { kill -9 -- "$pid" || :; } 2>/dev/null
+    if read -r pid <"$QEMU_PID"; then
+      if [ -n "$pid" ] && isAlive "$pid"; then
+        echo && error "Forcefully terminating QEMU, reason: $reason..."
+        { kill -9 -- "$pid" || :; } 2>/dev/null
+      fi
     fi
   fi
 
@@ -49,6 +50,7 @@ finish() {
 _graceful_shutdown() {
 
   local sig="$1"
+  local pid=""
   local code=0
 
   case "$sig" in
@@ -68,16 +70,15 @@ _graceful_shutdown() {
   touch "$QEMU_END"
   echo && info "Received $1, sending ACPI shutdown signal..."
 
-  if [ ! -s "$QEMU_PID" ]; then
-    warn "QEMU PID file does not exist?"
+  local pid=""
+
+  if [ ! -s "$QEMU_PID" ] || ! read -r pid <"$QEMU_PID"; then
+    warn "QEMU PID file ($QEMU_PID) does not exist?"
     finish "$code" && return "$code"
   fi
-
-  local pid=""
-  pid=$(<"$QEMU_PID")
-
+  
   if [ -z "$pid" ] || ! isAlive "$pid"; then
-    warn "QEMU process does not exist?"
+    warn "QEMU process with PID $pid does not exist?"
     finish "$code" && return "$code"
   fi
 
