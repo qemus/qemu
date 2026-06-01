@@ -39,6 +39,7 @@ fi
  
 rc=0
 wait $! || rc=$?
+(( rc != 0 )) && echo "QEMU exitcode: $rc"
 
 [ -f "$QEMU_END" ] && exit "$rc"
 
