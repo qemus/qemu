@@ -6,7 +6,7 @@ set -Eeuo pipefail
 : "${VMPORT:="off"}"
 : "${SERIAL:="mon:stdio"}"
 : "${USB:="qemu-xhci,id=xhci,p2=7,p3=7"}"
-: "${MONITOR:="telnet:localhost:$MON_PORT,server,nowait,nodelay"}"
+: "${MONITOR:="unix:$QEMU_DIR/qmp.sock,server,wait=off,nodelay"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
 
 msg="Configuring QEMU..."
@@ -31,7 +31,7 @@ if [[ "${MACHINE,,}" != "pc"* ]]; then
     if [[ "${BALLOONING:-}" != [Yy1]* ]]; then
       DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0"
     else
-      MON_OPTS+=" -qmp unix:${QEMU_DIR}/qemu-qmp-ballooning.sock,server,nowait"
+      MON_OPTS+=" -qmp unix:$QEMU_DIR/qemu-qmp-ballooning.sock,server,nowait"
       DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
     fi
   fi
