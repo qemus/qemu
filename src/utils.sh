@@ -37,20 +37,30 @@ isAlive() {
   return 1
 }
 
+waitPid()
+{
+  local i=0
+  local pid="$1"
+  local timeout="$2"
+
+  while [ -n "$pid" ] && isAlive "$pid"; do
+    sleep 0.2
+    i=$((i + 1))
+    [ "$i" -ge "$timeout" ] && return 1
+  done
+
+  return 0
+}
+
 pKill() {
   local pid="$1" i=0
   [ -z "$pid" ] && return 0
 
   { kill -15 "$pid" || :; } 2>/dev/null
 
-  while isAlive "$pid"; do
-    sleep 0.2
-    i=$((i + 1))
-    if [ "$i" -ge 50 ]; then
-      warn "Timed out waiting for PID $pid"
-      break
-    fi
-  done
+  if ! waitPid "$pid" 50; then
+    warn "Timed out waiting for PID $pid"
+  fi
 
   return 0
 }
@@ -105,14 +115,9 @@ mKill() {
         pid=""
       fi
 
-      while [ -n "$pid" ] && isAlive "$pid"; do
-        sleep 0.2
-        i=$((i + 1))
-        if [ "$i" -ge 50 ]; then
-          warn "Timed out waiting for PID file: $file"
-          break
-        fi
-      done
+      if [ -n "$pid" ] && ! waitPid "$pid" 50 then
+        warn "Timed out waiting for PID file: $file"
+      fi
   
     fi
 
