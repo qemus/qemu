@@ -108,7 +108,8 @@ mKill() {
 
     if [ -s "$file" ]; then
 
-      if ! pid="$(<"$file")" &>/dev/null; then
+      # Use cat swallow read errors
+      if ! pid="$(cat -- "$file" 2>/dev/null)"; then
         pid=""
       fi
 
