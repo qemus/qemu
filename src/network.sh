@@ -665,8 +665,11 @@ closeWeb() {
   fWait "nginx"
 
   # Shutdown websocket
-  [ -s "$WSD_PID" ] && pid="$(<"$WSD_PID")"
-  [ -n "$pid" ] && pKill "$pid" && rm -f "$WSD_PID"
+  if [ -s "$WSD_PID" ]; then
+    pid="$(<"$WSD_PID")"
+    [ -n "$pid" ] && pKill "$pid" || :
+    rm -f "$WSD_PID"
+  fi
 
   return 0
 }
