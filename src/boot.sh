@@ -68,7 +68,7 @@ if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 fi
 
 DEST="$STORAGE/${BOOT_MODE,,}"
-    
+
 if [[ "$CLEAR" == [Yy1]* ]]; then
   # Clear NVRAM (helps to fix corruptions)
   rm -f "$DEST.rom" "$DEST.vars" "$DEST.tpm"
@@ -85,7 +85,7 @@ case "${BOOT_MODE,,}" in
       logo="/var/www/img/${PROCESS,,}.ffs"
       [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
       [ ! -s "$logo" ] && LOGO="N"
-    
+
       if [[ "$LOGO" == [Nn]* ]]; then
         cp "$OVMF/$ROM" "$DEST.tmp"
       else
@@ -156,12 +156,13 @@ if [ -s "$PS" ] && [ -r "$PS" ]; then
 
 fi
 
-rm -f /var/run/tpm.pid
+TPM_PID="$QEMU_DIR/tpm.pid"
+rm -f "$TPM_PID"
 
 if [[ "$TPM" == [Yy1]* ]]; then
 
   { swtpm socket -t -d --tpmstate "backend-uri=file://$DEST.tpm" \
-     --ctrl type=unixio,path=/run/swtpm-sock --pid file=/var/run/tpm.pid --tpm2; rc=$?; } || :
+     --ctrl type=unixio,path=/run/swtpm-sock --pid file="$TPM_PID" --tpm2; rc=$?; } || :
 
   if (( rc != 0 )); then
     error "Failed to start TPM emulator, reason: $rc"
