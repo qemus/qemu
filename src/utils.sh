@@ -53,7 +53,6 @@ waitPid() {
 
 pKill() {
   local pid="$1"
-  [[ "$pid" =~ ^[0-9]+$ ]] || return 0
 
   { kill -15 -- "$pid" || :; } 2>/dev/null
 
@@ -96,10 +95,13 @@ mKill() {
   for file in "${files[@]}"; do
 
     [ ! -s "$file" ] && continue
-    read -r pid <"$file" || pid=""
-    [[ "$pid" =~ ^[0-9]+$ ]] || continue
+    
+    if read -r pid <"$file"; then
+      if [ -n "$pid" ]; then
+        { kill -15 -- "$pid" || :; } 2>/dev/null
+      fi
+    fi
 
-    { kill -15 -- "$pid" || :; } 2>/dev/null
   done
 
   for file in "${files[@]}"; do
@@ -107,16 +109,11 @@ mKill() {
     [ -z "$file" ] && continue
 
     if [ -s "$file" ]; then
-
-      # Use cat swallow read errors
-      if ! pid="$(cat -- "$file" 2>/dev/null)"; then
-        pid=""
+      if read -r pid <"$file"; then
+        if [ -n "$pid" ] && ! waitPid "$pid" 50; then
+          warn "Timed out while waiting for PID file: $file"
+        fi
       fi
-
-      if [ -n "$pid" ] && ! waitPid "$pid" 50; then
-        warn "Timed out while waiting for PID file: $file"
-      fi
-
     fi
 
     rm -f -- "$file"
