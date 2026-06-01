@@ -59,7 +59,7 @@ pKill() {
   { kill -15 "$pid" || :; } 2>/dev/null
 
   if ! waitPid "$pid" 50; then
-    warn "Timed out waiting for PID $pid"
+    warn "Timed out while waiting for PID $pid"
   fi
 
   return 0
@@ -73,7 +73,7 @@ fWait() {
     sleep 0.2
     i=$((i + 1))
     if [ "$i" -ge 50 ]; then
-      warn "Timed out waiting for process: $name"
+      warn "Timed out while waiting for process: $name"
       break
     fi
   done
@@ -116,7 +116,7 @@ mKill() {
       fi
 
       if [ -n "$pid" ] && ! waitPid "$pid" 50 then
-        warn "Timed out waiting for PID file: $file"
+        warn "Timed out while waiting for PID file: $file"
       fi
   
     fi
