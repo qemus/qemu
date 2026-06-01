@@ -24,12 +24,12 @@ set -Eeuo pipefail
 : "${PASST_MTU:=""}"
 : "${PASST_OPTS:=""}"
 : "${PASST_DEBUG:=""}"
-: "${PASST_PID:="$QEMU_DIR/passt.pid"}"
+: "${PASST_PID:="/var/run/passt.pid"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ_DEBUG:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
-: "${DNSMASQ_PID:="$QEMU_DIR/dnsmasq.pid"}"
+: "${DNSMASQ_PID:="/var/run/dnsmasq.pid"}"
 : "${DNSMASQ_CONF_DIR:="/etc/dnsmasq.d"}"
 
 ADD_ERR="Please add the following setting to your container:"
