@@ -37,7 +37,7 @@ finish() {
   mKill "${pids[@]}"
   closeNetwork
   
-  if [ -n "$pid" ] && ! waitPid "$pid" 100 then
+  if [ -n "$pid" ] && ! waitPid "$pid" 100; then
     warn "Timed out while waiting for QEMU to exit!"
   fi
 
