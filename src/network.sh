@@ -24,12 +24,12 @@ set -Eeuo pipefail
 : "${PASST_MTU:=""}"
 : "${PASST_OPTS:=""}"
 : "${PASST_DEBUG:=""}"
-: "${PASST_PID:="/var/run/passt.pid"}"
+: "${PASST_PID:="$QEMU_DIR/passt.pid"}"
 
 : "${DNSMASQ_OPTS:=""}"
 : "${DNSMASQ_DEBUG:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
-: "${DNSMASQ_PID:="/var/run/dnsmasq.pid"}"
+: "${DNSMASQ_PID:="$QEMU_DIR/dnsmasq.pid"}"
 : "${DNSMASQ_CONF_DIR:="/etc/dnsmasq.d"}"
 
 ADD_ERR="Please add the following setting to your container:"
@@ -240,6 +240,8 @@ getHostPorts() {
   if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
     list+="$VNC_PORT,"
   fi
+
+  list+="$MON_PORT,"
 
   if [[ "${WEB:-}" != [Nn]* ]]; then
     list+="$WEB_PORT,"
@@ -644,11 +646,8 @@ configureNAT() {
 
 closeBridge() {
 
-  [ -s "$PASST_PID" ] && pKill "$(<"$PASST_PID")"
-  rm -f "$PASST_PID"
-
-  [ -s "$DNSMASQ_PID" ] && pKill "$(<"$DNSMASQ_PID")"
-  rm -f "$DNSMASQ_PID"
+  local pids=( "$PASST_PID" "$DNSMASQ_PID" )
+  mKill "${pids[@]}"
 
   ip link set "$VM_NET_TAP" down promisc off &> /dev/null || :
   ip link delete "$VM_NET_TAP" &> /dev/null || :
@@ -663,13 +662,15 @@ closeBridge() {
 closeWeb() {
 
   # Shutdown nginx
-  nginx -s stop 2> /dev/null
-  fWait "nginx"
+  if [ -s "$WEB_PID" ]; then
+    nginx -s stop 2>/dev/null || :
+    fWait "nginx"
+  fi
 
   # Shutdown websocket
-  local pid="/var/run/websocketd.pid"
-  [ -s "$pid" ] && pKill "$(<"$pid")"
-  rm -f "$pid"
+  local pid=""
+  [ -s "$WSD_PID" ] && pid="$(<"$WSD_PID")"
+  [ -n "$pid" ] && pKill "$pid" && rm -f "$pid"
 
   return 0
 }
@@ -686,6 +687,7 @@ closeNetwork() {
   exec 40<&- || true
 
   closeBridge
+
   return 0
 }
 
