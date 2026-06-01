@@ -35,7 +35,7 @@ if [ ! -c /dev/tty ]; then
    qemu-system-x86_64 ${ARGS:+ $ARGS} &
 else
    qemu-system-x86_64 ${ARGS:+ $ARGS} </dev/tty >/dev/tty &
-else
+fi
  
 wait $!
 sleep 1 & wait $!
