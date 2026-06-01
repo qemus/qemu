@@ -30,7 +30,7 @@ finish() {
     pid=$(<"$QEMU_PID")
     if [ -n "$pid" ] && isAlive "$pid"; then
       echo && error "Forcefully terminating QEMU, reason: $reason..."
-      { kill -9 "$pid" || :; } 2>/dev/null
+      { kill -9 -- "$pid" || :; } 2>/dev/null
     fi
   fi
 
