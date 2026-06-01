@@ -31,7 +31,7 @@ if [[ "${MACHINE,,}" != "pc"* ]]; then
     if [[ "${BALLOONING:-}" != [Yy1]* ]]; then
       DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=pcie.0"
     else
-      MON_OPTS+=" -qmp unix:$QEMU_DIR/qemu-qmp-ballooning.sock,server,nowait"
+      MON_OPTS+=" -qmp unix:${QEMU_DIR}/qemu-qmp-ballooning.sock,server,nowait"
       DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
     fi
   fi
