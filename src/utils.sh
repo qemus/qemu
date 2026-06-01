@@ -52,10 +52,10 @@ waitPid() {
 }
 
 pKill() {
-  local pid="$1" i=0
-  [ -z "$pid" ] && return 0
+  local pid="$1"
+  [[ "$pid" =~ ^[0-9]+$ ]] || return 0
 
-  { kill -15 "$pid" || :; } 2>/dev/null
+  { kill -15 -- "$pid" || :; } 2>/dev/null
 
   if ! waitPid "$pid" 50; then
     warn "Timed out while waiting for PID $pid"
