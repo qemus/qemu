@@ -114,7 +114,7 @@ mKill() {
         pid=""
       fi
 
-      if [ -n "$pid" ] && ! waitPid "$pid" 50 then
+      if [ -n "$pid" ] && ! waitPid "$pid" 50; then
         warn "Timed out while waiting for PID file: $file"
       fi
   
