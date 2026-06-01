@@ -658,18 +658,9 @@ closeBridge() {
 }
 
 closeWeb() {
-  local pid=""
 
-  # Shutdown nginx
-  nginx -s stop 2>/dev/null || :
-  fWait "nginx"
-
-  # Shutdown websocket
-  if [ -s "$WSD_PID" ]; then
-    pid="$(<"$WSD_PID")"
-    [ -n "$pid" ] && pKill "$pid" || :
-    rm -f "$WSD_PID"
-  fi
+  local pids=( "$WEB_PID" "$WSD_PID" )
+  mKill "${pids[@]}"
 
   return 0
 }
