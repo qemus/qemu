@@ -668,7 +668,7 @@ closeWeb() {
   # Shutdown websocket
   local pid=""
   [ -s "$WSD_PID" ] && pid="$(<"$WSD_PID")"
-  [ -n "$pid" ] && pKill "$pid" && rm -f "$pid"
+  [ -n "$pid" ] && pKill "$pid" && rm -f "$WSD_PID"
 
   return 0
 }
