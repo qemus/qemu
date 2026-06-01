@@ -2,7 +2,7 @@
 set -Eeuo pipefail
 
 : "${SHUTDOWN:="Y"}"        # Graceful ACPI shutdown
-: "${TIMEOUT:="10"}"        # QEMU Termination timeout
+: "${TIMEOUT:="14"}"        # QEMU Termination timeout
 
 # Configure QEMU for graceful shutdown
 
@@ -39,10 +39,10 @@ finish() {
   fi
 
   for pid in "${pids[@]}"; do
-      if [[ -s "$pid" ]]; then 
-          pKill "$(<"$pid")"
-      fi
-      rm -f "$pid"
+    if [[ -s "$pid" ]]; then 
+        pKill "$(<"$pid")"
+    fi
+    rm -f "$pid"
   done 
 
   closeNetwork
@@ -126,14 +126,10 @@ _graceful_shutdown() {
     finish "$code" && return "$code"
   fi
 
-  local cnt=0 abort=0 factor=3 offset=1
-
+  local cnt=0 abort=0 factor=3 offset=1 min
+  min=$((factor + offset + 1))
   [ "$TIMEOUT" -ge 10 ] && factor=5
-
-  if [ "$TIMEOUT" -lt $((factor + offset + 1)) ]; then
-    TIMEOUT=$((factor + offset + 1))
-  fi
-
+  [ "$TIMEOUT" -lt "$min" ] && TIMEOUT="$min"
   abort=$(( TIMEOUT - factor - offset ))
 
   while [ "$cnt" -lt $(( TIMEOUT - offset )) ]; do
@@ -163,6 +159,7 @@ _graceful_shutdown() {
 }
 
 [[ "$SHUTDOWN" != [Yy1]* ]] && return 0
+[ -n "${QEMU_TIMEOUT:-}" && TIMEOUT="$QEMU_TIMEOUT"
 
 touch "$QEMU_LOG"
 
