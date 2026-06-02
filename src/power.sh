@@ -84,15 +84,16 @@ _graceful_shutdown() {
 
   if [ ! -s "$QEMU_PID" ] || ! read -r pid <"$QEMU_PID"; then
     warn "QEMU PID file ($QEMU_PID) does not exist?"
-    finish "$code" && return "$code"
+    finish "$code"
   fi
   
   if [ -z "$pid" ] || ! isAlive "$pid"; then
     warn "QEMU process with PID $pid does not exist?"
-    finish "$code" && return "$code"
+    finish "$code"
   fi
 
   local cnt=0 abort=0 factor=2 offset=3 min max
+
   [[ "$TIMEOUT" =~ ^[0-9]+$ ]] || TIMEOUT=13
   [ "$TIMEOUT" -ge 15 ] && factor=3 && offset=4
   [ "$TIMEOUT" -ge 30 ] && factor=4 && offset=5
@@ -129,7 +130,7 @@ _graceful_shutdown() {
 
   done
 
-  finish "$code" && return "$code"
+  finish "$code"
 }
 
 [[ "$SHUTDOWN" != [Yy1]* ]] && return 0
