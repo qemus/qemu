@@ -47,7 +47,7 @@ finish() {
   closeNetwork
   
   if [ -n "$pid" ] && ! waitPid "$pid" 100; then
-    warn "Timed out while waiting for $app to exit!"
+    warn "Timed out while waiting for $(app) to exit!"
   fi
 
   echo && echo "❯ Shutdown completed!"
