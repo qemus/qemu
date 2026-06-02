@@ -29,7 +29,7 @@ finish() {
   if [ -s "$QEMU_PID" ]; then
     if read -r pid <"$QEMU_PID"; then
       if [ -n "$pid" ] && isAlive "$pid"; then
-        echo && error "Forcefully terminating QEMU, reason: $reason..."
+        echo && error "Forcefully terminating $APP, reason: $reason..."
         { kill -9 -- "$pid" || :; } 2>/dev/null
       fi
     fi
@@ -39,7 +39,7 @@ finish() {
   closeNetwork
   
   if [ -n "$pid" ] && ! waitPid "$pid" 100; then
-    warn "Timed out while waiting for QEMU to exit!"
+    warn "Timed out while waiting for $APP to exit!"
   fi
 
   echo && echo "❯ Shutdown completed!"
@@ -102,10 +102,12 @@ _graceful_shutdown() {
 
     if [ "$cnt" -ne "$abort" ]; then
       if [ "$cnt" -gt 0 ]; then
-        info "Waiting for VM to shutdown... ($cnt/$max)"
+        info "Waiting for $([[ $APP == QEMU ]] && \
+        printf 'the VM' || printf '%s' "$APP") to shut down... ($cnt/$max)"
       fi
     else
-      info "QEMU is still running, sending SIGTERM... ($cnt/$max)"
+      info "$([[ $APP == QEMU ]] && printf 'the VM' || \
+      printf '%s' "$APP")  is still running, sending SIGTERM... ($cnt/$max)"
       { kill -15 -- "$pid" || true; } 2>/dev/null
     fi
 
