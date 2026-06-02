@@ -78,8 +78,6 @@ _graceful_shutdown() {
   touch "$QEMU_END"
   echo && info "Received $1, sending ACPI shutdown signal..."
 
-  local pid=""
-
   if [ ! -s "$QEMU_PID" ] || ! read -r pid <"$QEMU_PID"; then
     warn "QEMU PID file ($QEMU_PID) does not exist?"
     finish "$code"
