@@ -16,11 +16,20 @@ _trap() {
   done
 }
 
+app() {
+  if [[ "$APP" == "QEMU" ]]; then
+    echo "the VM" && return 0
+  fi
+  
+  echo "$APP" && return 0
+}
+
 finish() {
 
   local i=0
   local pid=""
   local reason=$1
+  local app="$(app)"
   local pids=( "$TPM_PID" "$WSD_PID" "$WEB_PID" "$PASST_PID" "$DNSMASQ_PID" )
 
   touch "$QEMU_END"
@@ -29,7 +38,7 @@ finish() {
   if [ -s "$QEMU_PID" ]; then
     if read -r pid <"$QEMU_PID"; then
       if [ -n "$pid" ] && isAlive "$pid"; then
-        echo && error "Forcefully terminating $APP, reason: $reason..."
+        echo && error "Forcefully terminating $app, reason: $reason..."
         { kill -9 -- "$pid" || :; } 2>/dev/null
       fi
     fi
@@ -39,7 +48,7 @@ finish() {
   closeNetwork
   
   if [ -n "$pid" ] && ! waitPid "$pid" 100; then
-    warn "Timed out while waiting for $APP to exit!"
+    warn "Timed out while waiting for $app to exit!"
   fi
 
   echo && echo "❯ Shutdown completed!"
@@ -71,6 +80,7 @@ _graceful_shutdown() {
   echo && info "Received $1, sending ACPI shutdown signal..."
 
   local pid=""
+  local app="$(app)"
 
   if [ ! -s "$QEMU_PID" ] || ! read -r pid <"$QEMU_PID"; then
     warn "QEMU PID file ($QEMU_PID) does not exist?"
@@ -102,12 +112,10 @@ _graceful_shutdown() {
 
     if [ "$cnt" -ne "$abort" ]; then
       if [ "$cnt" -gt 0 ]; then
-        info "Waiting for $([[ $APP == QEMU ]] && \
-        printf 'the VM' || printf '%s' "$APP") to shut down... ($cnt/$max)"
+        info "Waiting for $app to shut down... ($cnt/$max)"
       fi
     else
-      info "$([[ $APP == QEMU ]] && printf 'the VM' || \
-      printf '%s' "$APP")  is still running, sending SIGTERM... ($cnt/$max)"
+      info "$app is still running, sending SIGTERM... ($cnt/$max)"
       { kill -15 -- "$pid" || true; } 2>/dev/null
     fi
 
