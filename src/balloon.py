@@ -804,5 +804,5 @@ if __name__ == "__main__":
         log.info("Monitor exiting: %s", e)
         sys.exit(0)
     except Exception as e:
-        log.error("Monitor terminated unexpectedly: %s", e, exc_info=e)
+        log.error("Monitor terminated unexpectedly: %s", e, exc_info=True)
         sys.exit(1)
