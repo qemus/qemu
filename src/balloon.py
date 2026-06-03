@@ -679,9 +679,9 @@ class BalloonMonitor:
                     await self._update_balloon()
                 except Exception as e:
                     if isinstance(e, (ConnectionError, BrokenPipeError, OSError, StateError)):
-                        log.warning("QMP connection lost: %s. Reconnecting...", e)
                         if self._stop.is_set():
                             break
+                        log.warning("QMP connection lost: %s. Reconnecting...", e)
                         await self._qmp_reconnect()
                     else:
                         log.error("Unexpected error in main loop: %s", e, exc_info=e)
