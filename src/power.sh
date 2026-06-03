@@ -20,7 +20,7 @@ app() {
   if [[ "$APP" == "QEMU" ]]; then
     echo "the VM" && return 0
   fi
-  
+
   echo "$APP" && return 0
 }
 
@@ -46,20 +46,19 @@ finish() {
           143 ) display="SIGTERM" ;;
         esac
         echo && error "Forcefully terminating $(app), reason: $display..."
-        { kill -9 -- "$pid" && wait $! || :; } 2>/dev/null
+        { kill -9 -- "$pid" || :; } 2>/dev/null
       fi
     fi
   fi
 
   mKill "${pids[@]}"
   closeNetwork
-  
+
   if [ -n "$pid" ] && ! waitPid "$pid" 100; then
     warn "Timed out while waiting for $(app) to exit!"
   fi
 
   echo && echo "❯ Shutdown completed!"
-
   exit "$reason"
 }
 
@@ -90,21 +89,22 @@ _graceful_shutdown() {
     warn "QEMU PID file ($QEMU_PID) does not exist?"
     finish "$code"
   fi
-  
+
   if [ -z "$pid" ] || ! isAlive "$pid"; then
     warn "QEMU process with PID $pid does not exist?"
     finish "$code"
   fi
 
-  local cnt=0 abort=0 factor=2 offset=3 min max
+  local cnt=0 abort=0 factor=3 offset=3 min max name
 
   [[ "$TIMEOUT" =~ ^[0-9]+$ ]] || TIMEOUT=13
-  [ "$TIMEOUT" -ge 15 ] && factor=3 && offset=4
-  [ "$TIMEOUT" -ge 30 ] && factor=4 && offset=5
+  [ "$TIMEOUT" -ge 15 ] && factor=4 && offset=4
+  [ "$TIMEOUT" -ge 30 ] && factor=5 && offset=5
   min=$((factor + offset + 1))
   [ "$TIMEOUT" -lt "$min" ] && TIMEOUT="$min"
   max=$(( TIMEOUT - offset ))
   abort=$(( max - factor ))
+  name="$(app)"
 
   while [ "$cnt" -le "$max" ]; do
 
@@ -117,11 +117,11 @@ _graceful_shutdown() {
 
     if [ "$cnt" -ne "$abort" ]; then
       if [ "$cnt" -gt 0 ]; then
-        info "Waiting for $(app) to shut down... ($cnt/$max)"
+        info "Waiting for $name to shut down... ($cnt/$max)"
       fi
     else
-      info "$(app) is still running, sending SIGTERM... ($cnt/$max)"
-      { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
+      info "${name^} is still running, sending SIGTERM... ($cnt/$max)"
+      { kill -15 -- "$pid" || :; } 2>/dev/null
     fi
 
     # Send ACPI shutdown signal

@@ -54,7 +54,7 @@ waitPid() {
 pKill() {
   local pid="$1"
 
-  { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
+  { kill -15 -- "$pid" || :; } 2>/dev/null
 
   if ! waitPid "$pid" 50; then
     warn "Timed out while waiting for PID $pid"
@@ -89,35 +89,36 @@ fKill() {
   return 0
 }
 
+sKill() {
+  local file="$1" pid=""
+
+  [ ! -s "$file" ] && return 0
+  ! read -r pid <"$file" && return 0
+
+  if [ -n "$pid" ] && isAlive "$pid"; then
+    { kill -15 -- "$pid" || :; } 2>/dev/null
+  fi
+
+  return 0
+}
+
 mKill() {
   local pid="" files=("$@")
 
   for file in "${files[@]}"; do
-
-    [ ! -s "$file" ] && continue
-    
-    if read -r pid <"$file"; then
-      if [ -n "$pid" ]; then
-        { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
-      fi
-    fi
-
+    sKill "$file"
   done
 
   for file in "${files[@]}"; do
 
-    [ -z "$file" ] && continue
+    [ ! -s "$file" ] && continue
+    ! read -r pid <"$file" && continue
+    [ -z "$pid" ] && continue
 
-    if [ -s "$file" ]; then
-      if read -r pid <"$file"; then
-        if [ -n "$pid" ]; then
-          if waitPid "$pid" 50; then
-            rm -f -- "$file"
-          else
-            warn "Timed out while waiting for PID file: $file"
-          fi
-        fi
-      fi
+    if waitPid "$pid" 50; then
+      rm -f -- "$file"
+    else
+      warn "Timed out while waiting for PID file: $file"
     fi
 
   done
