@@ -338,9 +338,9 @@ class BalloonMonitor:
             self._inotify_fd = -1
 
     def _handle_sigint(self) -> None:
-        log.debug("Received SIGINT, terminating.")
+        log.debug("Received termination signal, shutting down.")
+        logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
         self._stop.set()
-        self._loop.remove_signal_handler(signal.SIGINT)
 
     def _get_qmp(self) -> QMPClient:
         if self.qmp is None:
@@ -376,6 +376,7 @@ class BalloonMonitor:
             async for event in self._get_qmp().events:
                 if event["event"] in ("POWERDOWN", "SHUTDOWN"):
                     log.debug("Received %s event, terminating.", event["event"])
+                    logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
                     self._stop.set()
                     return
                 if event["event"] == "BALLOON_CHANGE" and "data" in event:
@@ -658,6 +659,7 @@ class BalloonMonitor:
 
         self._loop = asyncio.get_running_loop()
         self._loop.add_signal_handler(signal.SIGINT, self._handle_sigint)
+        self._loop.add_signal_handler(signal.SIGTERM, self._handle_sigint)
 
         await self._qmp_connect()
         self.max_mem = await qmp_get_max_mem(self._get_qmp())
@@ -692,16 +694,12 @@ class BalloonMonitor:
         finally:
             self._teardown_cgroup_watch()
             self._loop.remove_signal_handler(signal.SIGINT)
+            self._loop.remove_signal_handler(signal.SIGTERM)
             if self.event_task:
                 self.event_task.cancel()
             if self.qmp:
-                qmp_logger = logging.getLogger("qemu.qmp")
-                prev_level = qmp_logger.level
-                qmp_logger.setLevel(logging.WARNING)
-                try:
-                    await self.qmp.disconnect()
-                finally:
-                    qmp_logger.setLevel(prev_level)
+                logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
+                await self.qmp.disconnect()
 
 # ==========================================================
 # Main Execution
