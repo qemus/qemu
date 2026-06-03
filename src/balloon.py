@@ -718,7 +718,13 @@ class BalloonMonitor:
                 self.event_task.cancel()
             if self.qmp:
                 logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
-                await self.qmp.disconnect()
+                try:
+                    await self.qmp.disconnect()
+                except (OSError, StateError) as e:
+                    # Expected during shutdown if QMP is already disconnected; safe to ignore.
+                    log.debug("Ignoring QMP disconnect error during shutdown: %s", e)
+                except Exception as e:
+                    log.debug("QMP disconnect during shutdown failed: %s", e, exc_info=True)
 
 # ==========================================================
 # Main Execution
@@ -801,6 +807,9 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         log.debug("Monitor stopped by user.")
+        sys.exit(0)
+    except asyncio.CancelledError:
+        log.info("Monitor exiting: cancelled")
         sys.exit(0)
     except ConnectionError as e:
         log.info("Monitor exiting: %s", e)
