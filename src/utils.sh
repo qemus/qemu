@@ -132,8 +132,8 @@ sKill() {
 
 mKill() {
   local pid=""
+  local timeout=10
   local files=("$@")
-  local timeout="${2:-10}"
 
   for file in "${files[@]}"; do
     sKill "$file"
