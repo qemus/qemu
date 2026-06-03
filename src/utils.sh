@@ -40,12 +40,12 @@ isAlive() {
 waitPid() {
   local i=0
   local pid="$1"
-  local timeout="${2:-50}"
+  local timeout="${2:-10}"
 
   while [ -n "$pid" ] && isAlive "$pid"; do
     sleep 0.2
     i=$((i + 1))
-    [ "$i" -ge "$timeout" ] && return 1
+    (( i >= timeout * 5 )) && return 1
   done
 
   return 0
@@ -53,7 +53,7 @@ waitPid() {
 
 pKill() {
   local pid="$1"
-  local timeout="${2:-50}"
+  local timeout="${2:-10}"
 
   { kill -15 -- "$pid" || :; } 2>/dev/null
 
@@ -65,13 +65,16 @@ pKill() {
 }
 
 fWait() {
-  local name="$1" i=0
+  local i=0
+  local name="$1"
+  local timeout="${2:-10}"
+
   [ -z "$name" ] && return 0
 
   while pgrep -f -l "$name" >/dev/null; do
     sleep 0.2
     i=$((i + 1))
-    if [ "$i" -ge 50 ]; then
+    if (( i >= timeout * 5 )); then
       warn "Timed out while waiting for process: $name"
       break
     fi
@@ -91,7 +94,8 @@ fKill() {
 }
 
 sKill() {
-  local file="$1" pid=""
+  local pid=""
+  local file="$1"
 
   [ ! -s "$file" ] && return 0
   ! read -r pid <"$file" && return 0
@@ -104,7 +108,9 @@ sKill() {
 }
 
 mKill() {
-  local pid="" files=("$@")
+  local pid=""
+  local files=("$@")
+  local timeout="${2:-10}"
 
   for file in "${files[@]}"; do
     sKill "$file"
@@ -116,7 +122,7 @@ mKill() {
     ! read -r pid <"$file" && continue
     [ -z "$pid" ] && continue
 
-    if waitPid "$pid" 50; then
+    if waitPid "$pid" "$timeout"; then
       rm -f -- "$file"
     else
       warn "Timed out while waiting for PID file: $file"
