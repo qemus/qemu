@@ -46,7 +46,7 @@ finish() {
           143 ) display="SIGTERM" ;;
         esac
         echo && error "Forcefully terminating $(app), reason: $display..."
-        { kill -9 -- "$pid" && wait $! || :; } 2>/dev/null
+        { kill -9 -- "$pid" || :; } 2>/dev/null
       fi
     fi
   fi
@@ -121,7 +121,7 @@ _graceful_shutdown() {
       fi
     else
       info "${name^} is still running, sending SIGTERM... ($cnt/$max)"
-      { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
+      { kill -15 -- "$pid" || :; } 2>/dev/null
     fi
 
     # Send ACPI shutdown signal
