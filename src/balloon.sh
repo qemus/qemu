@@ -66,6 +66,6 @@ balloon() {
 msg="Starting memory ballooning monitor..."
 info "$msg"
 
-( ballooning ) &
+( balloon ) &
 
 return 0
