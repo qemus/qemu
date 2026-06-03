@@ -695,8 +695,13 @@ class BalloonMonitor:
             if self.event_task:
                 self.event_task.cancel()
             if self.qmp:
-                logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
-                await self.qmp.disconnect()
+                qmp_logger = logging.getLogger("qemu.qmp")
+                prev_level = qmp_logger.level
+                qmp_logger.setLevel(logging.WARNING)
+                try:
+                    await self.qmp.disconnect()
+                finally:
+                    qmp_logger.setLevel(prev_level)
 
 # ==========================================================
 # Main Execution
