@@ -54,7 +54,7 @@ waitPid() {
 pKill() {
   local pid="$1"
 
-  { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
+  { kill -15 -- "$pid" || :; } 2>/dev/null
 
   if ! waitPid "$pid" 50; then
     warn "Timed out while waiting for PID $pid"
@@ -96,7 +96,7 @@ sKill() {
   ! read -r pid <"$file" && return 0
 
   if [ -n "$pid" ] && isAlive "$pid"; then
-    { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
+    { kill -15 -- "$pid" || :; } 2>/dev/null
   fi
 
   return 0
