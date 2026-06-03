@@ -720,7 +720,7 @@ class BalloonMonitor:
                 logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
                 try:
                     await self.qmp.disconnect()
-                except (ConnectionError, BrokenPipeError, OSError, StateError) as e:
+                except (OSError, StateError) as e:
                     # Expected during shutdown if QMP is already disconnected; safe to ignore.
                     log.debug("Ignoring QMP disconnect error during shutdown: %s", e)
                 except Exception as e:
