@@ -46,7 +46,7 @@ finish() {
           143 ) display="SIGTERM" ;;
         esac
         echo && error "Forcefully terminating $(app), reason: $display..."
-        { kill -9 -- "$pid" || :; } 2>/dev/null
+        { disown "$pid" || :; kill -9 -- "$pid" || :; } 2>/dev/null
       fi
     fi
   fi
@@ -54,7 +54,7 @@ finish() {
   mKill "${pids[@]}"
   closeNetwork
 
-  if [ -n "$pid" ] && ! waitPid "$pid" 100; then
+  if ! waitPidFile "$QEMU_PID" 10; then
     warn "Timed out while waiting for $(app) to exit!"
   fi
 

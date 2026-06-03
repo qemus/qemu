@@ -213,9 +213,24 @@ async def _get_host_qemu_guest_mem_rss(qmp: QMPClient, qemu_pid: int) -> Optiona
 # QMP helpers using qemu.qmp
 # ==========================================================
 
-async def qmp_wait_connected(sock_path: str, interval: int = 5) -> QMPClient:
-    """Create and connect a QMPClient, retrying until successful."""
+def _is_process_alive(pid: int) -> bool:
+    """Check if a process with the given PID is still running."""
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+async def qmp_wait_connected(sock_path: str, interval: int = 5, qemu_pid: int = -1) -> QMPClient:
+    """Create and connect a QMPClient, retrying until successful or QEMU exits."""
     while True:
+        if qemu_pid > 0 and not _is_process_alive(qemu_pid):
+            raise ConnectionError("QEMU process (pid %d) is no longer running" % qemu_pid)
         qmp = QMPClient("balloon-monitor")
         try:
             await qmp.connect(sock_path)
@@ -367,7 +382,7 @@ class BalloonMonitor:
         )
 
     async def _qmp_connect(self) -> None:
-        self.qmp = await qmp_wait_connected(self.args.qmp_sock, self.args.interval)
+        self.qmp = await qmp_wait_connected(self.args.qmp_sock, self.args.interval, self.qemu_pid)
         self.event_task = asyncio.create_task(self._qmp_event_listener())
         self._record_balloon(await qmp_get_actual_balloon(self.qmp))
 
@@ -389,6 +404,10 @@ class BalloonMonitor:
             log.debug("QMP event listener stopped: %s", e)
 
     async def _qmp_reconnect(self) -> None:
+        if self.qemu_pid > 0 and not _is_process_alive(self.qemu_pid):
+            log.info("QEMU process (pid %d) has exited, shutting down.", self.qemu_pid)
+            self._stop.set()
+            return
         if self.qmp:
             try:
                 await self.qmp.disconnect()
@@ -759,15 +778,20 @@ def main() -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+    qmp_logger = logging.getLogger("qemu.qmp")
+    # Suppress noisy qemu.qmp internal messages (e.g. "end-of-file") unless debug is requested
+    qmp_logger.setLevel(logging.WARNING)
+
     if args.debug is not None:
         targets = {t.strip() for t in args.debug.split(",")}
         if "all" in targets:
             logging.getLogger().setLevel(logging.DEBUG)
+            qmp_logger.setLevel(logging.DEBUG)
         else:
             if "controller" in targets:
                 logging.getLogger(__name__).setLevel(logging.DEBUG)
             if "qmp" in targets:
-                logging.getLogger("qemu.qmp").setLevel(logging.DEBUG)
+                qmp_logger.setLevel(logging.DEBUG)
 
     monitor = BalloonMonitor(args)
     asyncio.run(monitor.start())
@@ -778,3 +802,9 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log.debug("Monitor stopped by user.")
         sys.exit(0)
+    except ConnectionError as e:
+        log.info("Monitor exiting: %s", e)
+        sys.exit(0)
+    except Exception as e:
+        log.error("Monitor terminated unexpectedly: %s", e, exc_info=True)
+        sys.exit(1)
