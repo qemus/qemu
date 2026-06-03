@@ -38,7 +38,7 @@ finish() {
     if read -r pid <"$QEMU_PID"; then
       if [ -n "$pid" ] && isAlive "$pid"; then
         echo && error "Forcefully terminating $(app), reason: $reason..."
-        { kill -9 -- "$pid" || :; } 2>/dev/null
+        { kill -9 -- "$pid" && wait $! || :; } 2>/dev/null
       fi
     fi
   fi
@@ -78,8 +78,6 @@ _graceful_shutdown() {
   touch "$QEMU_END"
   echo && info "Received $1, sending ACPI shutdown signal..."
 
-  local pid=""
-
   if [ ! -s "$QEMU_PID" ] || ! read -r pid <"$QEMU_PID"; then
     warn "QEMU PID file ($QEMU_PID) does not exist?"
     finish "$code"
@@ -115,7 +113,7 @@ _graceful_shutdown() {
       fi
     else
       info "$(app) is still running, sending SIGTERM... ($cnt/$max)"
-      { kill -15 -- "$pid" || true; } 2>/dev/null
+      { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
     fi
 
     # Send ACPI shutdown signal
