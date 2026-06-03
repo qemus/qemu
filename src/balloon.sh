@@ -57,10 +57,12 @@ balloon() {
 
   python3 ./balloon.py --qmp-sock "$QEMU_DIR/qemu-qmp-ballooning.sock" --qemu-pid-file "$QEMU_PID" "${BALLOON_ARGS[@]}" &
   BALLOONING_PID="$!"
+  wait "$BALLOONING_PID"
 }
 
 msg="Starting memory ballooning monitor..."
 info "$msg"
 
-balloon
+( ballooning ) &
+
 return 0
