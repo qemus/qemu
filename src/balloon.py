@@ -802,7 +802,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt:
         log.debug("Monitor stopped by user.")
         sys.exit(0)
-    except OSError as e:
+    except ConnectionError as e:
         log.info("Monitor exiting: %s", e)
         sys.exit(0)
     except Exception as e:
