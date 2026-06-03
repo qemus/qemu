@@ -59,7 +59,6 @@ finish() {
   fi
 
   echo && echo "❯ Shutdown completed!"
-
   exit "$reason"
 }
 
