@@ -131,7 +131,6 @@ sKill() {
 }
 
 mKill() {
-  local pid=""
   local timeout=10
   local files=("$@")
 
