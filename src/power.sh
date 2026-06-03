@@ -38,7 +38,7 @@ finish() {
     if read -r pid <"$QEMU_PID"; then
       if [ -n "$pid" ] && isAlive "$pid"; then
         echo && error "Forcefully terminating $(app), reason: $reason..."
-        { kill -9 -- "$pid" || :; } 2>/dev/null
+        { kill -9 -- "$pid" && wait $! || :; } 2>/dev/null
       fi
     fi
   fi
