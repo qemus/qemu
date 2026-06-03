@@ -778,18 +778,20 @@ def main() -> None:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
+    qmp_logger = logging.getLogger("qemu.qmp")
     # Suppress noisy qemu.qmp internal messages (e.g. "end-of-file") unless debug is requested
-    logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
+    qmp_logger.setLevel(logging.WARNING)
 
     if args.debug is not None:
         targets = {t.strip() for t in args.debug.split(",")}
         if "all" in targets:
             logging.getLogger().setLevel(logging.DEBUG)
+            qmp_logger.setLevel(logging.DEBUG)
         else:
             if "controller" in targets:
                 logging.getLogger(__name__).setLevel(logging.DEBUG)
             if "qmp" in targets:
-                logging.getLogger("qemu.qmp").setLevel(logging.DEBUG)
+                qmp_logger.setLevel(logging.DEBUG)
 
     monitor = BalloonMonitor(args)
     asyncio.run(monitor.start())
