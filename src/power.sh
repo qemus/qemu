@@ -113,7 +113,7 @@ _graceful_shutdown() {
       fi
     else
       info "$(app) is still running, sending SIGTERM... ($cnt/$max)"
-      { kill -15 -- "$pid" || true; } 2>/dev/null
+      { kill -15 -- "$pid" && wait $! || :; } 2>/dev/null
     fi
 
     # Send ACPI shutdown signal
