@@ -29,7 +29,7 @@ finish() {
   local i=0
   local pid=""
   local reason=$1
-  local pids=( "$TPM_PID" "$WSD_PID" "$WEB_PID" "$PASST_PID" "$DNSMASQ_PID" )
+  local pids=( "$TPM_PID" "$WSD_PID" "$WEB_PID" "$PASST_PID" "$DNSMASQ_PID" "${BALLOONING_PID:-}" )
 
   touch "$QEMU_END"
   (( reason != 0 )) && (( reason != 143 )) && echo "QEMU exitcode: $reason"
