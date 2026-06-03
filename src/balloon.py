@@ -724,7 +724,7 @@ class BalloonMonitor:
                     # Expected during shutdown if QMP is already disconnected; safe to ignore.
                     log.debug("Ignoring QMP disconnect error during shutdown: %s", e)
                 except Exception as e:
-                    log.debug("QMP disconnect during shutdown failed: %s", e)
+                    log.debug("QMP disconnect during shutdown failed: %s", e, exc_info=True)
 
 # ==========================================================
 # Main Execution
