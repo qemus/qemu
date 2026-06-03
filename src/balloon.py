@@ -15,6 +15,7 @@ import time
 from typing import Any, Deque, Dict, Optional, Tuple, cast
 
 from qemu.qmp import QMPClient
+from qemu.qmp.protocol import StateError
 
 log = logging.getLogger(__name__)
 
@@ -677,8 +678,10 @@ class BalloonMonitor:
                 try:
                     await self._update_balloon()
                 except Exception as e:
-                    if isinstance(e, (ConnectionError, BrokenPipeError, OSError)):
+                    if isinstance(e, (ConnectionError, BrokenPipeError, OSError, StateError)):
                         log.warning("QMP connection lost: %s. Reconnecting...", e)
+                        if self._stop.is_set():
+                            break
                         await self._qmp_reconnect()
                     else:
                         log.error("Unexpected error in main loop: %s", e, exc_info=e)
@@ -692,6 +695,7 @@ class BalloonMonitor:
             if self.event_task:
                 self.event_task.cancel()
             if self.qmp:
+                logging.getLogger("qemu.qmp").setLevel(logging.WARNING)
                 await self.qmp.disconnect()
 
 # ==========================================================
