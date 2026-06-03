@@ -40,7 +40,7 @@ isAlive() {
 waitPid() {
   local i=0
   local pid="$1"
-  local timeout="$2"
+  local timeout="${2:-50}"
 
   while [ -n "$pid" ] && isAlive "$pid"; do
     sleep 0.2
@@ -53,10 +53,11 @@ waitPid() {
 
 pKill() {
   local pid="$1"
+  local timeout="${2:-50}"
 
   { kill -15 -- "$pid" || :; } 2>/dev/null
 
-  if ! waitPid "$pid" 50; then
+  if ! waitPid "$pid" "$timeout"; then
     warn "Timed out while waiting for PID $pid"
   fi
 
