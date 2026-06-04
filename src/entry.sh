@@ -32,7 +32,7 @@ info "Booting image${BOOT_DESC} using QEMU v$version..."
 [[ "$SHUTDOWN" != [Yy1]* ]] && exec qemu-system-x86_64 ${ARGS:+ $ARGS}
 
 if [ ! -t 1 ] || [ ! -c /dev/tty ]; then
-  qemu-system-x86_64 ${ARGS:+ $ARGS} &
+  qemu-system-x86_64 ${ARGS:+ $ARGS} </dev/null &
 else
   qemu-system-x86_64 ${ARGS:+ $ARGS} </dev/tty >/dev/tty &
 fi
