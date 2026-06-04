@@ -26,15 +26,18 @@ cd /run
 
 trap - ERR
 
-version=$(qemu-system-x86_64 --version | head -n 1 | cut -d '(' -f 1 | awk '{ print $NF }')
+cmd=(qemu-system-x86_64)
+version=$("${cmd[@]}" --version | awk 'NR==1 { print $4 }')
 info "Booting image${BOOT_DESC} using QEMU v$version..."
 
-[[ "$SHUTDOWN" != [Yy1]* ]] && exec qemu-system-x86_64 ${ARGS:+ $ARGS}
+if [[ "$SHUTDOWN" != [Yy1]* ]]; then
+  exec "${cmd[@]}" ${ARGS:+ $ARGS}
+fi
 
 if [ ! -t 1 ] || [ ! -c /dev/tty ]; then
-  qemu-system-x86_64 ${ARGS:+ $ARGS} &
+  "${cmd[@]}" ${ARGS:+ $ARGS} &
 else
-  qemu-system-x86_64 ${ARGS:+ $ARGS} </dev/tty >/dev/tty &
+  "${cmd[@]}" ${ARGS:+ $ARGS} </dev/tty >/dev/tty &
 fi
 
 rc=0
