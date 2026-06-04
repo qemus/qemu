@@ -65,7 +65,7 @@ if [[ "${RAM_SIZE,,}" == "max" ]]; then
   wanted=$(( wanted / 1048577 ))
   RAM_SIZE="${wanted}M"
 
-  info "Allocated $wanted MB of RAM for the virtual machine."
+  info "Allocated $wanted MB of RAM for $(app)."
 
 fi
 
