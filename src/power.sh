@@ -9,7 +9,8 @@ set -Eeuo pipefail
 QEMU_END="$QEMU_DIR/qemu.end"
 
 _trap() {
-  local sig func="$1"; shift
+  local func="$1"; shift
+  local sig
   TRAP_PID=$BASHPID
 
   for sig; do
