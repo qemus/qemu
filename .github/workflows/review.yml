@@ -13,15 +13,16 @@ jobs:
     name: review
     runs-on: ubuntu-latest
     steps:
-      - 
+      -
         name: Checkout code
         uses: actions/checkout@v6
-      - 
+      -
         name: Spelling
         uses: reviewdog/action-misspell@v1
         with:
           locale: "US"
           level: warning
+          fail_level: error
           pattern: |
             *.md
             *.sh
@@ -32,6 +33,7 @@ jobs:
         uses: reviewdog/action-hadolint@v1
         with:
           level: warning
+          fail_level: error
           reporter: github-pr-review
           hadolint_ignore: DL3003 DL3006 DL3008
           github_token: ${{ secrets.GITHUB_TOKEN }}
@@ -40,6 +42,7 @@ jobs:
         uses: reviewdog/action-yamllint@v1
         with:
           level: warning
+          fail_level: error
           reporter: github-pr-review
           github_token: ${{ secrets.GITHUB_TOKEN }}
       -
@@ -55,6 +58,7 @@ jobs:
         if: false
         with:
           level: warning
+          fail_on_error: "true"
           shfmt_flags: "-i 2 -ci -bn"
           github_token: ${{ secrets.GITHUB_TOKEN }}
       -
@@ -62,6 +66,7 @@ jobs:
         uses: reviewdog/action-shellcheck@v1
         with:
           level: warning
+          fail_level: error
           reporter: github-pr-review
           shellcheck_flags: -x -e SC2001 -e SC2034 -e SC2064 -e SC2317 -e SC2153 -e SC1091
           github_token: ${{ secrets.GITHUB_TOKEN }}
