@@ -9,8 +9,9 @@ set -Eeuo pipefail
 QEMU_END="$QEMU_DIR/qemu.end"
 
 _trap() {
-  local func="$1"; shift
-  local sig
+  local sig func="$1"; shift
+  TRAP_PID=$BASHPID
+
   for sig; do
     trap "$func $sig" "$sig"
   done
@@ -62,11 +63,13 @@ finish() {
   exit "$reason"
 }
 
-_graceful_shutdown() {
+graceful_shutdown() {
 
   local sig="$1"
   local pid=""
   local code=0
+
+  [[ $BASHPID != "$TRAP_PID" ]] && return
 
   case "$sig" in
     SIGHUP)  code=129 ;;
@@ -140,6 +143,6 @@ _graceful_shutdown() {
 [[ "$SHUTDOWN" != [Yy1]* ]] && return 0
 [ -n "${QEMU_TIMEOUT:-}" ] && TIMEOUT="$QEMU_TIMEOUT"
 
-_trap _graceful_shutdown SIGTERM SIGHUP SIGINT SIGABRT SIGQUIT
+_trap graceful_shutdown SIGTERM SIGHUP SIGINT SIGABRT SIGQUIT
 
 return 0
