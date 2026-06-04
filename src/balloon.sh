@@ -64,7 +64,8 @@ balloon() {
 }
 
 msg="Starting memory ballooning monitor..."
-info "$msg"
+html "$msg"
+[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
 
 ( balloon ) &
 
