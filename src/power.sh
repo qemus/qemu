@@ -34,7 +34,6 @@ finish() {
   local pids=( "$TPM_PID" "$WSD_PID" "$WEB_PID" "$PASST_PID" "$DNSMASQ_PID" "${BALLOONING_PID:-}" )
 
   touch "$QEMU_END"
-  (( reason > 1 )) && (( reason < 129 )) && echo "QEMU exitcode: $reason"
 
   if [ -s "$QEMU_PID" ]; then
     if read -r pid <"$QEMU_PID"; then
@@ -60,7 +59,7 @@ finish() {
     warn "Timed out while waiting for $(app) to exit!"
   fi
 
-  echo && echo "❯ Shutdown completed!"
+  (( reason != 1 )) && echo && echo "❯ Shutdown completed!"
   exit "$reason"
 }
 
