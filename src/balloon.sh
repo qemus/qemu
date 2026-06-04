@@ -33,7 +33,6 @@ rm -f "$BALLOONING_PID"
 # may be killed by the OOM killer if the ballooning driver cannot reclaim memory from the guest fast enough.
 
 balloon() {
-  trap - SIGTERM SIGHUP SIGINT SIGABRT SIGQUIT
 
   # Wait for qemu PID file to be created
   while [ ! -f "$QEMU_PID" ]; do

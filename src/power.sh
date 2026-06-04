@@ -11,6 +11,8 @@ QEMU_END="$QEMU_DIR/qemu.end"
 _trap() {
   local func="$1"; shift
   local sig
+  TRAP_PID=$BASHPID
+
   for sig; do
     trap "$func $sig" "$sig"
   done
@@ -32,7 +34,7 @@ finish() {
   local pids=( "$TPM_PID" "$WSD_PID" "$WEB_PID" "$PASST_PID" "$DNSMASQ_PID" "${BALLOONING_PID:-}" )
 
   touch "$QEMU_END"
-  (( reason != 0 )) && (( reason < 129 )) && echo "QEMU exitcode: $reason"
+  (( reason > 1 )) && (( reason < 129 )) && echo "QEMU exitcode: $reason"
 
   if [ -s "$QEMU_PID" ]; then
     if read -r pid <"$QEMU_PID"; then
@@ -45,7 +47,7 @@ finish() {
           134 ) display="SIGABRT" ;;
           143 ) display="SIGTERM" ;;
         esac
-        echo && error "Forcefully terminating $(app), reason: $display..."
+        error "Forcefully terminating $(app), reason: $display..."
         { disown "$pid" || :; kill -9 -- "$pid" || :; } 2>/dev/null
       fi
     fi
@@ -62,11 +64,13 @@ finish() {
   exit "$reason"
 }
 
-_graceful_shutdown() {
+graceful_shutdown() {
 
   local sig="$1"
   local pid=""
   local code=0
+
+  [[ $BASHPID != "$TRAP_PID" ]] && return
 
   case "$sig" in
     SIGHUP)  code=129 ;;
@@ -140,6 +144,6 @@ _graceful_shutdown() {
 [[ "$SHUTDOWN" != [Yy1]* ]] && return 0
 [ -n "${QEMU_TIMEOUT:-}" ] && TIMEOUT="$QEMU_TIMEOUT"
 
-_trap _graceful_shutdown SIGTERM SIGHUP SIGINT SIGABRT SIGQUIT
+_trap graceful_shutdown SIGTERM SIGHUP SIGINT SIGABRT SIGQUIT
 
 return 0
