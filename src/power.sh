@@ -129,7 +129,7 @@ graceful_shutdown() {
 
     # Send ACPI shutdown signal
     if [ -S "$QEMU_DIR/monitor.sock" ]; then
-      nc -q 1 -w 1 -U "$QEMU_DIR/monitor.sock" > /dev/null <<<'system_powerdown' || :
+      nc -q 1 -w 1 -U "$QEMU_DIR/monitor.sock" &> /dev/null <<<'system_powerdown' || :
     fi
 
     wait $slp
@@ -143,6 +143,6 @@ graceful_shutdown() {
 [[ "$SHUTDOWN" != [Yy1]* ]] && return 0
 [ -n "${QEMU_TIMEOUT:-}" ] && TIMEOUT="$QEMU_TIMEOUT"
 
-_trap graceful_shutdown SIGTERM SIGHUP SIGINT SIGABRT SIGQUIT
+_trap graceful_shutdown SIGTERM SIGHUP SIGABRT SIGQUIT
 
 return 0
