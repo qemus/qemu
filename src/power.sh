@@ -20,7 +20,7 @@ _trap() {
 
 app() {
   if [[ "$APP" == "QEMU" ]]; then
-    echo "the VM" && return 0
+    echo "the virtual machine" && return 0
   fi
 
   echo "$APP" && return 0
