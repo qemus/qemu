@@ -13,9 +13,10 @@ jobs:
     name: review
     runs-on: ubuntu-latest
     steps:
-      -
-        name: Checkout code
-        uses: actions/checkout@v7
+    -
+      name: Checkout code
+      uses: actions/checkout@v7
+    - parallel:
       -
         name: Spelling
         uses: reviewdog/action-misspell@v1
