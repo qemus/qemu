@@ -10,9 +10,6 @@ jobs:
     -
       name: Checkout
       uses: actions/checkout@v7
-    -
-      name: Checkout code
-      uses: actions/checkout@v7
     - parallel:
       -
         name: Run ShellCheck
