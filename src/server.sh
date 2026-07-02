@@ -15,8 +15,7 @@ if (( VNC_PORT < 5900 )); then
 fi
 
 cp -r /var/www/* "$QEMU_DIR"
-rm -f "$WSD_PID"
-rm -f "$WEB_PID"
+rm -f "$WSD_PID" "$WEB_PID"
 
 html "Starting $APP for $ENGINE..."
 
