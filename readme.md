@@ -21,6 +21,8 @@ Docker container for running virtual machines using QEMU.
 
   - High-performance options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed
 
+  - USB passthrough and host file sharing
+
 ## Usage  🐳
 
 ##### Via Docker Compose:
@@ -325,9 +327,9 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     - ./example3:/storage3
   ```
 
-### How do I pass-through a disk?
+### How do I pass through a disk?
 
-  It is possible to pass-through disk devices or partitions directly by adding them to your compose file in this way:
+  You can pass through disk devices or partitions directly by adding them to your compose file in this way:
 
   ```yaml
   devices:
@@ -337,9 +339,9 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   Use `/disk1` if you want it to become your main drive, and use `/disk2` and higher to add them as secondary drives.
 
-### How do I pass-through a USB device?
+### How do I pass through a USB device?
 
-  To pass-through a USB device, first look up its vendor and product ID via the `lsusb` command, then add them to your compose file like this:
+  To pass through a USB device, first look up its vendor and product ID via the `lsusb` command, then add them to your compose file like this:
 
   ```yaml
   environment:
