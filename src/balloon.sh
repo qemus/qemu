@@ -4,8 +4,10 @@ set -Eeuo pipefail
 : "${BALLOONING:="N"}"
 : "${BALLOONING_DEBUG:="N"}"
 : "${BALLOONING_PID:="$QEMU_DIR/balloon.pid"}"
+: "${BALLOONING_SOCKET:="$QEMU_DIR/qemu-qmp-ballooning.sock"}"
 
-rm -f "$BALLOONING_PID"
+rm -f "$BALLOONING_PID" "$BALLOONING_SOCKET"
+
 [[ "$BALLOONING" != [Yy1]* ]] && return 0
 
 # By default, the VM is allocated the full amount of RAM configured via RAM_SIZE for its entire lifetime, but if you want
@@ -56,7 +58,7 @@ balloon() {
     BALLOON_ARGS+=(--debug "$BALLOONING_DEBUG")
   fi
 
-  python3 ./balloon.py --qmp-sock "$QEMU_DIR/qemu-qmp-ballooning.sock" --qemu-pid-file "$QEMU_PID" "${BALLOON_ARGS[@]}" &
+  python3 ./balloon.py --qmp-sock "$BALLOONING_SOCKET" --qemu-pid-file "$QEMU_PID" "${BALLOON_ARGS[@]}" &
   local pid="$!"
   echo "$pid" > "$BALLOONING_PID"
   wait "$pid" || :
