@@ -156,13 +156,23 @@ if [ -s "$PS" ] && [ -r "$PS" ]; then
 
 fi
 
+SWTPM="/run/swtpm"
 TPM_PID="/var/run/tpm.pid"
-rm -f "$TPM_PID"
+TPM_SOCKET="/tmp/swtpm.sock"
+
+rm -f "$TPM_PID" "$TPM_SOCKET"
 
 if [[ "$TPM" == [Yy1]* ]]; then
 
-  { swtpm socket -t -d --tpmstate "backend-uri=file://$DEST.tpm" \
-     --ctrl type=unixio,path=/run/swtpm-sock --pid "file=$TPM_PID" --tpm2; rc=$?; } || :
+  # Workaround to circumvent AppArmor profile
+  [ ! -f "$SWTPM" ] && cp /usr/bin/swtpm* /run
+
+  { "$SWTPM" socket -t -d --tpm2 \
+      --tpmstate "backend-uri=file://$DEST.tpm" \
+      --ctrl "type=unixio,path=$TPM_SOCKET" \
+      --pid "file=$TPM_PID"
+    rc=$?
+  } || :
 
   if (( rc != 0 )); then
     error "Failed to start TPM emulator, reason: $rc"
@@ -170,21 +180,22 @@ if [[ "$TPM" == [Yy1]* ]]; then
 
     for (( i = 1; i < 25; i++ )); do
 
-      [ -S "/run/swtpm-sock" ] && break
+      [ -S "$TPM_SOCKET" ] && break
 
-      if (( i % 10 == 0 )); then
-        echo "Waiting for TPM emulator to become available..."
+      if (( i % 5 == 0 )); then
+        echo "Waiting for TPM emulator to launch..."
       fi
 
-      sleep 0.2
+      sleep 0.25
 
     done
 
-    if [ ! -S "/run/swtpm-sock" ]; then
-      error "TPM socket not found? Disabling TPM module..."
+    if [ ! -S "$TPM_SOCKET" ]; then
+      error "TPM socket ($TPM_SOCKET) not found? Disabling TPM module..."
     else
-      BOOT_OPTS+=" -chardev socket,id=chrtpm,path=/run/swtpm-sock"
-      BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0"
+      BOOT_OPTS+=" -chardev socket,id=chrtpm,path=$TPM_SOCKET"
+      BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm"
+      BOOT_OPTS+=" -device tpm-tis,tpmdev=tpm0"
     fi
 
   fi
