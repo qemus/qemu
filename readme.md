@@ -25,7 +25,7 @@ Docker container for running virtual machines using QEMU.
 
 ## Usage  🐳
 
-##### Via Docker Compose:
+##### Docker Compose:
 
 ```yaml
 services:
@@ -47,21 +47,30 @@ services:
     stop_grace_period: 2m
 ```
 
-##### Via Docker CLI:
+##### Docker CLI:
 
 ```bash
 docker run -it --rm --name qemu -e "BOOT=mint" -p 8006:8006 --device=/dev/kvm --device=/dev/net/tun --cap-add NET_ADMIN -v "${PWD:-.}/qemu:/storage" --stop-timeout 120 docker.io/qemux/qemu
 ```
 
-##### Via Kubernetes:
+##### Kubernetes:
 
 ```shell
 kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/kubernetes.yml
 ```
 
-##### Via GitHub Codespaces:
+##### GitHub Codespaces:
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/qemus/qemu)
+
+## Requirements ⚙️
+
+- A Linux host with KVM support, or Docker Desktop / Podman on Windows 11 with nested virtualization enabled.
+- At least 2 GB of RAM available.
+- At least 64 GB of free disk space.
+
+> [!NOTE]
+> Docker Desktop on macOS and Windows 10 do not currently provide the required KVM support for this image.
 
 ## FAQ 💬
 
