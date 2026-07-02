@@ -21,7 +21,7 @@ Docker container for running virtual machines using QEMU.
 
   - High-performance options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed
 
-  - USB passthrough and host folder sharing
+  - USB pass through and host folder sharing
 
 ## Usage  🐳
 
