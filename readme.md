@@ -57,7 +57,7 @@ docker run -it --rm --name qemu -e "BOOT=mint" -p 8006:8006 --device=/dev/kvm --
 kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/kubernetes.yml
 ```
 
-##### Via Github Codespaces:
+##### Via GitHub Codespaces:
 
 [![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/qemus/qemu)
 
@@ -166,7 +166,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   ```
 
 > [!TIP]
-> This can also be used to resize the existing disk to a larger capacity without any data loss. However you will need to manually extend the disk partition afterwards inside your OS, since the added disk space will appear as unallocated.
+> This can also be used to resize an existing disk to a larger capacity without any data loss. However you will need to manually extend the disk partition afterwards inside your OS, since the added disk space will appear as unallocated.
 
 ### How do I change the amount of CPU or RAM?
 
