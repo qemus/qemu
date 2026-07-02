@@ -463,10 +463,15 @@ addMedia () {
 
 finishDisks () {
 
-  case "${DISK_TYPE,,}" in
-    "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
-      DISK_OPTS+=" -object iothread,id=io2" ;;
-  esac
+  local type
+
+  for type in "${DISK_TYPE,,}" "${MEDIA_TYPE,,}"; do
+    case "$type" in
+      "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
+        [[ "$DISK_OPTS" != *" -object iothread,id=io2"* ]] && DISK_OPTS+=" -object iothread,id=io2"
+        break ;;
+    esac
+  done
 
   if [[ "$DISK_DISABLE" != [Yy1]* ]]; then
     html "Initialized disks successfully..."
