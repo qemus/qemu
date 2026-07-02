@@ -350,7 +350,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### How do I pass through a USB device?
 
-  To pass through a USB device, first look up its vendor and product ID via the `lsusb` command, then add them to your compose file like this:
+  To pass through a USB device, first look up its vendor and product IDs via the `lsusb` command, then add them to your compose file like this:
 
   ```yaml
   environment:
