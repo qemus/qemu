@@ -65,9 +65,9 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ## Requirements ⚙️
 
-- A Linux host with KVM support, or Docker Desktop / Podman on Windows 11 with nested virtualization enabled.
-- At least 2 GB of RAM available.
-- At least 64 GB of free disk space.
+  - A Linux host with KVM support, or Docker Desktop / Podman on Windows 11 with nested virtualization enabled.
+  - At least 2 GB of RAM available.
+  - At least 64 GB of free disk space.
 
 > [!NOTE]
 > Docker Desktop on macOS and Windows 10 do not currently provide the required KVM support for this image.
