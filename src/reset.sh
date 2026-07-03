@@ -23,6 +23,16 @@ enabled "${TRACE:-}" && set -o functrace && trap 'echo "# $BASH_COMMAND" >&2' DE
 : "${BOOT_INDEX:="9"}"     # Boot index of CD drive
 : "${STORAGE:="/storage"}" # Storage folder location
 
+KVM="${KVM// /}"
+DEBUG="${DEBUG// /}"
+MACHINE="${MACHINE// /}"
+ALLOCATE="${ALLOCATE// /}"
+RAM_CHECK="${RAM_CHECK// /}"
+DISK_SIZE="${DISK_SIZE// /}"
+BOOT_MODE="${BOOT_MODE// /}"
+BOOT_INDEX="${BOOT_INDEX// /}"
+STORAGE="${STORAGE// /}"
+
 # Helper variables
 
 ROOTLESS="N"

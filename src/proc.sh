@@ -8,6 +8,11 @@ set -Eeuo pipefail
 : "${CPU_FLAGS:=""}"
 : "${CPU_MODEL:=""}"
 
+HV="${HV// /}"
+VMX="${VMX// /}"
+CPU_FLAGS="${CPU_FLAGS// /}"
+CPU_MODEL="${CPU_MODEL// /}"
+
 enabled "$DEBUG" && echo "Configuring KVM..."
 
 vendor=$(lscpu | awk '/Vendor ID/{print $3}')

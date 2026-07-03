@@ -4,6 +4,9 @@ set -Eeuo pipefail
 : "${SHUTDOWN:="Y"}"        # Graceful ACPI shutdown
 : "${TIMEOUT:="13"}"        # QEMU termination timeout
 
+SHUTDOWN="${SHUTDOWN// /}"
+TIMEOUT="${TIMEOUT// /}"
+
 # Configure QEMU for graceful shutdown
 
 QEMU_END="$QEMU_DIR/qemu.end"
