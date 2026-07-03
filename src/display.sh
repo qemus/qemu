@@ -8,6 +8,11 @@ set -Eeuo pipefail
 : "${DISPLAY:="web"}"   # Display type
 : "${RENDERNODE:="/dev/dri/renderD128"}"  # Render node
 
+# Sanitize variables
+VGA=$(strip "$VGA")
+DISPLAY=$(strip "$DISPLAY")
+RENDERNODE=$(strip "$RENDERNODE")
+
 port=$(( VNC_PORT - 5900 ))
 [[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
 
