@@ -53,6 +53,10 @@ case "${BOOT_MODE,,}" in
     ;;
   "custom" )
     BIOS=$(strip "$BIOS")
+    if [ -z "$BIOS" ]; then
+      error "BOOT_MODE is custom but BIOS is empty!"
+      exit 33
+    fi
     BOOT_OPTS="-bios $BIOS"
     BOOT_DESC=" with custom BIOS file"
     ;;
