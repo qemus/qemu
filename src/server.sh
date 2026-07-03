@@ -38,6 +38,8 @@ if ! disabled "${WEB:-}"; then
     USERNAME=$(strip "$USERNAME")
     [ -n "${USERNAME:-}" ] && user="$USERNAME"
     [ -n "${PASSWORD:-}" ] && pass="$PASSWORD"
+
+    # Backwards compatibility
     [ -n "${PASS:-}" ] && pass="$PASS"
 
     # Set password
