@@ -8,7 +8,7 @@ set -Eeuo pipefail
 
 rm -f "$BALLOONING_PID" "$BALLOONING_SOCKET"
 
-[[ "$BALLOONING" != [Yy1]* ]] && return 0
+! enabled "$BALLOONING" && return 0
 
 # By default, the VM is allocated the full amount of RAM configured via RAM_SIZE for its entire lifetime, but if you want
 # the container to dynamically reclaim unused guest RAM based on host memory pressure, you can enable memory ballooning.
@@ -52,9 +52,9 @@ balloon() {
   [[ -n "${BALLOONING_KI:-}" ]] && BALLOON_ARGS+=(--ki "$BALLOONING_KI")
   [[ -n "${BALLOONING_INTERVAL:-}" ]] && BALLOON_ARGS+=(--interval "$BALLOONING_INTERVAL")
 
-  if [[ "$BALLOONING_DEBUG" == [Yy1]* ]]; then
+  if enabled "$BALLOONING_DEBUG"; then
     BALLOON_ARGS+=(--debug)
-  elif [[ -n "$BALLOONING_DEBUG" && "$BALLOONING_DEBUG" != [Nn0]* ]]; then
+  elif [[ -n "$BALLOONING_DEBUG" ]] && ! disabled "$BALLOONING_DEBUG"; then
     BALLOON_ARGS+=(--debug "$BALLOONING_DEBUG")
   fi
 
@@ -67,7 +67,7 @@ balloon() {
 
 msg="Starting memory ballooning monitor..."
 html "$msg"
-[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
+enabled "$DEBUG" && echo "$msg"
 
 ( balloon ) &
 

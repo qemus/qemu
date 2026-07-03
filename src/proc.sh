@@ -8,12 +8,12 @@ set -Eeuo pipefail
 : "${CPU_FLAGS:=""}"
 : "${CPU_MODEL:=""}"
 
-[[ "$DEBUG" == [Yy1]* ]] && echo "Configuring KVM..."
+enabled "$DEBUG" && echo "Configuring KVM..."
 
 vendor=$(lscpu | awk '/Vendor ID/{print $3}')
 flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
 
-if [[ "$KVM" != [Nn]* ]]; then
+if ! disabled "$KVM"; then
 
   CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
@@ -23,7 +23,7 @@ if [[ "$KVM" != [Nn]* ]]; then
     CPU_FEATURES+=",migratable=no"
   fi
 
-  if [[ "$VMX" == [Nn]* && "${BOOT_MODE,,}" == "windows"* ]]; then
+  if disabled "$VMX" && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
     # Prevents a crash caused by a certain Windows update
     CPU_FEATURES+=",-vmx"
   fi
@@ -50,7 +50,7 @@ if [[ "$KVM" != [Nn]* ]]; then
 
   fi
 
-  if [[ "${BOOT_MODE,,}" == "windows"* && "$HV" != [Nn]* ]]; then
+  if [[ "${BOOT_MODE,,}" == "windows"* ]] && ! disabled "$HV"; then
 
     HV_FEATURES="hv_passthrough"
 
