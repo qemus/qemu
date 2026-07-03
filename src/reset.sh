@@ -23,16 +23,14 @@ enabled "${TRACE:-}" && set -o functrace && trap 'echo "# $BASH_COMMAND" >&2' DE
 : "${BOOT_INDEX:="9"}"     # Boot index of CD drive
 : "${STORAGE:="/storage"}" # Storage folder location
 
-APP=$(strip "$APP")
-PLATFORM=$(strip "$PLATFORM")
+# Sanitize variables
+STORAGE=$(strip "$STORAGE")
 MACHINE=$(strip "$MACHINE")
 DISK_SIZE=$(strip "$DISK_SIZE")
 BOOT_MODE=$(strip "$BOOT_MODE")
 BOOT_INDEX=$(strip "$BOOT_INDEX")
-STORAGE=$(strip "$STORAGE")
 
 # Helper variables
-
 ROOTLESS="N"
 PRIVILEGED="N"
 ENGINE="Docker"
