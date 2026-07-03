@@ -14,7 +14,7 @@ bool() {
   value="${value#"${value%%[![:space:]]*}"}"
   value="${value%"${value##*[![:space:]]}"}"
 
-  # Remove surrounding single/double quotes
+  # Remove leading/trailing single/double quotes
   value="${value%\"}"
   value="${value#\"}"
   value="${value%\'}"
