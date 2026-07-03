@@ -35,8 +35,11 @@ if ! disabled "${WEB:-}"; then
     user="Docker"
     pass="admin"
 
+    USERNAME=$(strip "$USERNAME")
     [ -n "${USERNAME:-}" ] && user="$USERNAME"
     [ -n "${PASSWORD:-}" ] && pass="$PASSWORD"
+
+    # Backwards compatibility
     [ -n "${PASS:-}" ] && pass="$PASS"
 
     # Set password
