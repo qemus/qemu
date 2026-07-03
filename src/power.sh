@@ -4,8 +4,6 @@ set -Eeuo pipefail
 : "${SHUTDOWN:="Y"}"        # Graceful ACPI shutdown
 : "${TIMEOUT:="13"}"        # QEMU termination timeout
 
-TIMEOUT=$(strip "$TIMEOUT")
-
 # Configure QEMU for graceful shutdown
 
 QEMU_END="$QEMU_DIR/qemu.end"
@@ -107,6 +105,7 @@ graceful_shutdown() {
   local term_grace=3      # seconds before loop ends to send SIGTERM
   local cleanup_grace=3   # seconds reserved after the loop for cleanup
 
+  TIMEOUT=$(strip "$TIMEOUT")
   if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]]; then
     TIMEOUT=13
   fi
