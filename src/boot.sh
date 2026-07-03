@@ -8,8 +8,6 @@ set -Eeuo pipefail
 : "${LOGO:="Y"}"        # Enable logo
 : "${CLEAR:="N"}"       # Persist NVRAM
 
-BIOS=$(strip "$BIOS")
-
 BOOT_DESC=""
 BOOT_OPTS=""
 
@@ -54,6 +52,7 @@ case "${BOOT_MODE,,}" in
     BOOT_DESC=" with SeaBIOS"
     ;;
   "custom" )
+    BIOS=$(strip "$BIOS")
     BOOT_OPTS="-bios $BIOS"
     BOOT_DESC=" with custom BIOS file"
     ;;
