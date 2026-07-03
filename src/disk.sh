@@ -11,6 +11,7 @@ set -Eeuo pipefail
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
 : "${DISK_ROTATION:="1"}"         # Rotation rate, set to 1 for SSD storage and increase for HDD
 
+# Sanitize all variables
 DISK_IO=$(strip "$DISK_IO")
 DISK_FMT=$(strip "$DISK_FMT")
 DISK_TYPE=$(strip "$DISK_TYPE")
