@@ -308,12 +308,7 @@ if hasDisk; then
   return 0
 fi
 
-if [[ "${BOOT}" == \"*\" || "${BOOT}" == \'*\' ]]; then
-  BOOT="${BOOT:1:-1}"
-fi
-
-BOOT="${BOOT#"${BOOT%%[! ]*}"}"
-BOOT="${BOOT%"${BOOT##*[! ]}"}"
+BOOT=$(strip "$BOOT")
 
 if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/"* ]]; then
 

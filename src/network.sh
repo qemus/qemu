@@ -33,24 +33,21 @@ set -Eeuo pipefail
 : "${DNSMASQ_PID:="/var/run/dnsmasq.pid"}"
 : "${DNSMASQ_CONF_DIR:="/etc/dnsmasq.d"}"
 
-MAC="${MAC// /}"
-MTU="${MTU// /}"
-DHCP="${DHCP// /}"
-NETWORK="${NETWORK// /}"
-HOST_PORTS="${HOST_PORTS// /}"
-USER_PORTS="${USER_PORTS// /}"
-CHECK_PORT="${CHECK_PORT// /}"
-ADAPTER="${ADAPTER// /}"
-VM_NET_IP="${VM_NET_IP// /}"
-VM_NET_DEV="${VM_NET_DEV// /}"
-VM_NET_TAP="${VM_NET_TAP// /}"
-VM_NET_MAC="${VM_NET_MAC// /}"
-VM_NET_HOST="${VM_NET_HOST// /}"
-VM_NET_BRIDGE="${VM_NET_BRIDGE// /}"
-VM_NET_MASK="${VM_NET_MASK// /}"
-PASST_MTU="${PASST_MTU// /}"
-PASST_DEBUG="${PASST_DEBUG// /}"
-DNSMASQ_DEBUG="${DNSMASQ_DEBUG// /}"
+MAC=$(strip "$MAC")
+MTU=$(strip "$MTU")
+NETWORK=$(strip "$NETWORK")
+HOST_PORTS=$(strip "$HOST_PORTS")
+USER_PORTS=$(strip "$USER_PORTS")
+CHECK_PORT=$(strip "$CHECK_PORT")
+ADAPTER=$(strip "$ADAPTER")
+VM_NET_IP=$(strip "$VM_NET_IP")
+VM_NET_DEV=$(strip "$VM_NET_DEV")
+VM_NET_TAP=$(strip "$VM_NET_TAP")
+VM_NET_MAC=$(strip "$VM_NET_MAC")
+VM_NET_HOST=$(strip "$VM_NET_HOST")
+VM_NET_BRIDGE=$(strip "$VM_NET_BRIDGE")
+VM_NET_MASK=$(strip "$VM_NET_MASK")
+PASST_MTU=$(strip "$PASST_MTU")
 
 ADD_ERR="Please add the following setting to your container:"
 

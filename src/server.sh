@@ -6,10 +6,10 @@ set -Eeuo pipefail
 : "${WSD_PORT:="8004"}"    # Websockets port
 : "${WSS_PORT:="5700"}"    # Websockets port
 
-VNC_PORT="${VNC_PORT// /}"
-WEB_PORT="${WEB_PORT// /}"
-WSD_PORT="${WSD_PORT// /}"
-WSS_PORT="${WSS_PORT// /}"
+VNC_PORT=$(strip "$VNC_PORT")
+WEB_PORT=$(strip "$WEB_PORT")
+WSD_PORT=$(strip "$WSD_PORT")
+WSS_PORT=$(strip "$WSS_PORT")
 
 WEB_PID="/run/nginx.pid"
 WSD_PID="$QEMU_DIR/websocketd.pid"

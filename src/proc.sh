@@ -8,10 +8,8 @@ set -Eeuo pipefail
 : "${CPU_FLAGS:=""}"
 : "${CPU_MODEL:=""}"
 
-HV="${HV// /}"
-VMX="${VMX// /}"
-CPU_FLAGS="${CPU_FLAGS// /}"
-CPU_MODEL="${CPU_MODEL// /}"
+CPU_FLAGS=$(strip "$CPU_FLAGS")
+CPU_MODEL=$(strip "$CPU_MODEL")
 
 enabled "$DEBUG" && echo "Configuring KVM..."
 

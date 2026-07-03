@@ -5,9 +5,6 @@ set -Eeuo pipefail
 : "${PLATFORM:="x64"}"
 : "${SUPPORT:="https://github.com/qemus/qemu"}"
 
-APP="${APP// /}"
-PLATFORM="${PLATFORM// /}"
-
 cd /run
 
 . start.sh      # Startup hook

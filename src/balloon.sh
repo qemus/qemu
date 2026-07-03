@@ -6,9 +6,6 @@ set -Eeuo pipefail
 : "${BALLOONING_PID:="$QEMU_DIR/balloon.pid"}"
 : "${BALLOONING_SOCKET:="$QEMU_DIR/qemu-qmp-ballooning.sock"}"
 
-BALLOONING="${BALLOONING// /}"
-BALLOONING_DEBUG="${BALLOONING_DEBUG// /}"
-
 rm -f "$BALLOONING_PID" "$BALLOONING_SOCKET"
 
 ! enabled "$BALLOONING" && return 0

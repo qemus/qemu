@@ -11,13 +11,13 @@ set -Eeuo pipefail
 : "${DISK_DISCARD:="on"}"         # Controls whether unmap (TRIM) commands are passed to the host.
 : "${DISK_ROTATION:="1"}"         # Rotation rate, set to 1 for SSD storage and increase for HDD
 
-DISK_IO="${DISK_IO// /}"
-DISK_FMT="${DISK_FMT// /}"
-DISK_TYPE="${DISK_TYPE// /}"
-DISK_FLAGS="${DISK_FLAGS// /}"
-DISK_CACHE="${DISK_CACHE// /}"
-DISK_DISCARD="${DISK_DISCARD// /}"
-DISK_ROTATION="${DISK_ROTATION// /}"
+DISK_IO=$(strip "$DISK_IO")
+DISK_FMT=$(strip "$DISK_FMT")
+DISK_TYPE=$(strip "$DISK_TYPE")
+DISK_FLAGS=$(strip "$DISK_FLAGS")
+DISK_CACHE=$(strip "$DISK_CACHE")
+DISK_DISCARD=$(strip "$DISK_DISCARD")
+DISK_ROTATION=$(strip "$DISK_ROTATION")
 
 fmt2ext() {
   local DISK_FMT="$1"
