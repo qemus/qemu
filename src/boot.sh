@@ -119,7 +119,7 @@ MSRS="/sys/module/kvm/parameters/ignore_msrs"
 if [ -e "$MSRS" ]; then
   result=$(<"$MSRS")
   result="${result//[![:print:]]/}"
-  if disabled "$result"; then
+  if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
     echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
 fi
