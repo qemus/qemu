@@ -54,7 +54,7 @@ balloon() {
 
   if enabled "$BALLOONING_DEBUG"; then
     BALLOON_ARGS+=(--debug)
-  elif [[ -n "$BALLOONING_DEBUG" && "$BALLOONING_DEBUG" != [Nn0]* ]]; then
+  elif [[ -n "$BALLOONING_DEBUG" ]] && ! disabled "$BALLOONING_DEBUG"; then
     BALLOON_ARGS+=(--debug "$BALLOONING_DEBUG")
   fi
 
