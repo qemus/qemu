@@ -7,9 +7,32 @@ info () { printf "%b%s%b" "\E[1;34m❯ \E[1;36m" "${1:-}" "\E[0m\n"; }
 error () { printf "%b%s%b" "\E[1;31m❯ " "ERROR: ${1:-}" "\E[0m\n" >&2; }
 warn () { printf "%b%s%b" "\E[1;31m❯ " "Warning: ${1:-}" "\E[0m\n" >&2; }
 
+bool() {
+  local value="${1:-}"
+
+  # Remove surrounding whitespace
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  # Remove surrounding single/double quotes
+  value="${value%\"}"
+  value="${value#\"}"
+  value="${value%\'}"
+  value="${value#\'}"
+
+  printf '%s' "$value"
+}
+
 enabled() {
-  case "${1:-}" in
+  case "$(bool "${1:-}")" in
     Y|y|YES|Yes|yes|TRUE|True|true|1|ON|On|on) return 0 ;;
+    *) return 1 ;;
+  esac
+}
+
+disabled() {
+  case "$(bool "${1:-}")" in
+    N|n|NO|No|no|FALSE|False|false|0|OFF|Off|off) return 0 ;;
     *) return 1 ;;
   esac
 }
