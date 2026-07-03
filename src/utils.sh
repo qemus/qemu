@@ -17,8 +17,8 @@ strip() {
   # Remove leading/trailing single/double quotes
   value="${value%\"}"
   value="${value#\"}"
-  value="${value%\'}"
-  value="${value#\'}"
+  value="${value%'}"
+  value="${value#'}"
 
   # Remove surrounding whitespace
   value="${value#"${value%%[![:space:]]*}"}"
