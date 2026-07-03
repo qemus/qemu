@@ -9,6 +9,7 @@ set -Eeuo pipefail
 : "${MONITOR:="unix:$QEMU_DIR/monitor.sock,server,wait=off,nodelay"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
 
+# Sanitize variables
 UUID=$(strip "$UUID")
 HPET=$(strip "$HPET")
 VMPORT=$(strip "$VMPORT")
