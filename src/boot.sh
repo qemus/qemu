@@ -12,12 +12,12 @@ BOOT_DESC=""
 BOOT_OPTS=""
 
 SECURE="off"
-[[ "$SMM" == [Yy1]* ]] && SECURE="on"
+enabled "$SMM" && SECURE="on"
 [ -n "$BIOS" ] && BOOT_MODE="custom"
 
 msg="Configuring boot..."
 html "$msg"
-[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
+enabled "$DEBUG" && echo "$msg"
 
 case "${BOOT_MODE,,}" in
   "uefi" | "" )
@@ -69,7 +69,7 @@ fi
 
 DEST="$STORAGE/${BOOT_MODE,,}"
 
-if [[ "$CLEAR" == [Yy1]* ]]; then
+if enabled "$CLEAR"; then
   # Clear NVRAM (helps to fix corruptions)
   rm -f "$DEST.rom" "$DEST.vars" "$DEST.tpm"
 fi
@@ -86,7 +86,7 @@ case "${BOOT_MODE,,}" in
       [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
       [ ! -s "$logo" ] && LOGO="N"
 
-      if [[ "$LOGO" == [Nn]* ]]; then
+      if disabled "$LOGO"; then
         cp "$OVMF/$ROM" "$DEST.tmp"
       else
         if ! /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "$logo" save "$DEST.tmp"; then
@@ -119,7 +119,7 @@ MSRS="/sys/module/kvm/parameters/ignore_msrs"
 if [ -e "$MSRS" ]; then
   result=$(<"$MSRS")
   result="${result//[![:print:]]/}"
-  if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
+  if disabled "$result"; then
     echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
 fi
@@ -162,7 +162,7 @@ TPM_SOCKET="/tmp/swtpm.sock"
 
 rm -f "$TPM_PID" "$TPM_SOCKET"
 
-if [[ "$TPM" == [Yy1]* ]]; then
+if enabled "$TPM"; then
 
   # Workaround to circumvent AppArmor profile
   [ ! -f "$SWTPM" ] && cp /usr/bin/swtpm* /run

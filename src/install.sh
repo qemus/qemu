@@ -204,7 +204,7 @@ convertImage() {
 
   rm -f "$tmp_file"
 
-  if [ -n "$ALLOCATE" ] && [[ "$ALLOCATE" != [Nn]* ]]; then
+  if [ -n "$ALLOCATE" ] && ! disabled "$ALLOCATE"; then
 
     # Check free diskspace
     src_size=$(qemu-img info "$source_file" -f "$source_fmt" | grep '^virtual size: ' | sed 's/.*(\(.*\) bytes)/\1/')
@@ -222,7 +222,7 @@ convertImage() {
 
   local conv_flags="-p"
 
-  if [ -z "$ALLOCATE" ] || [[ "$ALLOCATE" == [Nn]* ]]; then
+  if [ -z "$ALLOCATE" ] || disabled "$ALLOCATE"; then
     disk_param="preallocation=off"
   else
     disk_param="preallocation=falloc"
@@ -232,7 +232,7 @@ convertImage() {
   [[ "${fs,,}" == "btrfs" ]] && disk_param+=",nocow=on"
 
   if [[ "$dst_fmt" != "raw" ]]; then
-    if [ -z "$ALLOCATE" ] || [[ "$ALLOCATE" == [Nn]* ]]; then
+    if [ -z "$ALLOCATE" ] || disabled "$ALLOCATE"; then
       conv_flags+=" -c"
     fi
     [ -n "${DISK_FLAGS:-}" ] && disk_param+=",$DISK_FLAGS"
@@ -245,7 +245,7 @@ convertImage() {
   fi
 
   if [[ "$dst_fmt" == "raw" ]]; then
-    if [ -n "$ALLOCATE" ] && [[ "$ALLOCATE" != [Nn]* ]]; then
+    if [ -n "$ALLOCATE" ] && ! disabled "$ALLOCATE"; then
       # Work around qemu-img bug
       cur_size=$(stat -c%s "$tmp_file")
       cur_gb=$(formatBytes "$cur_size")

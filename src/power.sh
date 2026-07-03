@@ -156,7 +156,7 @@ graceful_shutdown() {
   finish "$code"
 }
 
-[[ "$SHUTDOWN" != [Yy1]* ]] && return 0
+! enabled "$SHUTDOWN" && return 0
 
 _trap graceful_shutdown SIGTERM SIGHUP SIGABRT SIGQUIT
 

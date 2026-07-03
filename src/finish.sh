@@ -14,7 +14,7 @@ else
   fi
 fi
 
-if [[ "$DEBUG" == [Yy1]* ]]; then
+if enabled "$DEBUG"; then
   printf "QEMU arguments:\n\n%s\n\n" "${ARGS// -/$'\n-'}"
 fi
 

@@ -29,7 +29,7 @@ case "${DISPLAY,,}" in
     ;;
 esac
 
-if [[ "$GPU" != [Yy1]* || "$ARCH" != "amd64" ]]; then
+if ! enabled "$GPU" || [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
@@ -41,7 +41,7 @@ fi
 
 msg="Configuring display drivers..."
 html "$msg"
-[[ "$DEBUG" == [Yy1]* ]] && echo "$msg"
+enabled "$DEBUG" && echo "$msg"
 
 [[ "${VGA,,}" == "virtio" ]] && VGA="virtio-vga-gl"
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
