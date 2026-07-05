@@ -454,7 +454,7 @@ configurePasst() {
   PASST_OPTS+=" -g $gateway"
   PASST_OPTS+=" -n $VM_NET_MASK"
 
-  # Pass an explicit MTU to passt. A value of 0 disables MTU assignment.
+  # Pass an explicit MTU to passt.
   PASST_OPTS+=" -m $GUEST_MTU"
 
   local forward=""
@@ -935,19 +935,8 @@ getInfo() {
   fi
 
   [ -n "$MTU" ] && mtu_custom="Y"
-
   [ -z "$MTU" ] && MTU="$mtu"
   [ -z "$MTU" ] && MTU="0"
-
-  if [[ "$MTU" != "0" && ! "$MTU" =~ ^[0-9]+$ ]]; then
-    warn "Invalid MTU value '$MTU', ignoring it."
-    MTU="0"
-  fi
-
-  if [[ "$MTU" != "0" && "$MTU" -lt "576" ]]; then
-    warn "Invalid MTU value '$MTU', ignoring it."
-    MTU="0"
-  fi
 
   GUEST_MTU="$MTU"
 
@@ -960,7 +949,7 @@ getInfo() {
 
   if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
     if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" -lt "1500" ]]; then
-      warn "MTU size is $GUEST_MTU, but cannot be set for legacy Windows versions!"
+      warn "MTU size is $GUEST_MTU, but cannot be set for legacy Windows versions; networking may break on paths below 1500 MTU."
       GUEST_MTU="0"
     fi
   fi
