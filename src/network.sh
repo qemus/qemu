@@ -216,9 +216,6 @@ configureDNS() {
       arguments+=" --dhcp-option=option:router,$gateway"
       arguments+=" --dhcp-option=option:dns-server,$gateway"
 
-      # NAT networking is IPv4-only, so avoid returning IPv6 records.
-      arguments+=" --filter-AAAA"
-
       # Set MTU through DHCP option 26
       if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" != "1500" ]]; then
         arguments+=" --dhcp-option=option:interface-mtu,$GUEST_MTU"
@@ -238,6 +235,11 @@ configureDNS() {
 
   # Add DNS entry for container
   arguments+=" --address=/host.lan/$gateway"
+
+  # Avoid returning IPv6 records when the active network mode is IPv4-only.
+  if [[ "${NETWORK,,}" == "tap" || "${NETWORK,,}" == "tun" || "${NETWORK,,}" == "tuntap" || "${NETWORK,,}" == "y" || -z "$IP6" ]]; then
+    arguments+=" --filter-AAAA"
+  fi
 
   # Set local dns resolver to dnsmasq when needed
   [ -f /etc/resolv.dnsmasq ] && arguments+=" --resolv-file=/etc/resolv.dnsmasq"
