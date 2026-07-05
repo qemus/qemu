@@ -17,7 +17,25 @@ enabled "$DEBUG" && echo "Configuring KVM..."
 vendor=$(lscpu | awk '/Vendor ID/{print $3}')
 flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
 
-if ! disabled "$KVM"; then
+isWindowsBoot() {
+  [[ "${BOOT_MODE,,}" == "windows"* ]]
+}
+
+isAmdCpu() {
+  [[ "$vendor" == "AuthenticAMD" ]]
+}
+
+appendCpuFeature() {
+  local feature="$1"
+
+  if [ -z "$CPU_FEATURES" ]; then
+    CPU_FEATURES="$feature"
+  else
+    CPU_FEATURES+=",$feature"
+  fi
+}
+
+configureKvmCpuModel() {
 
   CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
@@ -27,66 +45,139 @@ if ! disabled "$KVM"; then
     CPU_FEATURES+=",migratable=no"
   fi
 
-  if disabled "$VMX" && [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+  if disabled "$VMX" && isWindowsBoot; then
     # Prevents a crash caused by a certain Windows update
     CPU_FEATURES+=",-vmx"
   fi
 
-  if [[ "$vendor" == "AuthenticAMD" ]]; then
+  return 0
+}
+
+configureKvmAmdFeatures() {
+
+  # AMD processor
+  if grep -qw "tsc_scale" <<< "$flags"; then
+    CPU_FEATURES+=",+invtsc"
+  fi
+
+  if isWindowsBoot; then
+    CPU_FEATURES+=",arch_capabilities=off"
+  fi
+
+  return 0
+}
+
+configureKvmIntelFeatures() {
+
+  # Intel processor
+  vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
+
+  if grep -qw "tsc_scaling" <<< "$vmx"; then
+    CPU_FEATURES+=",+invtsc"
+  fi
+
+  return 0
+}
+
+configureHyperVFeatures() {
+
+  if ! isWindowsBoot || disabled "$HV"; then
+    return 0
+  fi
+
+  HV_FEATURES="hv_passthrough"
+
+  if isAmdCpu; then
 
     # AMD processor
-    if grep -qw "tsc_scale" <<< "$flags"; then
-      CPU_FEATURES+=",+invtsc"
+    if ! grep -qw "avic" <<< "$flags"; then
+      HV_FEATURES+=",-hv-avic"
     fi
 
-    if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-      CPU_FEATURES+=",arch_capabilities=off"
+    HV_FEATURES+=",-hv-evmcs"
+
+  else
+
+    # Intel processor
+    if ! grep -qw "apicv" <<< "$vmx"; then
+      HV_FEATURES+=",-hv-apicv,-hv-evmcs"
+    else
+      if [[ "$CPU" == "Intel Atom "* || "$CPU" == "Intel Celeron "* || "$CPU" == "Intel Pentium "* ]]; then
+        # Prevent eVMCS version range error on budget CPU's
+        HV_FEATURES+=",-hv-evmcs"
+      fi
+    fi
+
+  fi
+
+  appendCpuFeature "$HV_FEATURES"
+
+  return 0
+}
+
+configureKvm() {
+
+  configureKvmCpuModel
+
+  if isAmdCpu; then
+    configureKvmAmdFeatures
+  else
+    configureKvmIntelFeatures
+  fi
+
+  configureHyperVFeatures
+
+  return 0
+}
+
+configureTcgAmd64WindowsModel() {
+
+  if isAmdCpu; then
+
+    # AMD processor
+    CPU_MODEL="EPYC"
+    CPU_FEATURES+=",svm=off,arch_capabilities=off,-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
+
+  else
+
+    # Intel processor
+    CPU_MODEL="Skylake-Client-v4"
+    CPU_FEATURES+=",vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+
+  fi
+
+  return 0
+}
+
+configureTcgCpuModel() {
+
+  if [ -n "$CPU_MODEL" ]; then
+    return 0
+  fi
+
+  if [[ "$ARCH" == "amd64" ]]; then
+
+    if ! isWindowsBoot; then
+
+      CPU_MODEL="max"
+      CPU_FEATURES+=",migratable=no"
+
+    else
+      configureTcgAmd64WindowsModel
     fi
 
   else
 
     # Intel processor
-    vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
-
-    if grep -qw "tsc_scaling" <<< "$vmx"; then
-      CPU_FEATURES+=",+invtsc"
-    fi
+    CPU_MODEL="Skylake-Client-v4"
+    CPU_FEATURES+=",vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
 
   fi
 
-  if [[ "${BOOT_MODE,,}" == "windows"* ]] && ! disabled "$HV"; then
+  return 0
+}
 
-    HV_FEATURES="hv_passthrough"
-
-    if [[ "$vendor" == "AuthenticAMD" ]]; then
-
-      # AMD processor
-      if ! grep -qw "avic" <<< "$flags"; then
-        HV_FEATURES+=",-hv-avic"
-      fi
-
-      HV_FEATURES+=",-hv-evmcs"
-
-    else
-
-      # Intel processor
-      if ! grep -qw "apicv" <<< "$vmx"; then
-        HV_FEATURES+=",-hv-apicv,-hv-evmcs"
-      else
-        if [[ "$CPU" == "Intel Atom "* || "$CPU" == "Intel Celeron "* || "$CPU" == "Intel Pentium "* ]]; then
-          # Prevent eVMCS version range error on budget CPU's
-          HV_FEATURES+=",-hv-evmcs"
-        fi
-      fi
-
-    fi
-
-    [ -n "$CPU_FEATURES" ] && CPU_FEATURES+=","
-    CPU_FEATURES+="${HV_FEATURES}"
-
-  fi
-
-else
+configureTcg() {
 
   KVM_OPTS=""
   CPU_FEATURES="l3-cache=on,+hypervisor"
@@ -95,77 +186,68 @@ else
     KVM_OPTS=" -accel tcg,thread=multi"
   fi
 
-  if [ -z "$CPU_MODEL" ]; then
-    if [[ "$ARCH" == "amd64" ]]; then
+  configureTcgCpuModel
 
-     if [[ "${BOOT_MODE,,}" != "windows"* ]]; then
+  return 0
+}
 
-       CPU_MODEL="max"
-       CPU_FEATURES+=",migratable=no"
+extractHostCpuArgument() {
 
-     else
-       if [[ "$vendor" == "AuthenticAMD" ]]; then
+  local args prefix suffix param
 
-         # AMD processor
-         CPU_MODEL="EPYC"
-         CPU_FEATURES+=",svm=off,arch_capabilities=off,-fxsr-opt,-misalignsse,-osvw,-topoext,-nrip-save,-xsavec,check"
+  if [[ "$ARGUMENTS" == *"-cpu host,"* ]]; then
 
-       else
+    args="${ARGUMENTS} "
+    prefix="${args/-cpu host,*/}"
+    suffix="${args/*-cpu host,/}"
+    param="${suffix%% *}"
+    suffix="${suffix#* }"
+    args="${prefix}${suffix}"
+    ARGUMENTS="${args::-1}"
 
-         # Intel processor
-         CPU_MODEL="Skylake-Client-v4"
-         CPU_FEATURES+=",vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
-
-       fi
-     fi
-
+    if [ -z "$CPU_FLAGS" ]; then
+      CPU_FLAGS="$param"
     else
+      CPU_FLAGS+=",$param"
+    fi
 
-      # Intel processor
-      CPU_MODEL="Skylake-Client-v4"
-      CPU_FEATURES+=",vmx=off,-pcid,-tsc-deadline,-invpcid,-spec-ctrl,-xsavec,-xsaves,check"
+  else
 
+    if [[ "$ARGUMENTS" == *"-cpu host"* ]]; then
+      ARGUMENTS="${ARGUMENTS//-cpu host/}"
+    fi
+
+  fi
+
+  return 0
+}
+
+composeCpuFlags() {
+
+  if [ -z "$CPU_FLAGS" ]; then
+    if [ -z "$CPU_FEATURES" ]; then
+      CPU_FLAGS="$CPU_MODEL"
+    else
+      CPU_FLAGS="$CPU_MODEL,$CPU_FEATURES"
+    fi
+  else
+    if [ -z "$CPU_FEATURES" ]; then
+      CPU_FLAGS="$CPU_MODEL,$CPU_FLAGS"
+    else
+      CPU_FLAGS="$CPU_MODEL,$CPU_FEATURES,$CPU_FLAGS"
     fi
   fi
 
-fi
+  return 0
+}
 
-if [[ "$ARGUMENTS" == *"-cpu host,"* ]]; then
-
-  args="${ARGUMENTS} "
-  prefix="${args/-cpu host,*/}"
-  suffix="${args/*-cpu host,/}"
-  param="${suffix%% *}"
-  suffix="${suffix#* }"
-  args="${prefix}${suffix}"
-  ARGUMENTS="${args::-1}"
-
-  if [ -z "$CPU_FLAGS" ]; then
-    CPU_FLAGS="$param"
-  else
-    CPU_FLAGS+=",$param"
-  fi
-
+if ! disabled "$KVM"; then
+  configureKvm
 else
-
-  if [[ "$ARGUMENTS" == *"-cpu host"* ]]; then
-    ARGUMENTS="${ARGUMENTS//-cpu host/}"
-  fi
-
+  configureTcg
 fi
 
-if [ -z "$CPU_FLAGS" ]; then
-  if [ -z "$CPU_FEATURES" ]; then
-    CPU_FLAGS="$CPU_MODEL"
-  else
-    CPU_FLAGS="$CPU_MODEL,$CPU_FEATURES"
-  fi
-else
-  if [ -z "$CPU_FEATURES" ]; then
-    CPU_FLAGS="$CPU_MODEL,$CPU_FLAGS"
-  else
-    CPU_FLAGS="$CPU_MODEL,$CPU_FEATURES,$CPU_FLAGS"
-  fi
-fi
+extractHostCpuArgument
+composeCpuFlags
 
 return 0
