@@ -182,6 +182,24 @@ downloadFile() {
   return 1
 }
 
+downloadWithRetries() {
+
+  local url="$1"
+  local base="$2"
+  local name="$3"
+
+  rm -f "$STORAGE/$base"
+
+  downloadFile "$url" "$base" "$name" && return 0
+  delay 5
+  downloadFile "$url" "$base" "$name" && return 0
+  delay 10
+  downloadFile "$url" "$base" "$name" && return 0
+
+  rm -f "$STORAGE/$base"
+  return 1
+}
+
 convertImage() {
 
   local source_file=$1
@@ -297,11 +315,54 @@ findFile() {
   return 1
 }
 
-findFile "boot" "img" && return 0
-findFile "boot" "raw" && return 0
-findFile "boot" "iso" && return 0
-findFile "boot" "qcow2" && return 0
-findFile "custom" "iso" && return 0
+findBootFile() {
+
+  findFile "boot" "img" && return 0
+  findFile "boot" "raw" && return 0
+  findFile "boot" "iso" && return 0
+  findFile "boot" "qcow2" && return 0
+  findFile "custom" "iso" && return 0
+
+  return 1
+}
+
+findArchiveImage() {
+
+  local tmp="$1"
+  local base="$2"
+  local img=""
+  local ext
+  local exts=( iso img raw qcow2 vdi vhd vhdx vmdk )
+
+  case "${base%.*}" in
+    *".iso" | *".img" | *".raw" | *".qcow2" | *".vdi" | *".vhd" | *".vhdx" | *".vmdk" )
+      if [ -s "$tmp/${base%.*}" ]; then
+        img="$tmp/${base%.*}"
+      fi
+      ;;
+  esac
+
+  if [ -z "$img" ]; then
+    for ext in "${exts[@]}"; do
+      if [ -s "$tmp/${base%.*}.$ext" ]; then
+        img="$tmp/${base%.*}.$ext"
+        break
+      fi
+    done
+  fi
+
+  if [ -z "$img" ]; then
+    for ext in "${exts[@]}"; do
+      img=$(find "$tmp" -type f -iname "*.$ext" -print -quit)
+      [ -n "$img" ] && break
+    done
+  fi
+
+  echo "$img"
+  return 0
+}
+
+findBootFile && return 0
 
 if hasDisk; then
   BOOT="none"
@@ -322,11 +383,7 @@ STORAGE="$STORAGE/$folder"
 
 if [ -d "$STORAGE" ]; then
 
-  findFile "boot" "img" && return 0
-  findFile "boot" "raw" && return 0
-  findFile "boot" "iso" && return 0
-  findFile "boot" "qcow2" && return 0
-  findFile "custom" "iso" && return 0
+  findBootFile && return 0
 
   if hasDisk; then
     BOOT="none"
@@ -370,16 +427,8 @@ find "$STORAGE" -maxdepth 1 -type f \( -iname 'data.*' -or -iname 'qemu.*' \) -d
 
 base=$(getBase "$BOOT")
 
-rm -f "$STORAGE/$base"
-
-if ! downloadFile "$BOOT" "$base" "$name"; then
-  delay 5
-  if ! downloadFile "$BOOT" "$base" "$name"; then
-    delay 10
-    if ! downloadFile "$BOOT" "$base" "$name"; then
-      rm -f "$STORAGE/$base" && exit 60
-    fi
-  fi
+if ! downloadWithRetries "$BOOT" "$base" "$name"; then
+  exit 60
 fi
 
 case "${base,,}" in
@@ -416,35 +465,7 @@ case "${base,,}" in
 
     rm -f "$STORAGE/$base"
 
-    img=""
-
-    case "${base%.*}" in
-      *".iso" | *".img" | *".raw" | *".qcow2" | *".vdi" | *".vhd" | *".vhdx" | *".vmdk" )
-
-        if [ -s "$tmp/${base%.*}" ]; then
-          img="$tmp/${base%.*}"
-        fi
-
-        ;;
-    esac
-
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.iso" ] && img="$tmp/${base%.*}.iso"
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.img" ] && img="$tmp/${base%.*}.img"
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.raw" ] && img="$tmp/${base%.*}.raw"
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.qcow2" ] && img="$tmp/${base%.*}.qcow2"
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vdi" ] && img="$tmp/${base%.*}.vdi"
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vhd" ] && img="$tmp/${base%.*}.vhd"
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vhdx" ] && img="$tmp/${base%.*}.vhdx"
-    [ -z "$img" ] && [ -s "$tmp/${base%.*}.vmdk" ] && img="$tmp/${base%.*}.vmdk"
-
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.iso" -print -quit)
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.img" -print -quit)
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.raw" -print -quit)
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.qcow2" -print -quit)
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vdi" -print -quit)
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vhd" -print -quit)
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vhdx" -print -quit)
-    [ -z "$img" ] && img=$(find "$tmp" -type f -iname "*.vmdk" -print -quit)
+    img=$(findArchiveImage "$tmp" "$base")
 
     if [ ! -s "$img" ] || [ ! -f "$img" ]; then
       rm -rf "$tmp"
