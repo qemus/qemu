@@ -16,7 +16,6 @@ Docker container for running virtual machines using QEMU.
 ## Features ✨
 
 - Runs virtual machines inside a Docker container
-- Automatic downloads for popular Linux distributions
 - Supports almost every disk and image format
 - Web-based viewer for controlling the VM
 - Near-native performance with KVM acceleration
@@ -24,6 +23,7 @@ Docker container for running virtual machines using QEMU.
 - Dynamic memory allocation with memory ballooning
 - USB passthrough and host folder sharing
 - Supports bridge, user-mode, macvlan, and macvtap networking
+- Automatic downloads for popular Linux distributions
 
 ## Usage  🐳
 
@@ -84,7 +84,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   - Start the container and connect to [port 8006](http://127.0.0.1:8006/) using your web browser.
 
-  - You will see the screen and can now install the OS of your choice using your keyboard and mouse.
+  - Complete the installation using the web-based viewer.
 
   Enjoy your brand new machine, and don't forget to star this repo!
 
