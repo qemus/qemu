@@ -590,7 +590,7 @@ configureNAT() {
     fi
   fi
 
-  local ip base gateway exclude
+  local ip base exclude
   base=$(cut -d. -f3,4 <<< "$IP")
 
   if [[ "$IP" != "172.30."* ]]; then
@@ -604,17 +604,10 @@ configureNAT() {
   local last="${ip##*.}"
 
   if [[ ! "$last" =~ ^[0-9]+$ ]] || (( last < 2 || last > 254 )); then
-    local safe="${ip%.*}.4"
-    warn "VM_NET_IP '$ip' is not a safe guest address; using '$safe' instead."
-    ip="$safe"
+    ip="${ip%.*}.4"
   fi
 
-  if [[ "$ip" != *".1" ]]; then
-    gateway="${ip%.*}.1"
-  else
-    gateway="${ip%.*}.2"
-  fi
-
+  local gateway="${ip%.*}.1"
   local subnet="${ip%.*}.0/24"
   local broadcast="${ip%.*}.255"
 
