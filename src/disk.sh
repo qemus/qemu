@@ -92,6 +92,80 @@ supportsDirect() {
   return 0
 }
 
+allocateRaw() {
+
+  local DISK_FILE="$1"
+  local DATA_SIZE="$2"
+
+  if disabled "$ALLOCATE"; then
+    truncate -s "$DATA_SIZE" "$DISK_FILE"
+    return $?
+  fi
+
+  fallocate -l "$DATA_SIZE" "$DISK_FILE" &>/dev/null && return 0
+  fallocate -l -x "$DATA_SIZE" "$DISK_FILE" && return 0
+  truncate -s "$DATA_SIZE" "$DISK_FILE"
+}
+
+getDiskOptions() {
+
+  local FS="$1"
+  local DISK_FMT="$2"
+  local DISK_PARAM="$DISK_ALLOC"
+
+  isCow "$FS" && DISK_PARAM+=",nocow=on"
+
+  if [[ "${DISK_FMT,,}" != "raw" ]]; then
+    [ -n "$DISK_FLAGS" ] && DISK_PARAM+=",$DISK_FLAGS"
+  fi
+
+  echo "$DISK_PARAM"
+  return 0
+}
+
+normalizeSize() {
+
+  local DISK_SPACE="$1"
+  local DISK_DESC="$2"
+  local DIR="$3"
+  local SPACE FREE GB DATA_SIZE
+
+  if [[ "${DISK_SPACE,,}" == "max" || "${DISK_SPACE,,}" == "half" ]]; then
+
+    local SPARE=1073741824
+    FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+
+    if [[ "${DISK_SPACE,,}" == "max" ]]; then
+      FREE=$(( FREE - SPARE ))
+    else
+      FREE=$(( FREE / 2 ))
+    fi
+
+    (( FREE < SPARE )) && FREE="$SPARE"
+    GB=$(( FREE / 1073741825 ))
+    DISK_SPACE="${GB}G"
+
+  fi
+
+  SPACE="${DISK_SPACE// /}"
+  [ -z "$SPACE" ] && SPACE="64G"
+  [ -z "${SPACE//[0-9. ]}" ] && SPACE="${SPACE}G"
+  SPACE=$(echo "${SPACE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+
+  if ! numfmt --from=iec "$SPACE" &>/dev/null; then
+    error "Invalid value for ${DISK_DESC^^}_SIZE: $DISK_SPACE" && exit 73
+  fi
+
+  DATA_SIZE=$(numfmt --from=iec "$SPACE")
+
+  if (( DATA_SIZE < 104857600 )); then
+    error "Please increase the ${DISK_DESC^^}_SIZE variable to at least 100 MB." && exit 73
+  fi
+
+  echo "$SPACE"
+  return 0
+}
+
 createDisk() {
 
   local DISK_FILE="$1"
@@ -134,33 +208,15 @@ createDisk() {
         { chattr +C "$DISK_FILE"; } || :
       fi
 
-      if disabled "$ALLOCATE"; then
-
-        # Create an empty file
-        if ! truncate -s "$DATA_SIZE" "$DISK_FILE"; then
-          rm -f "$DISK_FILE"
-          error "$FAIL" && exit 77
-        fi
-
-      else
-
-        # Create an empty file
-        if ! fallocate -l "$DATA_SIZE" "$DISK_FILE" &>/dev/null; then
-          if ! fallocate -l -x "$DATA_SIZE" "$DISK_FILE"; then
-            if ! truncate -s "$DATA_SIZE" "$DISK_FILE"; then
-              rm -f "$DISK_FILE"
-              error "$FAIL" && exit 77
-            fi
-          fi
-        fi
-
+      if ! allocateRaw "$DISK_FILE" "$DATA_SIZE"; then
+        rm -f "$DISK_FILE"
+        error "$FAIL" && exit 77
       fi
       ;;
     qcow2)
 
-      local DISK_PARAM="$DISK_ALLOC"
-      isCow "$FS" && DISK_PARAM+=",nocow=on"
-      [ -n "$DISK_FLAGS" ] && DISK_PARAM+=",$DISK_FLAGS"
+      local DISK_PARAM
+      DISK_PARAM=$(getDiskOptions "$FS" "$DISK_FMT")
 
       if ! qemu-img create -f "$DISK_FMT" -o "$DISK_PARAM" -- "$DISK_FILE" "$DATA_SIZE" ; then
         rm -f "$DISK_FILE"
@@ -216,24 +272,8 @@ resizeDisk() {
   case "${DISK_FMT,,}" in
     raw)
 
-      if disabled "$ALLOCATE"; then
-
-        # Resize file by changing its length
-        if ! truncate -s "$DATA_SIZE" "$DISK_FILE"; then
-          error "$FAIL" && exit 75
-        fi
-
-      else
-
-        # Resize file by allocating more space
-        if ! fallocate -l "$DATA_SIZE" "$DISK_FILE" &>/dev/null; then
-          if ! fallocate -l -x "$DATA_SIZE" "$DISK_FILE"; then
-            if ! truncate -s "$DATA_SIZE" "$DISK_FILE"; then
-              error "$FAIL" && exit 75
-            fi
-          fi
-        fi
-
+      if ! allocateRaw "$DISK_FILE" "$DATA_SIZE"; then
+        error "$FAIL" && exit 75
       fi
       ;;
     qcow2)
@@ -288,14 +328,13 @@ convertDisk() {
   info "$msg, please wait until completed..."
 
   local CONV_FLAGS="-p"
-  local DISK_PARAM="$DISK_ALLOC"
-  isCow "$FS" && DISK_PARAM+=",nocow=on"
+  local DISK_PARAM
+  DISK_PARAM=$(getDiskOptions "$FS" "$DST_FMT")
 
   if [[ "$DST_FMT" != "raw" ]]; then
     if disabled "$ALLOCATE"; then
       CONV_FLAGS+=" -c"
     fi
-    [ -n "$DISK_FLAGS" ] && DISK_PARAM+=",$DISK_FLAGS"
   fi
 
   # shellcheck disable=SC2086
@@ -500,7 +539,7 @@ addDisk () {
   local DISK_FMT="$7"
   local DISK_IO="$8"
   local DISK_CACHE="$9"
-  local DISK_EXT DIR SPACE GB DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE LEFT FREE USED
+  local DISK_EXT DIR SPACE DATA_SIZE FS PREV_FMT PREV_EXT CUR_SIZE LEFT FREE USED
 
   DISK_EXT=$(fmt2ext "$DISK_FMT")
   local DISK_FILE="$DISK_BASE.$DISK_EXT"
@@ -508,37 +547,8 @@ addDisk () {
   DIR=$(dirname "$DISK_FILE")
   [ ! -d "$DIR" ] && return 0
 
-  if [[ "${DISK_SPACE,,}" == "max" || "${DISK_SPACE,,}" == "half" ]]; then
-
-    local SPARE=1073741824
-    FREE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
-
-    if [[ "${DISK_SPACE,,}" == "max" ]]; then
-      FREE=$(( FREE - SPARE ))
-    else
-      FREE=$(( FREE / 2 ))
-    fi
-
-    (( FREE < SPARE )) && FREE="$SPARE"
-    GB=$(( FREE / 1073741825 ))
-    DISK_SPACE="${GB}G"
-
-  fi
-
-  SPACE="${DISK_SPACE// /}"
-  [ -z "$SPACE" ] && SPACE="64G"
-  [ -z "${SPACE//[0-9. ]}" ] && SPACE="${SPACE}G"
-  SPACE=$(echo "${SPACE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-
-  if ! numfmt --from=iec "$SPACE" &>/dev/null; then
-    error "Invalid value for ${DISK_DESC^^}_SIZE: $DISK_SPACE" && exit 73
-  fi
-
+  SPACE=$(normalizeSize "$DISK_SPACE" "$DISK_DESC" "$DIR")
   DATA_SIZE=$(numfmt --from=iec "$SPACE")
-
-  if (( DATA_SIZE < 104857600 )); then
-    error "Please increase the ${DISK_DESC^^}_SIZE variable to at least 100 MB." && exit 73
-  fi
 
   FS=$(stat -f -c %T "$DIR")
   checkFS "$FS" "$DISK_FILE" "$DISK_DESC" || exit $?
@@ -598,6 +608,7 @@ addDisk () {
 
     if (( LEFT > 0 )); then
 
+      local GB
       GB=$(formatBytes "$FREE")
       LEFT=$(formatBytes "$LEFT")
       CUR_SIZE=$(formatBytes "$CUR_SIZE")
@@ -793,41 +804,22 @@ fi
 [ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE5="/dev/disk5"
 [ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE6="/dev/disk6"
 
-if [ -n "$DEVICE" ]; then
-  addDevice "$DEVICE" "$DISK_TYPE" "3" "0xa" || exit $?
-else
-  addDisk "$DISK1_FILE" "$DISK_TYPE" "disk" "$DISK_SIZE" "3" "0xa" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
-fi
+DISK_FILES=( "$DISK1_FILE" "$DISK2_FILE" "$DISK3_FILE" "$DISK4_FILE" "$DISK5_FILE" "$DISK6_FILE" )
+DISK_DESCS=( "disk" "disk2" "disk3" "disk4" "disk5" "disk6" )
+DISK_SIZES=( "$DISK_SIZE" "$DISK2_SIZE" "$DISK3_SIZE" "$DISK4_SIZE" "$DISK5_SIZE" "$DISK6_SIZE" )
+DISK_DEVICES=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
+DISK_INDEXES=( "3" "4" "5" "6" "7" "8" )
+DISK_ADDRESSES=( "0xa" "0xb" "0xc" "0xd" "0xe" "0xf" )
 
-if [ -n "$DEVICE2" ]; then
-  addDevice "$DEVICE2" "$DISK_TYPE" "4" "0xb" || exit $?
-else
-  addDisk "$DISK2_FILE" "$DISK_TYPE" "disk2" "$DISK2_SIZE" "4" "0xb" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
-fi
+for i in "${!DISK_FILES[@]}"; do
 
-if [ -n "$DEVICE3" ]; then
-  addDevice "$DEVICE3" "$DISK_TYPE" "5" "0xc" || exit $?
-else
-  addDisk "$DISK3_FILE" "$DISK_TYPE" "disk3" "$DISK3_SIZE" "5" "0xc" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
-fi
+  if [ -n "${DISK_DEVICES[i]}" ]; then
+    addDevice "${DISK_DEVICES[i]}" "$DISK_TYPE" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
+  else
+    addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+  fi
 
-if [ -n "$DEVICE4" ]; then
-  addDevice "$DEVICE4" "$DISK_TYPE" "6" "0xd" || exit $?
-else
-  addDisk "$DISK4_FILE" "$DISK_TYPE" "disk4" "$DISK4_SIZE" "6" "0xd" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
-fi
-
-if [ -n "$DEVICE5" ]; then
-  addDevice "$DEVICE5" "$DISK_TYPE" "7" "0xe" || exit $?
-else
-  addDisk "$DISK5_FILE" "$DISK_TYPE" "disk5" "$DISK5_SIZE" "7" "0xe" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
-fi
-
-if [ -n "$DEVICE6" ]; then
-  addDevice "$DEVICE6" "$DISK_TYPE" "8" "0xf" || exit $?
-else
-  addDisk "$DISK6_FILE" "$DISK_TYPE" "disk6" "$DISK6_SIZE" "8" "0xf" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
-fi
+done
 
 finishDisks
 
