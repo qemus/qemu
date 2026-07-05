@@ -27,6 +27,7 @@ configureMachineOptions() {
   [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
   [ -n "$SM_BIOS" ] && MAC_OPTS+=" $SM_BIOS"
 
+  return 0
 }
 
 configureVirtioDevices() {
@@ -46,6 +47,8 @@ configureVirtioDevices() {
       DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=pcie.0"
     fi
   fi
+
+  return 0
 }
 
 configureSharedFolder() {
@@ -54,17 +57,23 @@ configureSharedFolder() {
     DEV_OPTS+=" -fsdev local,id=fsdev0,path=/shared,security_model=none"
     DEV_OPTS+=" -device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=shared"
   fi
+
+  return 0
 }
 
 configureUsbOptions() {
 
   [ -n "$USB" ] && [[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
+
+  return 0
 }
 
 buildArguments() {
 
   ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
   ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
+
+  return 0
 }
 
 configureMachineOptions
