@@ -34,14 +34,18 @@ rm -f "$BALLOONING_PID" "$BALLOONING_SOCKET"
 # Warning: if the container memory limit is reduced at runtime below the guest VM's current memory usage, the container
 # may be killed by the OOM killer if the ballooning driver cannot reclaim memory from the guest fast enough.
 
-balloon() {
-
+waitForQemuPid() {
   # Wait for qemu PID file to be created
   while [ ! -f "$QEMU_PID" ]; do
     sleep 1
   done
 
+  return 0
+}
+
+buildBalloonArgs() {
   BALLOON_ARGS=()
+
   [[ -n "${BALLOONING_MIN_MEM:-}" ]] && BALLOON_ARGS+=(--min-mem "$BALLOONING_MIN_MEM")
   [[ -n "${BALLOONING_PSI_PRESSURE:-}" ]] && BALLOON_ARGS+=(--psi-pressure "$BALLOONING_PSI_PRESSURE")
   [[ -n "${BALLOONING_PSI_PRESSURE_MAX:-}" ]] && BALLOON_ARGS+=(--psi-pressure-max "$BALLOONING_PSI_PRESSURE_MAX")
@@ -58,11 +62,25 @@ balloon() {
     BALLOON_ARGS+=(--debug "$BALLOONING_DEBUG")
   fi
 
+  return 0
+}
+
+startBalloonMonitor() {
+  local pid
+
   python3 ./balloon.py --qmp-sock "$BALLOONING_SOCKET" --qemu-pid-file "$QEMU_PID" "${BALLOON_ARGS[@]}" &
-  local pid="$!"
+  pid="$!"
   echo "$pid" > "$BALLOONING_PID"
   wait "$pid" || :
   rm -f -- "$BALLOONING_PID"
+
+  return 0
+}
+
+balloon() {
+  waitForQemuPid
+  buildBalloonArgs
+  startBalloonMonitor
 }
 
 msg="Starting memory ballooning monitor..."
