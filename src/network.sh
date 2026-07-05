@@ -217,10 +217,11 @@ compat() {
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
-  if [[ ${#interface} -gt 9 ]]; then
+  if (( ${#interface} > 8 )); then
     label="c"
-    if [[ ${#interface} -gt 14 ]]; then
-      warn "$err Interface name \"$interface\" exceeds 14 characters!" && return 0
+    if (( ${#interface} > 13 )); then
+      warn "$err Interface name \"$interface\" is too long for an alias label!"
+      return 0
     fi
   fi
 
