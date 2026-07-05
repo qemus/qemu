@@ -11,163 +11,209 @@ set -Eeuo pipefail
 BOOT_DESC=""
 BOOT_OPTS=""
 
-SECURE="off"
-enabled "$SMM" && SECURE="on"
-[ -n "$BIOS" ] && BOOT_MODE="custom"
+configureBootMode() {
+  SECURE="off"
+  enabled "$SMM" && SECURE="on"
+  [ -n "$BIOS" ] && BOOT_MODE="custom"
 
-msg="Configuring boot..."
-html "$msg"
-enabled "$DEBUG" && echo "$msg"
-
-case "${BOOT_MODE,,}" in
-  "uefi" | "" )
-    BOOT_MODE="uefi"
-    ROM="OVMF_CODE_4M.fd"
-    VARS="OVMF_VARS_4M.fd"
-    ;;
-  "secure" )
-    SECURE="on"
-    BOOT_DESC=" securely"
-    ROM="OVMF_CODE_4M.secboot.fd"
-    VARS="OVMF_VARS_4M.secboot.fd"
-    ;;
-  "windows" | "windows_plain" )
-    ROM="OVMF_CODE_4M.fd"
-    VARS="OVMF_VARS_4M.fd"
-    ;;
-  "windows_secure" )
-    TPM="Y"
-    SECURE="on"
-    BOOT_DESC=" securely"
-    ROM="OVMF_CODE_4M.ms.fd"
-    VARS="OVMF_VARS_4M.ms.fd"
-    ;;
-  "windows_legacy" )
-    HV="N"
-    SECURE="on"
-    BOOT_DESC=" (legacy)"
-    [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci"
-    ;;
-  "legacy" )
-    BOOT_DESC=" with SeaBIOS"
-    ;;
-  "custom" )
-    BIOS=$(strip "$BIOS")
-    if [ -z "$BIOS" ]; then
-      error "BOOT_MODE is custom but BIOS is empty!"
-      exit 33
-    fi
-    BOOT_OPTS="-bios $BIOS"
-    BOOT_DESC=" with custom BIOS file"
-    ;;
-  *)
-    error "Unknown BOOT_MODE, value \"${BOOT_MODE}\" is not recognized!"
-    exit 33
-    ;;
-esac
-
-if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
-  BOOT_OPTS+=" -rtc base=localtime"
-  BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
-  BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
-fi
-
-DEST="$STORAGE/${BOOT_MODE,,}"
-
-if enabled "$CLEAR"; then
-  # Clear NVRAM (helps to fix corruptions)
-  rm -f "$DEST.rom" "$DEST.vars" "$DEST.tpm"
-fi
-
-case "${BOOT_MODE,,}" in
-  "uefi" | "secure" | "windows" | "windows_plain" | "windows_secure" )
-
-    OVMF="/usr/share/OVMF"
-
-    if [ ! -s "$DEST.rom" ]; then
-      [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
-
-      logo="/var/www/img/${PROCESS,,}.ffs"
-      [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
-      [ ! -s "$logo" ] && LOGO="N"
-
-      if disabled "$LOGO"; then
-        cp "$OVMF/$ROM" "$DEST.tmp"
-      else
-        if ! /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "$logo" save "$DEST.tmp"; then
-          warn "failed to add custom logo to BIOS!"
-          cp "$OVMF/$ROM" "$DEST.tmp"
-        fi
+  case "${BOOT_MODE,,}" in
+    "uefi" | "" )
+      BOOT_MODE="uefi"
+      ROM="OVMF_CODE_4M.fd"
+      VARS="OVMF_VARS_4M.fd"
+      ;;
+    "secure" )
+      SECURE="on"
+      BOOT_DESC=" securely"
+      ROM="OVMF_CODE_4M.secboot.fd"
+      VARS="OVMF_VARS_4M.secboot.fd"
+      ;;
+    "windows" | "windows_plain" )
+      ROM="OVMF_CODE_4M.fd"
+      VARS="OVMF_VARS_4M.fd"
+      ;;
+    "windows_secure" )
+      TPM="Y"
+      SECURE="on"
+      BOOT_DESC=" securely"
+      ROM="OVMF_CODE_4M.ms.fd"
+      VARS="OVMF_VARS_4M.ms.fd"
+      ;;
+    "windows_legacy" )
+      HV="N"
+      SECURE="on"
+      BOOT_DESC=" (legacy)"
+      [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci"
+      ;;
+    "legacy" )
+      BOOT_DESC=" with SeaBIOS"
+      ;;
+    "custom" )
+      BIOS=$(strip "$BIOS")
+      if [ -z "$BIOS" ]; then
+        error "BOOT_MODE is custom but BIOS is empty!"
+        exit 33
       fi
-      mv "$DEST.tmp" "$DEST.rom"
-      ! setOwner "$DEST.rom" && error "Failed to set the owner for \"$DEST.rom\" !"
-    fi
-
-    if [ ! -s "$DEST.vars" ]; then
-      [ ! -s "$OVMF/$VARS" ] && error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
-      cp "$OVMF/$VARS" "$DEST.tmp"
-      mv "$DEST.tmp" "$DEST.vars"
-      ! setOwner "$DEST.vars" && error "Failed to set the owner for \"$DEST.vars\" !"
-    fi
-
-    if [[ "${BOOT_MODE,,}" == "secure" || "${BOOT_MODE,,}" == "windows_secure" ]]; then
-      BOOT_OPTS+=" -global driver=cfi.pflash01,property=secure,value=on"
-    fi
-
-    BOOT_OPTS+=" -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
-    BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
-
-    ;;
-esac
-
-MSRS="/sys/module/kvm/parameters/ignore_msrs"
-if [ -e "$MSRS" ]; then
-  result=$(<"$MSRS")
-  result="${result//[![:print:]]/}"
-  if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
-    echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
-  fi
-fi
-
-CLOCKSOURCE="tsc"
-[[ "${ARCH,,}" == "arm64" ]] && CLOCKSOURCE="arch_sys_counter"
-CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
-
-if [ ! -f "$CLOCK" ]; then
-  warn "file \"$CLOCK\" cannot be found?"
-else
-  result=$(<"$CLOCK")
-  result="${result//[![:print:]]/}"
-  case "${result,,}" in
-    "${CLOCKSOURCE,,}" ) ;;
-    "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
-    "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
-    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
-    *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+      BOOT_OPTS="-bios $BIOS"
+      BOOT_DESC=" with custom BIOS file"
+      ;;
+    *)
+      error "Unknown BOOT_MODE, value \"${BOOT_MODE}\" is not recognized!"
+      exit 33
+      ;;
   esac
-fi
 
-SM_BIOS=""
-PS="/sys/class/dmi/id/product_serial"
+  return 0
+}
 
-if [ -s "$PS" ] && [ -r "$PS" ]; then
-
-  BIOS_SERIAL=$(<"$PS")
-  BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
-
-  if [ -n "$BIOS_SERIAL" ]; then
-    SM_BIOS="-smbios type=1,serial=$BIOS_SERIAL"
+addWindowsBootOptions() {
+  if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+    BOOT_OPTS+=" -rtc base=localtime"
+    BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
+    BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
   fi
 
-fi
+  return 0
+}
 
-SWTPM="/run/swtpm"
-TPM_PID="/var/run/tpm.pid"
-TPM_SOCKET="/tmp/swtpm.sock"
+clearNvram() {
+  DEST="$STORAGE/${BOOT_MODE,,}"
 
-rm -f "$TPM_PID" "$TPM_SOCKET"
+  if enabled "$CLEAR"; then
+    # Clear NVRAM (helps to fix corruptions)
+    rm -f "$DEST.rom" "$DEST.vars" "$DEST.tpm"
+  fi
 
-if enabled "$TPM"; then
+  return 0
+}
+
+prepareUefiRom() {
+  local logo
+
+  if [ -s "$DEST.rom" ]; then
+    return 0
+  fi
+
+  [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
+
+  logo="/var/www/img/${PROCESS,,}.ffs"
+  [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
+  [ ! -s "$logo" ] && LOGO="N"
+
+  if disabled "$LOGO"; then
+    cp "$OVMF/$ROM" "$DEST.tmp"
+  else
+    if ! /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "$logo" save "$DEST.tmp"; then
+      warn "failed to add custom logo to BIOS!"
+      cp "$OVMF/$ROM" "$DEST.tmp"
+    fi
+  fi
+
+  mv "$DEST.tmp" "$DEST.rom"
+  ! setOwner "$DEST.rom" && error "Failed to set the owner for \"$DEST.rom\" !"
+
+  return 0
+}
+
+prepareUefiVars() {
+  if [ -s "$DEST.vars" ]; then
+    return 0
+  fi
+
+  [ ! -s "$OVMF/$VARS" ] && error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
+
+  cp "$OVMF/$VARS" "$DEST.tmp"
+  mv "$DEST.tmp" "$DEST.vars"
+  ! setOwner "$DEST.vars" && error "Failed to set the owner for \"$DEST.vars\" !"
+
+  return 0
+}
+
+configureUefi() {
+  case "${BOOT_MODE,,}" in
+    "uefi" | "secure" | "windows" | "windows_plain" | "windows_secure" )
+
+      OVMF="/usr/share/OVMF"
+
+      prepareUefiRom
+      prepareUefiVars
+
+      if [[ "${BOOT_MODE,,}" == "secure" || "${BOOT_MODE,,}" == "windows_secure" ]]; then
+        BOOT_OPTS+=" -global driver=cfi.pflash01,property=secure,value=on"
+      fi
+
+      BOOT_OPTS+=" -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
+      BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
+
+      ;;
+  esac
+
+  return 0
+}
+
+enableIgnoreMsrs() {
+  MSRS="/sys/module/kvm/parameters/ignore_msrs"
+  if [ -e "$MSRS" ]; then
+    result=$(<"$MSRS")
+    result="${result//[![:print:]]/}"
+    if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
+      echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
+    fi
+  fi
+
+  return 0
+}
+
+checkClocksource() {
+  CLOCKSOURCE="tsc"
+  [[ "${ARCH,,}" == "arm64" ]] && CLOCKSOURCE="arch_sys_counter"
+  CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
+
+  if [ ! -f "$CLOCK" ]; then
+    warn "file \"$CLOCK\" cannot be found?"
+  else
+    result=$(<"$CLOCK")
+    result="${result//[![:print:]]/}"
+    case "${result,,}" in
+      "${CLOCKSOURCE,,}" ) ;;
+      "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
+      "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
+      "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+      *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+    esac
+  fi
+
+  return 0
+}
+
+detectSmbiosSerial() {
+  SM_BIOS=""
+  PS="/sys/class/dmi/id/product_serial"
+
+  if [ -s "$PS" ] && [ -r "$PS" ]; then
+
+    BIOS_SERIAL=$(<"$PS")
+    BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
+
+    if [ -n "$BIOS_SERIAL" ]; then
+      SM_BIOS="-smbios type=1,serial=$BIOS_SERIAL"
+    fi
+
+  fi
+
+  return 0
+}
+
+startTpm() {
+  SWTPM="/run/swtpm"
+  TPM_PID="/var/run/tpm.pid"
+  TPM_SOCKET="/tmp/swtpm.sock"
+
+  rm -f "$TPM_PID" "$TPM_SOCKET"
+
+  if ! enabled "$TPM"; then
+    return 0
+  fi
 
   # Workaround to circumvent AppArmor profile
   [ ! -f "$SWTPM" ] && cp /usr/bin/swtpm* /run
@@ -204,6 +250,21 @@ if enabled "$TPM"; then
     fi
 
   fi
-fi
+
+  return 0
+}
+
+msg="Configuring boot..."
+html "$msg"
+enabled "$DEBUG" && echo "$msg"
+
+configureBootMode
+addWindowsBootOptions
+clearNvram
+configureUefi
+enableIgnoreMsrs
+checkClocksource
+detectSmbiosSerial
+startTpm
 
 return 0
