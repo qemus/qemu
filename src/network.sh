@@ -31,7 +31,6 @@ set -Eeuo pipefail
 : "${DNSMASQ_DEBUG:=""}"
 : "${DNSMASQ:="/usr/sbin/dnsmasq"}"
 : "${DNSMASQ_PID:="/var/run/dnsmasq.pid"}"
-: "${DNSMASQ_CONF_DIR:="/etc/dnsmasq.d"}"
 
 # Sanitize variables
 MAC=$(strip "$MAC")
@@ -217,10 +216,11 @@ compat() {
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
 
-  if [[ ${#interface} -gt 9 ]]; then
+  if (( ${#interface} > 8 )); then
     label="c"
-    if [[ ${#interface} -gt 14 ]]; then
-      warn "$err Interface name \"$interface\" exceeds 14 characters!" && return 0
+    if (( ${#interface} > 13 )); then
+      warn "$err Interface name \"$interface\" is too long for an alias label!"
+      return 0
     fi
   fi
 
@@ -691,8 +691,8 @@ closeNetwork() {
 
   disabled "$NETWORK" && return 0
 
-  exec 30<&- || true
-  exec 40<&- || true
+  exec 30>&- 2>/dev/null || true
+  exec 40>&- 2>/dev/null || true
 
   closeBridge
 
@@ -951,7 +951,10 @@ else
 fi
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$VM_NET_MAC"
-[[ "$MTU" != "0" && "$MTU" != "1500" ]] && NET_OPTS+=",host_mtu=$MTU"
+
+if [[ "${ADAPTER,,}" == "virtio-net-pci" && "$MTU" != "0" && "$MTU" != "1500" ]]; then
+  NET_OPTS+=",host_mtu=$MTU"
+fi
 
 echo "$VM_NET_IP" > "$QEMU_DIR"/qemu.ip
 echo "http://$VM_NET_IP:$CHECK_PORT" > "$QEMU_DIR"/qemu.url
