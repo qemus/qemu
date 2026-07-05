@@ -16,13 +16,14 @@ Docker container for running virtual machines using QEMU.
 ## Features ✨
 
 - Runs virtual machines inside a Docker container
-- Web-based viewer for controlling the VM
+- Automatic downloads for popular Linux distributions
 - Supports almost every disk and image format
+- Web-based viewer for controlling the VM
 - Near-native performance with KVM acceleration
+- Customizable CPU, memory, and storage allocation
+- Dynamic memory allocation with memory ballooning
 - USB passthrough and host folder sharing
 - Supports bridge, user-mode, macvlan, and macvtap networking
-- Dynamic memory allocation with memory ballooning
-- Automatic downloads for popular Linux distributions
 
 ## Usage  🐳
 
