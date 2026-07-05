@@ -454,8 +454,11 @@ configurePasst() {
   PASST_OPTS+=" -g $gateway"
   PASST_OPTS+=" -n $VM_NET_MASK"
 
+  local passt_mtu="$GUEST_MTU"
+  [[ "$passt_mtu" == "0" ]] && passt_mtu="1500"
+
   # Pass an explicit MTU to passt.
-  PASST_OPTS+=" -m $GUEST_MTU"
+  PASST_OPTS+=" -m $passt_mtu"
 
   local forward=""
   forward=$(getUserPorts)
@@ -957,7 +960,7 @@ getInfo() {
   # Automatically propagate smaller-than-standard MTUs, but do not automatically
   # advertise jumbo frames unless the user explicitly requested MTU.
   if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" -gt "1500" ]] && ! enabled "$mtu_custom"; then
-    GUEST_MTU="0"
+    GUEST_MTU="1500"
   fi
 
   if [ -z "$MAC" ]; then
