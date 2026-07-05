@@ -15,13 +15,14 @@ Docker container for running virtual machines using QEMU.
 
 ## Features ✨
 
-  - Web-based viewer to control the machine directly from your browser
-
-  - Supports `.iso`, `.img`, `.qcow2`, `.vhd`, `.vhdx`, `.vdi`, `.vmdk` and `.raw` disk formats
-
-  - High-performance options (like KVM acceleration, kernel-mode networking, IO threading, etc.) to achieve near-native speed
-
-  - USB pass through and host folder sharing
+- Runs virtual machines inside a Docker container
+- Web-based viewer for controlling the VM
+- Supports almost every disk and image format
+- Near-native performance with KVM acceleration
+- USB passthrough and host folder sharing
+- Supports bridge, user-mode, macvlan, and macvtap networking
+- Dynamic memory allocation with memory ballooning
+- Automatic downloads for popular Linux distributions
 
 ## Usage  🐳
 
