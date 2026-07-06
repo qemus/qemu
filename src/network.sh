@@ -477,7 +477,10 @@ configureSlirp() {
   local ipv6="ipv6=off,"
   [ -n "$IP6" ] && ipv6="ipv6=on,"
 
-  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=${gateway%.*}.0/$VM_NET_PREFIX,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
+  local subnet=""
+  subnet=$(networkCIDR "$ip") || return 1
+
+  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=$subnet,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
 
   local forward=""
   forward=$(getSlirp "$ip")
