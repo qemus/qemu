@@ -71,38 +71,6 @@ isUserMode() {
   esac
 }
 
-maskToCIDR() {
-
-  local mask="$1"
-  local prefix=""
-
-  prefix=$(ipcalc -p 0.0.0.0 "$mask" | awk -F= '/^PREFIX=/ { print $2 }')
-
-  if [[ ! "$prefix" =~ ^[0-9]+$ ]] || (( prefix < 1 || prefix > 30 )); then
-    error "Invalid MASK: '$mask'"
-    return 1
-  fi
-
-  echo "$prefix"
-  return 0
-}
-
-networkCIDR() {
-
-  local ip="$1"
-  local network=""
-
-  network=$(ipcalc -n "$ip" "$MASK" | awk -F= '/^NETWORK=/ { print $2 }')
-
-  if [ -z "$network" ]; then
-    error "Failed to calculate network address from IP '$ip' and netmask '$MASK'."
-    return 1
-  fi
-
-  echo "$network/$PREFIX"
-  return 0
-}
-
 getMTU() {
 
   local dev="$1"
@@ -153,6 +121,52 @@ gatewayMAC() {
   local mac="$1"
 
   echo "$mac" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/'
+}
+
+maskToCIDR() {
+
+  local mask="$1"
+  local prefix=""
+
+  prefix=$(ipcalc -n -b "0.0.0.0/$mask" 2>/dev/null | awk '
+    /^Netmask:/ {
+      for (i = 1; i <= NF; i++) {
+        if ($i == "=") {
+          print $(i + 1)
+          exit
+        }
+      }
+    }
+  ')
+
+  if [[ ! "$prefix" =~ ^[0-9]+$ ]] || (( prefix < 1 || prefix > 30 )); then
+    error "Invalid MASK: '$mask'"
+    return 1
+  fi
+
+  echo "$prefix"
+  return 0
+}
+
+networkCIDR() {
+
+  local ip="$1"
+  local network=""
+
+  network=$(ipcalc -n -b "$ip/$MASK" 2>/dev/null | awk '
+    /^Network:/ {
+      print $2
+      exit
+    }
+  ')
+
+  if [[ ! "$network" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]+$ ]]; then
+    error "Failed to calculate network address from IP '$ip' and netmask '$MASK'."
+    return 1
+  fi
+
+  echo "$network"
+  return 0
 }
 
 detectInterface() {
@@ -1270,22 +1284,93 @@ configureMAC() {
   return 0
 }
 
-printNetworkDebug() {
+formatAddress() {
 
-  local line=""
+  local ip="${1:-}"
+  local prefix="${2:-}"
+  local result="$ip"
+
+  [ -z "$result" ] && return 1
+
+  if [ -n "$prefix" ] && [[ "$prefix" != "24" ]]; then
+    result+="/$prefix"
+  fi
+
+  echo "$result"
+  return 0
+}
+
+showHostInfo() {
+
+  local mtu=""
   local host=""
-  local nameservers=""
+  local uplink=""
 
   enabled "$DEBUG" || return 0
 
   host=$(containerID)
+  local line="Host: $host"
 
-  line="Host: $host  IP: $UPLINK  Gateway: $GATEWAY  Interface: $DEV  MAC: $MAC  MTU: $MTU  Mask: $MASK/$PREFIX"
+  local iface="$DEV"
+  if [ -n "$NIC" ] && [[ "${NIC,,}" != "veth" ]]; then
+    iface+="/$NIC"
+  fi
+
+  [ -z "$iface" ] && iface="(none)"
+  line+="  Interface: $iface"
+
+  uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
+  [ -z "$uplink" ] && uplink="(none)"
+  line+="  IP: $uplink"
+
+  local gateway="${GATEWAY:-}"
+  [ -z "$gateway" ] && gateway="(none)"
+  line+="  Gateway: $gateway"
+
+  mtu=$(getMTU "$DEV")
+  if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
+    line+="  MTU: $mtu"
+  fi
+
   info "$line"
+  return 0
+}
 
-  if [ -f /etc/resolv.conf ]; then
-    nameservers=$(grep '^nameserver ' /etc/resolv.conf | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
-    [ -n "$nameservers" ] && info "Nameservers: $nameservers"
+showGuestInfo() {
+
+  local ip="${IP:-}"
+  local nameservers=""
+
+  enabled "$DEBUG" || return 0
+
+  local mode="${NETWORK,,}"
+  isNAT && mode="NAT"
+  [ -z "$mode" ] && mode="(none)"
+  local line="Network mode: $mode"
+
+  [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" || true)
+  [ -z "$ip" ] && ip="DHCP"
+  line+="  Guest: $ip"
+
+  [ -n "$MAC" ] && line+=" ($MAC)"
+
+  local count="0"
+  local file="/etc/resolv.dnsmasq"
+  [ ! -f "$file" ] && file="/etc/resolv.conf"
+
+  if [ -f "$file" ]; then
+    count=$(grep -c '^nameserver ' "$file" || true)
+    nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
+  fi
+
+  [ -z "$nameservers" ] && nameservers="(none)"
+
+  if (( count <= 1 )); then
+    line+="  Nameserver: $nameservers"
+    info "$line"
+  else
+    info "$line"
+    info "Nameservers: $nameservers"
   fi
 
   echo
@@ -1308,7 +1393,7 @@ prepareNetwork() {
   configureMTU
   configureMAC
 
-  printNetworkDebug
+  showHostInfo
 
   return 0
 }
@@ -1390,6 +1475,8 @@ else
   fi
 
 fi
+
+showGuestInfo
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$MAC"
 
