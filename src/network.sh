@@ -1286,8 +1286,8 @@ configureMAC() {
 
 showGateway() {
 
-  local ip="$1"
-  local gateway="$2"
+  local ip="${1:-}"
+  local gateway="${2:-}"
 
   [ -z "$ip" ] && return 1
   [ -z "$gateway" ] && return 1
@@ -1305,9 +1305,9 @@ showGateway() {
 
 formatAddress() {
 
-  local ip="$1"
-  local prefix="$2"
-  local gateway="$3"
+  local ip="${1:-}"
+  local prefix="${2:-}"
+  local gateway="${3:-}"
   local result="$ip"
 
   [ -z "$result" ] && return 1
@@ -1316,7 +1316,7 @@ formatAddress() {
     result+="/$prefix"
   fi
 
-  if [ -n "$gateway" ] && showGateway; then
+  if [ -n "$gateway" ] && showGateway "$ip" "$gateway"; then
     result+=" via $gateway"
   fi
 
@@ -1357,9 +1357,10 @@ showUplink() {
 
 showNetwork() {
 
-  local ip="{IP:-}"
+  local ip="${IP:-}"
   local line=""
   local gateway=""
+  local nameservers=""
 
   enabled "$DEBUG" || return 0
   [ -z "$ip" ] && return 0
