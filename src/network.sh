@@ -1359,6 +1359,7 @@ showNetwork() {
 
   local ip="${IP:-}"
   local line=""
+  local file=""
   local gateway=""
   local nameservers=""
 
@@ -1369,9 +1370,12 @@ showNetwork() {
   ip=$(formatAddress "$ip" "$PREFIX" "$gateway" || true)
 
   line="Network mode: ${NETWORK,,}  Guest: $ip"
+ 
+  file="/etc/resolv.dnsmasq"
+  [ ! -f "$file" ] && file="/etc/resolv.conf"
 
-  if [ -f /etc/resolv.conf ]; then
-    nameservers=$(grep '^nameserver ' /etc/resolv.conf | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
+  if [ -f "$file" ]; then
+    nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
     [ -n "$nameservers" ] && line+="  Nameservers: $nameservers"
   fi
 
