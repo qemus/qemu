@@ -99,8 +99,9 @@ detectType() {
         return 1
       fi
 
-      result=$(echo "${result^^}" | grep "^/EFI")
-      [ -z "$result" ] && BOOT_MODE="legacy"
+      if ! grep -qi "^/EFI" <<< "$result"; then
+        BOOT_MODE="legacy"
+      fi
 
       bootFile "$file" && return 0
       return 1
