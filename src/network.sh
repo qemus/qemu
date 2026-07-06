@@ -160,6 +160,26 @@ minMTU() {
   return 0
 }
 
+containerID() {
+
+  local id=""
+
+  id=$(hostname -s 2>/dev/null || true)
+
+  if [ -z "$id" ] && [ -s /etc/machine-id ]; then
+    id=$(< /etc/machine-id)
+  fi
+
+  if [ -z "$id" ] && [ -s /proc/sys/kernel/random/boot_id ]; then
+    id=$(< /proc/sys/kernel/random/boot_id)
+  fi
+
+  [ -z "$id" ] && id="unknown"
+
+  echo "$id"
+  return 0
+}
+
 setMTU() {
 
   local dev="$1"
@@ -1109,7 +1129,7 @@ getInfo() {
   fi
 
   local container=""
-  container="$(hostname -s)"
+  container=$(containerID)
 
   if [ -z "$MAC" ]; then
     local file="$STORAGE/$PROCESS.mac"
