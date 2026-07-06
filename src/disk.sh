@@ -795,6 +795,13 @@ if [ -z "$DISK_FMT" ]; then
   fi
 fi
 
+DISK_FMT="${DISK_FMT,,}"
+
+case "$DISK_FMT" in
+  "raw" | "qcow2" ) ;;
+  * ) error "Invalid DISK_FMT specified, value \"$DISK_FMT\" is not recognized!" && exit 78 ;;
+esac
+
 if [ -z "$ALLOCATE" ]; then
   ALLOCATE="N"
 fi
