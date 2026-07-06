@@ -88,14 +88,47 @@ guestIP() {
 natGuestIP() {
 
   local ip="$1"
+  local third=""
+  local fourth=""
+  local start=""
+  local second=""
+  local guest=""
+  local subnet=""
 
-  if [[ "$ip" != "172.30."* ]]; then
-    ip="172.30.$(cut -d. -f3,4 <<< "$ip")"
+  third=$(cut -d. -f3 <<< "$ip")
+  fourth=$(cut -d. -f4 <<< "$ip")
+
+  if [[ "$ip" == "172.30."* ]]; then
+    start="31"
   else
-    ip="172.31.$(cut -d. -f3,4 <<< "$ip")"
+    start="30"
   fi
 
-  guestIP "$ip" 2
+  guest=$(guestIP "172.$start.$third.$fourth" 2)
+  fourth="${guest##*.}"
+
+  for (( second=start; second<=254; second++ )); do
+    guest="172.$second.$third.$fourth"
+    subnet=$(networkCIDR "$guest") || return 1
+
+    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
+      echo "$guest"
+      return 0
+    fi
+  done
+
+  for (( second=30; second<start; second++ )); do
+    guest="172.$second.$third.$fourth"
+    subnet=$(networkCIDR "$guest") || return 1
+
+    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
+      echo "$guest"
+      return 0
+    fi
+  done
+
+  error "No available VM subnet found in 172.30.$third.0/$PREFIX through 172.254.$third.0/$PREFIX."
+  return 1
 }
 
 maskToCIDR() {
@@ -278,6 +311,7 @@ configureDNS() {
   local mask="$5"
   local gateway="$6"
   local arguments="$DNSMASQ_OPTS"
+  local rc
 
   enabled "${DNSMASQ_DISABLE:-}" && return 0
   enabled "$DEBUG" && echo "Starting dnsmasq daemon..."
@@ -363,18 +397,19 @@ configureDNS() {
 getHostPorts() {
 
   local list=""
+  local display="${DISPLAY:-}"
 
-  if [[ "${DISPLAY,,}" == "web" ]]; then
-    list+="$WSS_PORT,"
+  if [[ "${display,,}" == "web" ]]; then
+    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT,"
   fi
 
-  if [[ "${DISPLAY,,}" == "vnc" || "${DISPLAY,,}" == "web" ]]; then
-    list+="$VNC_PORT,"
+  if [[ "${display,,}" == "vnc" || "${display,,}" == "web" ]]; then
+    [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT,"
   fi
 
   if ! disabled "${WEB:-}"; then
-    list+="$WEB_PORT,"
-    list+="$WSD_PORT,"
+    [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT,"
+    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT,"
   fi
 
   list+="${HOST_PORTS// /},"
@@ -413,7 +448,7 @@ getUserPorts() {
 
       if [[ "$num" == "$port" ]]; then
         num=""
-        if [[ "$port" != "$WEB_PORT" ]]; then
+        if [[ "$port" != "${WEB_PORT:-}" ]]; then
           warn "Could not assign port $port to \"USER_PORTS\" because it is already in \"HOST_PORTS\"!"
         fi
       fi
@@ -465,6 +500,9 @@ getSlirp() {
 # ######################################
 
 configureDHCP() {
+
+  local msg=""
+  local rc
 
   enabled "$DEBUG" && echo "Configuring MACVTAP networking..."
 
@@ -865,6 +903,7 @@ configureTables() {
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
+  local rc
 
   enabled "$DEBUG" && echo "Configuring NAT networking..."
 
@@ -940,6 +979,7 @@ configureNAT() {
 clearTables() {
   local table="" line rules
   local rule_tag="remove"
+  local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
   # Choose between iptables or nftables
   if command -v iptables-nft >/dev/null 2>&1 && iptables-nft -V >/dev/null 2>&1; then
@@ -963,7 +1003,7 @@ clearTables() {
       \*raw)    table="raw" ;;
     esac
     if [[ "$line" == -A* ]]; then
-      if [[ "$line" == *"--comment $rule_tag"* || "$line" == *"--comment \"$rule_tag\""* ]]; then
+      if [[ "$line" =~ $re ]]; then
         read -ra args <<< "${line/-A /-D }"
         iptables -t "$table" "${args[@]}" &> /dev/null || :
       fi
@@ -1034,6 +1074,7 @@ compat() {
   local label="compat"
   local samba="20.20.20.1"
   local err="failed to configure IP alias for backwards compatibility."
+  local msg=""
 
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
