@@ -1342,7 +1342,7 @@ showUplink() {
   [ -n "$iface" ] && line+="  Interface: $iface"
 
   uplink=$(formatAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
-  [ -n "$uplink" ] && line+="  Uplink: $uplink"
+  [ -n "$uplink" ] && line+="  IP: $uplink"
 
   mtu=$(getMTU "$DEV")
   if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
@@ -1369,16 +1369,16 @@ showNetwork() {
   local line="Network mode: $mode"
   [ -n "$ip" ] && line+="  Guest: $ip"
   [ -n "$MAC" ] && line+=" ($MAC)"
+  info "$line"
 
   local file="/etc/resolv.dnsmasq"
   [ ! -f "$file" ] && file="/etc/resolv.conf"
 
   if [ -f "$file" ]; then
     nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
-    [ -n "$nameservers" ] && line+="  Nameservers: $nameservers"
+    [ -n "$nameservers" ] && info "Nameservers: $nameservers"
   fi
 
-  info "$line"
   echo
   return 0
 }
