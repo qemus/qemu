@@ -78,9 +78,12 @@ startBalloonMonitor() {
 }
 
 balloon() {
+
   waitForQemuPid
   buildBalloonArgs
   startBalloonMonitor
+
+  return 0
 }
 
 msg="Starting memory ballooning monitor..."

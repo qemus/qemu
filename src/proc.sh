@@ -33,6 +33,8 @@ appendCpuFeature() {
   else
     CPU_FEATURES+=",$feature"
   fi
+
+  return 0
 }
 
 configureKvmCpuModel() {

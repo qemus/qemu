@@ -21,6 +21,8 @@ validateVncPort() {
     warn "VNC port cannot be set lower than 5900, ignoring value $VNC_PORT."
     VNC_PORT="5900"
   fi
+
+  return 0
 }
 
 prepareWebFiles() {

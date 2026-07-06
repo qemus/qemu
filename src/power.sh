@@ -16,6 +16,8 @@ _trap() {
   for sig; do
     trap "$func $sig" "$sig"
   done
+
+  return 0
 }
 
 app() {
@@ -76,6 +78,8 @@ forceKillQemu() {
       fi
     fi
   fi
+
+  return 0
 }
 
 cleanupHelpers() {
@@ -85,6 +89,8 @@ cleanupHelpers() {
 
   mKill "${pids[@]}"
   closeNetwork
+
+  return 0
 }
 
 finish() {
@@ -133,6 +139,8 @@ normalizeTimeout() {
 
   _wait_until=$((TIMEOUT - _cleanup_grace))
   _sigterm_at=$((_wait_until - _term_grace))
+
+  return 0
 }
 
 sendAcpiShutdown() {
@@ -141,6 +149,8 @@ sendAcpiShutdown() {
   if [ -S "$QEMU_DIR/monitor.sock" ]; then
     nc -q 1 -w 1 -U "$QEMU_DIR/monitor.sock" &> /dev/null <<<'system_powerdown' || :
   fi
+
+  return 0
 }
 
 waitForShutdown() {
@@ -180,6 +190,8 @@ waitForShutdown() {
     (( cnt++ ))
 
   done
+
+  return 0
 }
 
 graceful_shutdown() {
