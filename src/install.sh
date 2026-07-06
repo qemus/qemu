@@ -213,7 +213,10 @@ convertImage() {
   [ ! -f "$source_file" ] && error "Conversion failed, source file $source_file does not exists?" && return 1
 
   if [[ "${source_fmt,,}" == "${dst_fmt,,}" ]]; then
-    mv -f "$source_file" "$dst_file"
+    if ! mv -f "$source_file" "$dst_file"; then
+      error "Failed to move converted image to $dst_file."
+      return 1
+    fi
     return 0
   fi
 
