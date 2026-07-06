@@ -30,6 +30,7 @@ RUN <<EOF
     nginx \
     swtpm \
     procps \
+    ipcalc \
     ethtool \
     iptables \
     iproute2 \
