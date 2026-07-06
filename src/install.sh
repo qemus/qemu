@@ -109,7 +109,7 @@ detectType() {
     fi
   fi
 
-  result=$(fdisk -l "$file" 2>/dev/null)
+  result=$(fdisk -l "$file" 2>/dev/null || true)
   [[ "${result^^}" != *"EFI "* ]] && BOOT_MODE="legacy"
 
   bootFile "$file" && return 0
