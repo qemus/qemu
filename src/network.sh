@@ -637,7 +637,6 @@ configurePasst() {
   [ -n "$IP" ] && ip="$IP"
 
   ip=$(guestIP "$ip" 2)
-
   local gateway="${ip%.*}.1"
 
   # Backwards compatibility
@@ -721,7 +720,11 @@ configurePasst() {
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=$PASST_SOCKET"
 
-  configureDNS "lo" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" || return 1
+  if ! configureDNS "lo" "$ip" "$MAC" "$HOST" "$MASK" "$gateway"; then
+    mKill "$PASST_PID"
+    rm -f "$PASST_PID" "$PASST_SOCKET"
+    return 1
+  fi
 
   IP="$ip"
   return 0
