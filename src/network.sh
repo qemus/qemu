@@ -1174,7 +1174,7 @@ getInfo() {
     [ -s "$file" ] && MAC=$(<"$file")
     MAC="${MAC//[![:print:]]/}"
     if [ -z "$MAC" ]; then
-      # Generate MAC address based on Docker container ID in hostname
+      # Generate a MAC address based on Docker container ID in hostname
       MAC=$(echo "$container" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
       echo "${MAC^^}" > "$file"
       ! setOwner "$file" && error "Failed to set the owner for \"$file\" !"
@@ -1185,7 +1185,7 @@ getInfo() {
   MAC="${MAC//-/:}"
 
   if [[ ${#MAC} == 12 ]]; then
-    m="$MAC"
+    local m="$MAC"
     MAC="${m:0:2}:${m:2:2}:${m:4:2}:${m:6:2}:${m:8:2}:${m:10:2}"
   fi
 
