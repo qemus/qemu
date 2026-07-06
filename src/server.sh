@@ -42,7 +42,7 @@ configureAuthentication() {
   user="Docker"
   pass="admin"
 
-  USERNAME=$(strip "$USERNAME")
+  USERNAME=$(strip "${USERNAME:-}")
   [ -n "${USERNAME:-}" ] && user="$USERNAME"
   [ -n "${PASSWORD:-}" ] && pass="$PASSWORD"
 
