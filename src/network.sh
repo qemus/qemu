@@ -1368,7 +1368,7 @@ showNetwork() {
   local line="Network mode: $mode"
 
   [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" || true)
-  [ -z "$ip" ] && ip="(none)"
+  [ -z "$ip" ] && ip="DHCP"
   line+="  Guest: $ip"
 
   [ -n "$MAC" ] && line+=" ($MAC)"
