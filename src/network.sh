@@ -1326,23 +1326,22 @@ formatAddress() {
 
 showUplink() {
 
-  local msg=""
   local mtu=""
   local host=""
-  local iface=""
   local uplink=""
 
   enabled "$DEBUG" || return 0
 
-  iface="$DEV"
+  local iface="$DEV"
   if [ -n "$NIC" ] && [[ "${NIC,,}" != "veth" ]]; then
     iface+="/$NIC"
   fi
 
   host=$(containerID)
-  msg="Host: $host  Interface: $iface"
-  uplink=$(formatAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
+  local msg="Host: $host"
+  [ -n "$iface" ] && msg+="  Interface: $iface"
 
+  uplink=$(formatAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
   [ -n "$uplink" ] && msg+="  Uplink: $uplink"
   [ -n "$MAC" ] && msg+="  MAC: $MAC"
 
@@ -1358,20 +1357,20 @@ showUplink() {
 showNetwork() {
 
   local ip="${IP:-}"
-  local line=""
-  local file=""
-  local gateway=""
   local nameservers=""
 
   enabled "$DEBUG" || return 0
-  [ -z "$ip" ] && return 0
 
-  gateway="${ip%.*}.1"
-  ip=$(formatAddress "$ip" "$PREFIX" "$gateway" || true)
+  local gateway="${ip%.*}.1"
+  [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" "$gateway" || true)
 
-  line="Network mode: ${NETWORK,,}  Guest: $ip"
+  local mode="${NETWORK,,}"
+  isNAT && mode="NAT"
+
+  local line="Network mode: $mode"
+  [ -n "$ip" ] && line+="  Guest: $ip"
  
-  file="/etc/resolv.dnsmasq"
+  local file="/etc/resolv.dnsmasq"
   [ ! -f "$file" ] && file="/etc/resolv.conf"
 
   if [ -f "$file" ]; then
