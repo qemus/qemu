@@ -71,66 +71,6 @@ isUserMode() {
   esac
 }
 
-guestIP() {
-
-  local ip="$1"
-  local min="${2:-2}"
-  local last="${ip##*.}"
-
-  if [[ ! "$last" =~ ^[0-9]+$ ]] || (( last < min || last > 254 )); then
-    ip="${ip%.*}.$min"
-  fi
-
-  echo "$ip"
-  return 0
-}
-
-natGuestIP() {
-
-  local ip="$1"
-  local third=""
-  local fourth=""
-  local start=""
-  local second=""
-  local guest=""
-  local subnet=""
-
-  third=$(cut -d. -f3 <<< "$ip")
-  fourth=$(cut -d. -f4 <<< "$ip")
-
-  if [[ "$ip" == "172.30."* ]]; then
-    start="31"
-  else
-    start="30"
-  fi
-
-  guest=$(guestIP "172.$start.$third.$fourth" 2)
-  fourth="${guest##*.}"
-
-  for (( second=start; second<=254; second++ )); do
-    guest="172.$second.$third.$fourth"
-    subnet=$(networkCIDR "$guest") || return 1
-
-    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
-      echo "$guest"
-      return 0
-    fi
-  done
-
-  for (( second=30; second<start; second++ )); do
-    guest="172.$second.$third.$fourth"
-    subnet=$(networkCIDR "$guest") || return 1
-
-    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
-      echo "$guest"
-      return 0
-    fi
-  done
-
-  error "No available VM subnet found in 172.30.$third.0/$PREFIX through 172.254.$third.0/$PREFIX."
-  return 1
-}
-
 maskToCIDR() {
 
   local mask="$1"
@@ -296,6 +236,66 @@ disableIPv6() {
   sysctl -w "net.ipv6.conf.$dev.accept_ra=0" > /dev/null 2>&1 || :
 
   return 0
+}
+
+guestIP() {
+
+  local ip="$1"
+  local min="${2:-2}"
+  local last="${ip##*.}"
+
+  if [[ ! "$last" =~ ^[0-9]+$ ]] || (( last < min || last > 254 )); then
+    ip="${ip%.*}.$min"
+  fi
+
+  echo "$ip"
+  return 0
+}
+
+natGuestIP() {
+
+  local ip="$1"
+  local third=""
+  local fourth=""
+  local start=""
+  local second=""
+  local guest=""
+  local subnet=""
+
+  third=$(cut -d. -f3 <<< "$ip")
+  fourth=$(cut -d. -f4 <<< "$ip")
+
+  if [[ "$ip" == "172.30."* ]]; then
+    start="31"
+  else
+    start="30"
+  fi
+
+  guest=$(guestIP "172.$start.$third.$fourth" 2)
+  fourth="${guest##*.}"
+
+  for (( second=start; second<=254; second++ )); do
+    guest="172.$second.$third.$fourth"
+    subnet=$(networkCIDR "$guest") || return 1
+
+    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
+      echo "$guest"
+      return 0
+    fi
+  done
+
+  for (( second=30; second<start; second++ )); do
+    guest="172.$second.$third.$fourth"
+    subnet=$(networkCIDR "$guest") || return 1
+
+    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
+      echo "$guest"
+      return 0
+    fi
+  done
+
+  error "No available VM subnet found in 172.30.$third.0/$PREFIX through 172.254.$third.0/$PREFIX."
+  return 1
 }
 
 # ######################################
@@ -977,6 +977,7 @@ configureNAT() {
 # ######################################
 
 clearTables() {
+
   local table="" line rules
   local rule_tag="remove"
   local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
