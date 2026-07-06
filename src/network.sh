@@ -1343,7 +1343,6 @@ showUplink() {
 
   uplink=$(formatAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
   [ -n "$uplink" ] && msg+="  Uplink: $uplink"
-  [ -n "$MAC" ] && msg+="  MAC: $MAC"
 
   mtu=$(getMTU "$DEV")
   if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
@@ -1369,7 +1368,8 @@ showNetwork() {
 
   local line="Network mode: $mode"
   [ -n "$ip" ] && line+="  Guest: $ip"
- 
+  [ -n "$MAC" ] && msg+=" ($MAC)"
+
   local file="/etc/resolv.dnsmasq"
   [ ! -f "$file" ] && file="/etc/resolv.conf"
 
