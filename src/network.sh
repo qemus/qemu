@@ -588,17 +588,15 @@ configureSlirp() {
   [ -n "$IP" ] && ip="$IP"
 
   ip=$(guestIP "$ip" 4)
-
   local gateway="${ip%.*}.1"
+  local subnet=""
+  subnet=$(networkCIDR "$ip") || return 1
 
   # Backwards compatibility
   compat "$gateway" "$DEV" || :
 
   local ipv6="ipv6=off,"
   [ -n "$IP6" ] && ipv6="ipv6=on,"
-
-  local subnet=""
-  subnet=$(networkCIDR "$ip") || return 1
 
   NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=$subnet,dhcpstart=$ip,${ipv6}hostname=$HOST"
 
