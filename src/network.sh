@@ -1284,25 +1284,6 @@ configureMAC() {
   return 0
 }
 
-showGateway() {
-
-  local ip="${1:-}"
-  local gateway="${2:-}"
-
-  [ -z "$ip" ] && return 1
-  [ -z "$gateway" ] && return 1
-
-  local ip_net="${ip%.*}"
-  local gateway_net="${gateway%.*}"
-  local gateway_host="${gateway##*.}"
-
-  if [[ "$ip_net" == "$gateway_net" && "$gateway_host" == "1" ]]; then
-    return 1
-  fi
-
-  return 0
-}
-
 formatAddress() {
 
   local ip="${1:-}"
@@ -1319,7 +1300,7 @@ formatAddress() {
   return 0
 }
 
-showUplink() {
+showHostInfo() {
 
   local mtu=""
   local host=""
@@ -1355,7 +1336,7 @@ showUplink() {
   return 0
 }
 
-showNetwork() {
+showGuestInfo() {
 
   local ip="${IP:-}"
   local nameservers=""
@@ -1403,7 +1384,7 @@ prepareNetwork() {
   configureMTU
   configureMAC
 
-  showUplink
+  showHostInfo
 
   return 0
 }
@@ -1486,7 +1467,7 @@ else
 
 fi
 
-showNetwork
+showGuestInfo
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$MAC"
 
