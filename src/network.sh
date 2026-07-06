@@ -160,6 +160,13 @@ minMTU() {
   return 0
 }
 
+gatewayMAC() {
+
+  local mac="$1"
+
+  echo "$mac" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/'
+}
+
 containerID() {
 
   local id=""
@@ -1050,11 +1057,14 @@ getInfo() {
 
   GATEWAY=$(ip route list dev "$DEV" | awk ' /^default/ {print $3}' | head -n 1)
   { UPLINK=$(ip address show dev "$DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1); } 2>/dev/null || :
+  
+  # DHCP/macvtap mode can work without a detectable container IPv4 address,
+  # because the guest receives its address directly from the external LAN.
   [ -z "$UPLINK" ] && ! enabled "$DHCP" && error "Could not determine container IPv4 address!" && exit 26
 
   IP6=""
   # shellcheck disable=SC2143
-  if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]] && [ -n "$(ifconfig -a | grep inet6)" ]; then
+  if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]]; then
     { IP6=$(ip -6 addr show dev "$DEV" scope global up); rc=$?; } 2>/dev/null || :
     (( rc != 0 )) && IP6=""
     [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
@@ -1155,8 +1165,10 @@ getInfo() {
     error "Invalid MAC address: '$MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  GATEWAY_MAC=$(echo "$MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
-
+  # Keep the guest-facing gateway MAC stable across runs, otherwise Windows guests
+  # may detect a new network every boot.
+  GATEWAY_MAC=$(gatewayMAC "$MAC")
+  
   if enabled "$DEBUG"; then
     line="Host: $container  IP: $UPLINK  Gateway: $GATEWAY  Interface: $DEV  MAC: $MAC  MTU: $mtu  Mask: $MASK/$PREFIX"
     [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
