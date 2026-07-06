@@ -358,7 +358,11 @@ convertDisk() {
   fi
 
   rm -f "$SOURCE_FILE"
-  mv "$TMP_FILE" "$DST_FILE"
+  if ! mv "$TMP_FILE" "$DST_FILE"; then
+    rm -f "$TMP_FILE"
+    error "Failed to move converted $DISK_DESC image to $DST_FILE."
+    exit 79
+  fi
 
   if isCow "$FS"; then
     FA=$(lsattr "$DST_FILE")
