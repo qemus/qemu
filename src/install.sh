@@ -447,14 +447,42 @@ esac
 case "${base,,}" in
   *".gz" | *".gzip" )
 
-    gzip -dc "$STORAGE/$base" > "$STORAGE/${base%.*}"
+    out="$STORAGE/${base%.*}"
+    tmp="$out.tmp"
+
+    rm -f "$tmp"
+
+    if ! gzip -dc "$STORAGE/$base" > "$tmp"; then
+      rm -f "$tmp"
+      error "Failed to extract archive: $base" && exit 32
+    fi
+
+    if ! mv -f "$tmp" "$out"; then
+      rm -f "$tmp"
+      error "Failed to move extracted image to $out" && exit 32
+    fi
+
     rm -f "$STORAGE/$base"
     base="${base%.*}"
 
     ;;
   *".xz" )
 
-    xz -dc "$STORAGE/$base" > "$STORAGE/${base%.*}"
+    out="$STORAGE/${base%.*}"
+    tmp="$out.tmp"
+
+    rm -f "$tmp"
+
+    if ! xz -dc "$STORAGE/$base" > "$tmp"; then
+      rm -f "$tmp"
+      error "Failed to extract archive: $base" && exit 32
+    fi
+
+    if ! mv -f "$tmp" "$out"; then
+      rm -f "$tmp"
+      error "Failed to move extracted image to $out" && exit 32
+    fi
+
     rm -f "$STORAGE/$base"
     base="${base%.*}"
 
@@ -468,7 +496,10 @@ case "${base,,}" in
       error "Failed to create directory \"$tmp\" !" && exit 33
     fi
 
-    7z x "$STORAGE/$base" -o"$tmp" > /dev/null
+    if ! 7z x "$STORAGE/$base" -o"$tmp" > /dev/null; then
+      rm -rf "$tmp"
+      error "Failed to extract archive: $base" && exit 32
+    fi
 
     rm -f "$STORAGE/$base"
 
@@ -480,7 +511,12 @@ case "${base,,}" in
     fi
 
     base=$(basename "$img")
-    mv "$img" "$STORAGE/$base"
+
+    if ! mv "$img" "$STORAGE/$base"; then
+      rm -rf "$tmp"
+      error "Failed to move extracted image to $STORAGE/$base" && exit 32
+    fi
+
     rm -rf "$tmp"
 
     ;;
