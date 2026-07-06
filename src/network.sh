@@ -1353,16 +1353,25 @@ showGuestInfo() {
   line+="  Guest: $ip"
 
   [ -n "$MAC" ] && line+=" ($MAC)"
-  info "$line"
 
+  local count="0"
   local file="/etc/resolv.dnsmasq"
   [ ! -f "$file" ] && file="/etc/resolv.conf"
+
   if [ -f "$file" ]; then
+    count=$(grep -c '^nameserver ' "$file" || true)
     nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
   fi
 
   [ -z "$nameservers" ] && nameservers="(none)"
-  info "Nameservers: $nameservers"
+
+  if (( count <= 1 )); then
+    line+="  Nameserver: $nameservers"
+    info "$line"
+  else
+    info "$line"
+    info "Nameservers: $nameservers"
+  fi
 
   echo
   return 0
