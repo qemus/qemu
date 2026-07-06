@@ -12,6 +12,7 @@ BOOT_DESC=""
 BOOT_OPTS=""
 
 configureBootMode() {
+
   SECURE="off"
   enabled "$SMM" && SECURE="on"
   [ -n "$BIOS" ] && BOOT_MODE="custom"
@@ -67,6 +68,7 @@ configureBootMode() {
 }
 
 addWindowsBootOptions() {
+
   if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
     BOOT_OPTS+=" -rtc base=localtime"
     BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
@@ -77,6 +79,7 @@ addWindowsBootOptions() {
 }
 
 clearNvram() {
+
   DEST="$STORAGE/${BOOT_MODE,,}"
 
   if enabled "$CLEAR"; then
@@ -124,12 +127,14 @@ prepareUefiRom() {
     rm -f "$DEST.tmp"
     error "Failed to move UEFI boot file to $DEST.rom" && exit 44
   fi
+
   ! setOwner "$DEST.rom" && error "Failed to set the owner for \"$DEST.rom\" !"
 
   return 0
 }
 
 prepareUefiVars() {
+
   if [ -s "$DEST.vars" ]; then
     return 0
   fi
@@ -147,12 +152,14 @@ prepareUefiVars() {
     rm -f "$DEST.tmp"
     error "Failed to move UEFI vars file to $DEST.vars" && exit 45
   fi
+
   ! setOwner "$DEST.vars" && error "Failed to set the owner for \"$DEST.vars\" !"
 
   return 0
 }
 
 configureUefi() {
+
   case "${BOOT_MODE,,}" in
     "uefi" | "secure" | "windows" | "windows_plain" | "windows_secure" )
 
@@ -175,41 +182,47 @@ configureUefi() {
 }
 
 enableIgnoreMsrs() {
+
   MSRS="/sys/module/kvm/parameters/ignore_msrs"
-  if [ -e "$MSRS" ]; then
-    result=$(<"$MSRS")
-    result="${result//[![:print:]]/}"
-    if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
-      echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
-    fi
+  [ ! -e "$MSRS" ] && return 0
+  
+  result=$(<"$MSRS")
+  result="${result//[![:print:]]/}"
+  
+  if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
+    echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
 
   return 0
 }
 
 checkClocksource() {
+
   CLOCKSOURCE="tsc"
   [[ "${ARCH,,}" == "arm64" ]] && CLOCKSOURCE="arch_sys_counter"
   CLOCK="/sys/devices/system/clocksource/clocksource0/current_clocksource"
 
   if [ ! -f "$CLOCK" ]; then
     warn "file \"$CLOCK\" cannot be found?"
-  else
-    result=$(<"$CLOCK")
-    result="${result//[![:print:]]/}"
-    case "${result,,}" in
-      "${CLOCKSOURCE,,}" ) ;;
-      "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
-      "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
-      "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
-      *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
-    esac
+    return 0
   fi
+  
+  result=$(<"$CLOCK")
+  result="${result//[![:print:]]/}"
+  
+  case "${result,,}" in
+    "${CLOCKSOURCE,,}" ) ;;
+    "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
+    "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
+    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+    *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+  esac
 
   return 0
 }
 
 detectSmbiosSerial() {
+
   SM_BIOS=""
   PS="/sys/class/dmi/id/product_serial"
 
@@ -228,6 +241,7 @@ detectSmbiosSerial() {
 }
 
 startTpm() {
+
   SWTPM="/run/swtpm"
   TPM_PID="/var/run/tpm.pid"
   TPM_SOCKET="/tmp/swtpm.sock"
@@ -239,7 +253,12 @@ startTpm() {
   fi
 
   # Workaround to circumvent AppArmor profile
-  [ ! -f "$SWTPM" ] && cp /usr/bin/swtpm* /run
+  if [ ! -x "$SWTPM" ]; then
+    if ! cp /usr/bin/swtpm "$SWTPM"; then
+      error "Failed to copy TPM emulator, disabling TPM."
+      return 0
+    fi
+  fi
 
   { "$SWTPM" socket -t -d --tpm2 \
       --tpmstate "backend-uri=file://$DEST.tpm" \
@@ -250,29 +269,29 @@ startTpm() {
 
   if (( rc != 0 )); then
     error "Failed to start TPM emulator, reason: $rc"
-  else
+    return 0
+  fi
 
-    for (( i = 1; i < 25; i++ )); do
+  for (( i = 1; i < 25; i++ )); do
 
-      [ -S "$TPM_SOCKET" ] && break
+    [ -S "$TPM_SOCKET" ] && break
 
-      if (( i % 5 == 0 )); then
-        echo "Waiting for TPM emulator to launch..."
-      fi
-
-      sleep 0.25
-
-    done
-
-    if [ ! -S "$TPM_SOCKET" ]; then
-      error "TPM socket ($TPM_SOCKET) not found? Disabling TPM module..."
-    else
-      BOOT_OPTS+=" -chardev socket,id=chrtpm,path=$TPM_SOCKET"
-      BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm"
-      BOOT_OPTS+=" -device tpm-tis,tpmdev=tpm0"
+    if (( i % 5 == 0 )); then
+      echo "Waiting for TPM emulator to launch..."
     fi
 
+    sleep 0.25
+
+  done
+
+  if [ ! -S "$TPM_SOCKET" ]; then
+    error "TPM socket ($TPM_SOCKET) not found? Disabling TPM module..."
+    return 0
   fi
+
+  BOOT_OPTS+=" -chardev socket,id=chrtpm,path=$TPM_SOCKET"
+  BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm"
+  BOOT_OPTS+=" -device tpm-tis,tpmdev=tpm0"
 
   return 0
 }
