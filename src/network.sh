@@ -1205,6 +1205,20 @@ validateMask() {
   return 0
 }
 
+validateHost() {
+
+  HOST="${HOST//[^A-Za-z0-9-]/-}"
+  HOST=$(echo "$HOST" | sed 's/^-*//;s/-*$//;s/--*/-/g')
+
+  if [ -z "$HOST" ]; then
+    HOST="$APP"
+    HOST="${HOST//[^A-Za-z0-9-]/-}"
+    HOST=$(echo "$HOST" | sed 's/^-*//;s/-*$//;s/--*/-/g')
+  fi
+
+  return 0
+}
+
 validateAddresses() {
 
   # DHCP/macvtap mode can work without a detectable container IPv4 address,
@@ -1428,6 +1442,7 @@ prepareNetwork() {
   validateInterface
 
   validateMask
+  validateHost
 
   detectAddresses
   validateAddresses
