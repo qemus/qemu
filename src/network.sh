@@ -147,8 +147,8 @@ configureDNS() {
   if isNAT; then
 
     # Create lease file for faster resolve
-    echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases
-    chmod 644 /var/lib/misc/dnsmasq.leases
+    echo "0 $mac $ip $host 01:$mac" > /var/lib/misc/dnsmasq.leases || :
+    chmod 644 /var/lib/misc/dnsmasq.leases || :
 
     # dnsmasq configuration:
     arguments+=" --dhcp-authoritative"
@@ -424,12 +424,20 @@ configureSlirp() {
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
   if ! enabled "${DNSMASQ_DISABLE:-}"; then
-    [ ! -f /etc/resolv.dnsmasq ] && cp /etc/resolv.conf /etc/resolv.dnsmasq
+    if [ ! -f /etc/resolv.dnsmasq ] && ! cp /etc/resolv.conf /etc/resolv.dnsmasq; then
+      error "Failed to backup /etc/resolv.conf."
+      return 1
+    fi
+
     configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
-    printf '%s\n' \
+
+    if ! printf '%s\n' \
       'nameserver 127.0.0.1' \
       'search .' \
-      'options ndots:0' > /etc/resolv.conf
+      'options ndots:0' > /etc/resolv.conf; then
+      error "Failed to update /etc/resolv.conf."
+      return 1
+    fi
   fi
 
   VM_NET_IP="$ip"
@@ -489,11 +497,18 @@ configurePasst() {
   PASST_OPTS+=" -q"
 
   if ! enabled "${DNSMASQ_DISABLE:-}"; then
-    [ ! -f /etc/resolv.dnsmasq ] && cp /etc/resolv.conf /etc/resolv.dnsmasq
-    printf '%s\n' \
+    if [ ! -f /etc/resolv.dnsmasq ] && ! cp /etc/resolv.conf /etc/resolv.dnsmasq; then
+      error "Failed to backup /etc/resolv.conf."
+      return 1
+    fi
+
+    if ! printf '%s\n' \
       'nameserver 127.0.0.1' \
       'search .' \
-      'options ndots:0' > /etc/resolv.conf
+      'options ndots:0' > /etc/resolv.conf; then
+      error "Failed to update /etc/resolv.conf."
+      return 1
+    fi
   fi
 
   PASST_OPTS=$(echo "$PASST_OPTS" | sed 's/\t/ /g' | tr -s ' ' | sed 's/^ *//')
