@@ -647,19 +647,23 @@ addDevice () {
   [ -z "$DISK_DEV" ] && return 0
   [ ! -b "$DISK_DEV" ] && error "Device $DISK_DEV cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
 
+  local result=""
   local sectors=""
-  local result logical physical
-  result=$(fdisk -l "$DISK_DEV" | grep -m 1 -o "(logical/physical): .*" | cut -c 21-)
-  logical="${result%% *}"
-  physical=$(echo "$result" | grep -m 1 -o "/ .*" | cut -c 3-)
-  physical="${physical%% *}"
+  local logical=""
+  local physical=""
 
-  if [ -n "$physical" ]; then
-    if [[ "$physical" != "512" ]]; then
-      sectors=",logical_block_size=$logical,physical_block_size=$physical"
-    fi
-  else
+  result=$(fdisk -l "$DISK_DEV" 2>/dev/null | grep -m 1 -o "(logical/physical): .*" | cut -c 21- || true)
+
+  if [ -n "$result" ]; then
+    logical="${result%% *}"
+    physical=$(echo "$result" | grep -m 1 -o "/ .*" | cut -c 3- || true)
+    physical="${physical%% *}"
+  fi
+
+  if [ -z "$logical" ] || [ -z "$physical" ]; then
     warn "Failed to determine the sector size for $DISK_DEV"
+  elif [[ "$physical" != "512" ]]; then
+    sectors=",logical_block_size=$logical,physical_block_size=$physical"
   fi
 
   DISK_OPTS+=$(createDevice "$DISK_DEV" "$DISK_TYPE" "$DISK_INDEX" "$DISK_ADDRESS" "raw" "$DISK_IO" "$DISK_CACHE" "" "$sectors")
