@@ -1307,17 +1307,12 @@ formatAddress() {
 
   local ip="${1:-}"
   local prefix="${2:-}"
-  local gateway="${3:-}"
   local result="$ip"
 
   [ -z "$result" ] && return 1
 
   if [ -n "$prefix" ] && [[ "$prefix" != "24" ]]; then
     result+="/$prefix"
-  fi
-
-  if [ -n "$gateway" ] && showGateway "$ip" "$gateway"; then
-    result+=" via $gateway"
   fi
 
   echo "$result"
@@ -1332,17 +1327,24 @@ showUplink() {
 
   enabled "$DEBUG" || return 0
 
+  host=$(containerID)
+  local line="Host: $host"
+
   local iface="$DEV"
   if [ -n "$NIC" ] && [[ "${NIC,,}" != "veth" ]]; then
     iface+="/$NIC"
   fi
 
-  host=$(containerID)
-  local line="Host: $host"
-  [ -n "$iface" ] && line+="  Interface: $iface"
+  [ -z "$iface" ] && iface="(none)"
+  line+="  Interface: $iface"
 
-  uplink=$(formatAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
-  [ -n "$uplink" ] && line+="  IP: $uplink"
+  uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
+  [ -z "$uplink" ] && uplink="(none)"
+  line+="  IP: $uplink"
+
+  local gateway="${GATEWAY:-}"
+  [ -z "$gateway" ] && gateway="(none)"
+  line+="  Gateway: $gateway"
 
   mtu=$(getMTU "$DEV")
   if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
@@ -1360,24 +1362,26 @@ showNetwork() {
 
   enabled "$DEBUG" || return 0
 
-  local gateway="${ip%.*}.1"
-  [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" "$gateway" || true)
-
   local mode="${NETWORK,,}"
   isNAT && mode="NAT"
-
+  [ -z "$mode" ] && mode="(none)"
   local line="Network mode: $mode"
-  [ -n "$ip" ] && line+="  Guest: $ip"
+
+  [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" || true)
+  [ -z "$ip" ] && ip="(none)"
+  line+="  Guest: $ip"
+
   [ -n "$MAC" ] && line+=" ($MAC)"
   info "$line"
 
   local file="/etc/resolv.dnsmasq"
   [ ! -f "$file" ] && file="/etc/resolv.conf"
-
   if [ -f "$file" ]; then
     nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
-    [ -n "$nameservers" ] && info "Nameservers: $nameservers"
   fi
+
+  [ -z "$nameservers" ] && nameservers="(none)"
+  info "Nameservers: $nameservers"
 
   echo
   return 0
