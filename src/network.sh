@@ -411,6 +411,8 @@ configureDNS() {
 getHostPorts() {
 
   local list=""
+  local port=""
+  local ports=""
   local display="${DISPLAY:-}"
 
   if [[ "${display,,}" == "web" ]]; then
@@ -428,10 +430,16 @@ getHostPorts() {
 
   list+="${HOST_PORTS// /},"
 
-  # Remove duplicates
-  list=$(echo "${list//,,/,}," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
+  for port in ${list//,/ }; do
+    port="${port%/tcp}"
+    port="${port%/udp}"
+    [ -n "$port" ] && ports+="$port,"
+  done
 
-  echo "$list"
+  # Remove duplicates
+  ports=$(echo "${ports//,,/,}," | awk 'BEGIN{RS=ORS=","} !seen[$0]++' | sed 's/,*$//g')
+
+  echo "$ports"
   return 0
 }
 
