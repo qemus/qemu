@@ -279,7 +279,11 @@ convertImage() {
   fi
 
   rm -f "$source_file"
-  mv "$tmp_file" "$dst_file"
+  if ! mv "$tmp_file" "$dst_file"; then
+    rm -f "$tmp_file"
+    error "Failed to move converted image to $dst_file."
+    return 1
+  fi
 
   if [[ "${fs,,}" == "btrfs" ]]; then
     fa=$(lsattr "$dst_file")
