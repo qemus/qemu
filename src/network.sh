@@ -3,8 +3,6 @@ set -Eeuo pipefail
 
 # Docker environment variables
 
-: "${MAC:=""}"
-: "${MTU:=""}"
 : "${DHCP:="N"}"
 : "${NETWORK:="Y"}"
 : "${HOST_PORTS:=""}"
@@ -12,13 +10,14 @@ set -Eeuo pipefail
 : "${CHECK_PORT:="80"}"
 : "${ADAPTER:="virtio-net-pci"}"
 
-: "${VM_NET_IP:=""}"
-: "${VM_NET_DEV:=""}"
-: "${VM_NET_TAP:="qemu"}"
-: "${VM_NET_MAC:="$MAC"}"
-: "${VM_NET_HOST:="$APP"}"
-: "${VM_NET_BRIDGE:="docker"}"
-: "${VM_NET_MASK:="255.255.255.0"}"
+: "${IP:="${VM_NET_IP:-}"}"
+: "${DEV:="${VM_NET_DEV:-}"}"
+: "${MTU:="${VM_NET_MTU:-}"}"
+: "${TAP:="${VM_NET_TAP:-qemu}"}"
+: "${HOST:="${VM_NET_HOST:-$APP}"}"
+: "${MAC:="${VM_NET_MAC:-${MAC:-}}"}"
+: "${BRIDGE:="${VM_NET_BRIDGE:-docker}"}"
+: "${MASK:="${VM_NET_MASK:-255.255.255.0}"}"
 
 : "${PASST:="/run/passt"}"
 : "${PASST_OPTS:=""}"
@@ -32,8 +31,14 @@ set -Eeuo pipefail
 : "${DNSMASQ_PID:="/var/run/dnsmasq.pid"}"
 
 # Sanitize variables
-MAC=$(strip "$MAC")
+IP=$(strip "$IP")
+DEV=$(strip "$DEV")
 MTU=$(strip "$MTU")
+TAP=$(strip "$TAP")
+MAC=$(strip "$MAC")
+HOST=$(strip "$HOST")
+MASK=$(strip "$MASK")
+BRIDGE=$(strip "$BRIDGE")
 ADAPTER=$(strip "$ADAPTER")
 NETWORK=$(strip "$NETWORK")
 HOST_PORTS=$(strip "$HOST_PORTS")
@@ -101,7 +106,7 @@ maskToCIDR() {
   prefix=$(ipcalc -p 0.0.0.0 "$mask" | awk -F= '/^PREFIX=/ { print $2 }')
 
   if [[ ! "$prefix" =~ ^[0-9]+$ ]] || (( prefix < 1 || prefix > 30 )); then
-    error "Invalid VM_NET_MASK: '$mask'"
+    error "Invalid MASK: '$mask'"
     return 1
   fi
 
@@ -114,14 +119,14 @@ networkCIDR() {
   local ip="$1"
   local network=""
 
-  network=$(ipcalc -n "$ip" "$VM_NET_MASK" | awk -F= '/^NETWORK=/ { print $2 }')
+  network=$(ipcalc -n "$ip" "$MASK" | awk -F= '/^NETWORK=/ { print $2 }')
 
   if [ -z "$network" ]; then
-    error "Failed to calculate network address from IP '$ip' and netmask '$VM_NET_MASK'."
+    error "Failed to calculate network address from IP '$ip' and netmask '$MASK'."
     return 1
   fi
 
-  echo "$network/$VM_NET_PREFIX"
+  echo "$network/$PREFIX"
   return 0
 }
 
@@ -394,11 +399,11 @@ configureDHCP() {
   fi
 
   # Create a macvtap network for the VM guest
-  { msg=$(ip link add link "$VM_NET_DEV" name "$VM_NET_TAP" address "$VM_NET_MAC" type macvtap mode bridge 2>&1); rc=$?; } || :
+  { msg=$(ip link add link "$DEV" name "$TAP" address "$MAC" type macvtap mode bridge 2>&1); rc=$?; } || :
 
   case "$msg" in
     "RTNETLINK answers: File exists"* )
-      while ! ip link add link "$VM_NET_DEV" name "$VM_NET_TAP" address "$VM_NET_MAC" type macvtap mode bridge; do
+      while ! ip link add link "$DEV" name "$TAP" address "$MAC" type macvtap mode bridge; do
         info "Waiting for macvtap interface to become available.."
         sleep 5
       done ;;
@@ -417,23 +422,23 @@ configureDHCP() {
   esac
 
   if [[ "$GUEST_MTU" != "0" ]]; then
-    setMTU "$VM_NET_TAP" "$GUEST_MTU"
-    GUEST_MTU=$(minMTU "$GUEST_MTU" "$(getMTU "$VM_NET_TAP")")
+    setMTU "$TAP" "$GUEST_MTU"
+    GUEST_MTU=$(minMTU "$GUEST_MTU" "$(getMTU "$TAP")")
   fi
 
-  while ! ip link set "$VM_NET_TAP" up; do
-    info "Waiting for MAC address $VM_NET_MAC to become available..."
+  while ! ip link set "$TAP" up; do
+    info "Waiting for MAC address $MAC to become available..."
     info "If you cloned this machine, please delete the '$PROCESS.mac' file to generate a different MAC address."
     sleep 2
   done
 
   local TAP_NR TAP_PATH MAJOR MINOR
-  TAP_NR=$(</sys/class/net/"$VM_NET_TAP"/ifindex)
+  TAP_NR=$(</sys/class/net/"$TAP"/ifindex)
   TAP_PATH="/dev/tap${TAP_NR}"
 
   # Create dev file (there is no udev in container: need to be done manually)
-  IFS=: read -r MAJOR MINOR < <(cat /sys/devices/virtual/net/"$VM_NET_TAP"/tap*/dev)
-  (( MAJOR < 1)) && error "Cannot find: sys/devices/virtual/net/$VM_NET_TAP" && return 1
+  IFS=: read -r MAJOR MINOR < <(cat /sys/devices/virtual/net/"$TAP"/tap*/dev)
+  (( MAJOR < 1)) && error "Cannot find: sys/devices/virtual/net/$TAP" && return 1
 
   [[ ! -e "$TAP_PATH" && -e "/dev0/${TAP_PATH##*/}" ]] && ln -s "/dev0/${TAP_PATH##*/}" "$TAP_PATH"
 
@@ -464,15 +469,15 @@ configureSlirp() {
   NETWORK="slirp"
   enabled "$DEBUG" && echo "Configuring slirp networking..."
 
-  local ip="$IP"
-  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+  local ip="$UPLINK"
+  [ -n "$IP" ] && ip="$IP"
 
   ip=$(guestIP "$ip" 4)
 
   local gateway="${ip%.*}.1"
 
   # Backwards compatibility
-  compat "$gateway" "$VM_NET_DEV" || :
+  compat "$gateway" "$DEV" || :
 
   local ipv6="ipv6=off,"
   [ -n "$IP6" ] && ipv6="ipv6=on,"
@@ -480,7 +485,7 @@ configureSlirp() {
   local subnet=""
   subnet=$(networkCIDR "$ip") || return 1
 
-  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=$subnet,dhcpstart=$ip,${ipv6}hostname=$VM_NET_HOST"
+  NET_OPTS="-netdev user,id=hostnet0,ipv4=on,host=$gateway,net=$subnet,dhcpstart=$ip,${ipv6}hostname=$HOST"
 
   local forward=""
   forward=$(getSlirp "$ip")
@@ -492,7 +497,7 @@ configureSlirp() {
       return 1
     fi
 
-    configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+    configureDNS "lo" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" || return 1
 
     if ! printf '%s\n' \
       'nameserver 127.0.0.1' \
@@ -503,7 +508,7 @@ configureSlirp() {
     fi
   fi
 
-  VM_NET_IP="$ip"
+  IP="$ip"
   return 0
 }
 
@@ -515,22 +520,22 @@ configurePasst() {
   local log="/var/log/passt.log"
   rm -f "$log"
 
-  local ip="$IP"
-  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
+  local ip="$UPLINK"
+  [ -n "$IP" ] && ip="$IP"
 
   ip=$(guestIP "$ip" 2)
 
   local gateway="${ip%.*}.1"
 
   # Backwards compatibility
-  compat "$gateway" "$VM_NET_DEV" || :
+  compat "$gateway" "$DEV" || :
 
   # passt configuration:
   [ -z "$IP6" ] && PASST_OPTS+=" -4"
 
   PASST_OPTS+=" -a $ip"
   PASST_OPTS+=" -g $gateway"
-  PASST_OPTS+=" -n $VM_NET_MASK"
+  PASST_OPTS+=" -n $MASK"
 
   local passt_mtu="$GUEST_MTU"
   [[ "$passt_mtu" == "0" ]] && passt_mtu="1500"
@@ -544,12 +549,12 @@ configurePasst() {
   forward="${forward///udp}"
 
   if [ -n "$forward" ]; then
-    forward="%${VM_NET_DEV}/$forward"
+    forward="%${DEV}/$forward"
     PASST_OPTS+=" -t $forward"
     PASST_OPTS+=" -u $forward"
   fi
 
-  PASST_OPTS+=" -H $VM_NET_HOST"
+  PASST_OPTS+=" -H $HOST"
   PASST_OPTS+=" -M $GATEWAY_MAC"
   PASST_OPTS+=" -P $PASST_PID"
   PASST_OPTS+=" -s $PASST_SOCKET"
@@ -603,9 +608,9 @@ configurePasst() {
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=$PASST_SOCKET"
 
-  configureDNS "lo" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  configureDNS "lo" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" || return 1
 
-  VM_NET_IP="$ip"
+  IP="$ip"
   return 0
 }
 
@@ -615,7 +620,7 @@ createBridge() {
   local rc
 
   # Create a bridge with a static IP for the VM guest
-  { ip link add dev "$VM_NET_BRIDGE" type bridge; rc=$?; } || :
+  { ip link add dev "$BRIDGE" type bridge; rc=$?; } || :
 
   if (( rc != 0 )); then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
@@ -623,23 +628,23 @@ createBridge() {
   fi
 
   if [[ "$GUEST_MTU" != "0" ]]; then
-    setMTU "$VM_NET_BRIDGE" "$GUEST_MTU"
+    setMTU "$BRIDGE" "$GUEST_MTU"
   fi
 
-  if ! ip address add "$gateway/$VM_NET_PREFIX" dev "$VM_NET_BRIDGE"; then
+  if ! ip address add "$gateway/$PREFIX" dev "$BRIDGE"; then
     warn "failed to add IP address pool!" && return 1
   fi
 
   # Backwards compatibility
-  compat "$gateway" "$VM_NET_BRIDGE" || :
+  compat "$gateway" "$BRIDGE" || :
 
-  while ! ip link set "$VM_NET_BRIDGE" up; do
+  while ! ip link set "$BRIDGE" up; do
     info "Waiting for IP address to become available..."
     sleep 2
   done
 
   # NAT networking is IPv4-only; disable IPv6 on the guest bridge if possible.
-  disableIPv6 "$VM_NET_BRIDGE"
+  disableIPv6 "$BRIDGE"
 
   return 0
 }
@@ -649,28 +654,28 @@ createTap() {
   local tuntap="$1"
 
   # Set tap to the bridge created
-  if ! ip tuntap add dev "$VM_NET_TAP" mode tap; then
+  if ! ip tuntap add dev "$TAP" mode tap; then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
     warn "$tuntap" && return 1
   fi
 
   if [[ "$GUEST_MTU" != "0" ]]; then
-    setMTU "$VM_NET_TAP" "$GUEST_MTU"
+    setMTU "$TAP" "$GUEST_MTU"
   fi
 
-  if ! ip link set dev "$VM_NET_TAP" address "$GATEWAY_MAC"; then
+  if ! ip link set dev "$TAP" address "$GATEWAY_MAC"; then
     warn "failed to set gateway MAC address."
   fi
 
-  while ! ip link set "$VM_NET_TAP" up promisc on; do
+  while ! ip link set "$TAP" up promisc on; do
     info "Waiting for TAP to become available..."
     sleep 2
   done
 
   # NAT networking is IPv4-only; disable IPv6 on the guest tap if possible.
-  disableIPv6 "$VM_NET_TAP"
+  disableIPv6 "$TAP"
 
-  if ! ip link set dev "$VM_NET_TAP" master "$VM_NET_BRIDGE"; then
+  if ! ip link set dev "$TAP" master "$BRIDGE"; then
     warn "failed to set master bridge!" && return 1
   fi
 
@@ -698,14 +703,14 @@ configureTables() {
 
   # NAT traffic from bridge subnet to Docker uplink
   if ! iptables -t nat -A POSTROUTING \
-    -o "$VM_NET_DEV" \
+    -o "$DEV" \
     -s "$subnet" \
     ! -d "$subnet" \
     -m comment --comment "$rule_tag" \
     -j MASQUERADE > /dev/null 2>&1; then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
     if ! iptables -t nat -A POSTROUTING \
-      -o "$VM_NET_DEV" \
+      -o "$DEV" \
       -s "$subnet" \
       ! -d "$subnet" \
       -m comment --comment "$rule_tag" \
@@ -716,8 +721,8 @@ configureTables() {
 
   # shellcheck disable=SC2086
   if ! iptables -t nat -A PREROUTING \
-    -i "$VM_NET_DEV" \
-    -d "$IP" \
+    -i "$DEV" \
+    -d "$UPLINK" \
     -p tcp${exclude} \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
@@ -725,8 +730,8 @@ configureTables() {
   fi
 
   if ! iptables -t nat -A PREROUTING \
-    -i "$VM_NET_DEV" \
-    -d "$IP" \
+    -i "$DEV" \
+    -d "$UPLINK" \
     -p udp \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
@@ -760,8 +765,8 @@ configureTables() {
 
   # Allow forwarding from bridge -> dev
   if ! iptables -A FORWARD \
-    -i "$VM_NET_BRIDGE" \
-    -o "$VM_NET_DEV" \
+    -i "$BRIDGE" \
+    -o "$DEV" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
     warn "$tables_err" && return 1
@@ -769,8 +774,8 @@ configureTables() {
 
   # Allow return traffic
   if ! iptables -A FORWARD \
-    -i "$VM_NET_DEV" \
-    -o "$VM_NET_BRIDGE" \
+    -i "$DEV" \
+    -o "$BRIDGE" \
     -m conntrack --ctstate RELATED,ESTABLISHED \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
@@ -811,10 +816,10 @@ configureNAT() {
 
   local ip exclude subnet
 
-  if [ -n "$VM_NET_IP" ]; then
-    ip=$(guestIP "$VM_NET_IP" 2)
+  if [ -n "$IP" ]; then
+    ip=$(guestIP "$IP" 2)
   else
-    ip=$(natGuestIP "$IP")
+    ip=$(natGuestIP "$UPLINK")
   fi
 
   local gateway="${ip%.*}.1"
@@ -830,13 +835,13 @@ configureNAT() {
 
   # Use the lowest effective guest-facing MTU, without mutating the parent/uplink MTU.
   if [[ "$GUEST_MTU" != "0" ]]; then
-    GUEST_MTU=$(minMTU "$GUEST_MTU" "$(getMTU "$VM_NET_BRIDGE")" "$(getMTU "$VM_NET_TAP")")
+    GUEST_MTU=$(minMTU "$GUEST_MTU" "$(getMTU "$BRIDGE")" "$(getMTU "$TAP")")
   fi
 
   exclude=$(getHostPorts)
   configureTables "$ip" "$subnet" "$exclude" || return 1
 
-  NET_OPTS="-netdev tap,id=hostnet0,ifname=$VM_NET_TAP"
+  NET_OPTS="-netdev tap,id=hostnet0,ifname=$TAP"
 
   if [ -c /dev/vhost-net ]; then
     { exec 40>>/dev/vhost-net; rc=$?; } 2>/dev/null || :
@@ -845,9 +850,9 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "$VM_NET_BRIDGE" "$ip" "$VM_NET_MAC" "$VM_NET_HOST" "$VM_NET_MASK" "$gateway" || return 1
+  configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" || return 1
 
-  VM_NET_IP="$ip"
+  IP="$ip"
   return 0
 }
 
@@ -896,11 +901,11 @@ closeBridge() {
   local pids=( "$PASST_PID" "$DNSMASQ_PID" )
   mKill "${pids[@]}"
 
-  ip link set "$VM_NET_TAP" down promisc off &> /dev/null || :
-  ip link delete "$VM_NET_TAP" &> /dev/null || :
+  ip link set "$TAP" down promisc off &> /dev/null || :
+  ip link delete "$TAP" &> /dev/null || :
 
-  ip link set "$VM_NET_BRIDGE" down &> /dev/null || :
-  ip link delete "$VM_NET_BRIDGE" &> /dev/null || :
+  ip link set "$BRIDGE" down &> /dev/null || :
+  ip link delete "$BRIDGE" &> /dev/null || :
 
   clearTables
   return 0
@@ -1005,38 +1010,38 @@ checkOS() {
 
 getInfo() {
 
-  if [ -z "$VM_NET_DEV" ]; then
+  if [ -z "$DEV" ]; then
     # Give Kubernetes priority over the default interface
-    [ -d "/sys/class/net/net0" ] && VM_NET_DEV="net0"
-    [ -d "/sys/class/net/net1" ] && VM_NET_DEV="net1"
-    [ -d "/sys/class/net/net2" ] && VM_NET_DEV="net2"
-    [ -d "/sys/class/net/net3" ] && VM_NET_DEV="net3"
+    [ -d "/sys/class/net/net0" ] && DEV="net0"
+    [ -d "/sys/class/net/net1" ] && DEV="net1"
+    [ -d "/sys/class/net/net2" ] && DEV="net2"
+    [ -d "/sys/class/net/net3" ] && DEV="net3"
     # Automatically detect the default network interface
-    [ -z "$VM_NET_DEV" ] && VM_NET_DEV=$(awk '$2 == 00000000 { print $1; exit }' /proc/net/route)
-    [ -z "$VM_NET_DEV" ] && VM_NET_DEV="eth0"
+    [ -z "$DEV" ] && DEV=$(awk '$2 == 00000000 { print $1; exit }' /proc/net/route)
+    [ -z "$DEV" ] && DEV="eth0"
   fi
 
-  if [ ! -d "/sys/class/net/$VM_NET_DEV" ]; then
-    error "Network interface '$VM_NET_DEV' does not exist inside the container!"
-    error "$ADD_ERR -e \"VM_NET_DEV=NAME\" to specify another interface name." && exit 26
+  if [ ! -d "/sys/class/net/$DEV" ]; then
+    error "Network interface '$DEV' does not exist inside the container!"
+    error "$ADD_ERR -e \"DEV=NAME\" to specify another interface name." && exit 26
   fi
 
-  VM_NET_PREFIX=$(maskToCIDR "$VM_NET_MASK") || exit 28
+  PREFIX=$(maskToCIDR "$MASK") || exit 28
 
-  GATEWAY=$(ip route list dev "$VM_NET_DEV" | awk ' /^default/ {print $3}' | head -n 1)
-  { IP=$(ip address show dev "$VM_NET_DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1); } 2>/dev/null || :
-  [ -z "$IP" ] && ! enabled "$DHCP" && error "Could not determine container IPv4 address!" && exit 26
+  GATEWAY=$(ip route list dev "$DEV" | awk ' /^default/ {print $3}' | head -n 1)
+  { UPLINK=$(ip address show dev "$DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1); } 2>/dev/null || :
+  [ -z "$UPLINK" ] && ! enabled "$DHCP" && error "Could not determine container IPv4 address!" && exit 26
 
   IP6=""
   # shellcheck disable=SC2143
   if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]] && [ -n "$(ifconfig -a | grep inet6)" ]; then
-    { IP6=$(ip -6 addr show dev "$VM_NET_DEV" scope global up); rc=$?; } 2>/dev/null || :
+    { IP6=$(ip -6 addr show dev "$DEV" scope global up); rc=$?; } 2>/dev/null || :
     (( rc != 0 )) && IP6=""
     [ -n "$IP6" ] && IP6=$(echo "$IP6" | sed -e's/^.*inet6 \([^ ]*\)\/.*$/\1/;t;d' | head -n 1)
   fi
 
   local nic="" bus="" result=""
-  result=$(ethtool -i "$VM_NET_DEV" 2>/dev/null || :)
+  result=$(ethtool -i "$DEV" 2>/dev/null || :)
 
   nic=$(grep -m 1 -i 'driver:' <<< "$result" | awk '{print $2}')
   bus=$(grep -m 1 -i 'bus-info:' <<< "$result" | awk '{print $2}')
@@ -1078,7 +1083,7 @@ getInfo() {
 
   else
 
-    if [[ "$IP" != "172."* && "$IP" != "10.8"* && "$IP" != "10.9"* ]]; then
+    if [[ "$UPLINK" != "172."* && "$UPLINK" != "10.8"* && "$UPLINK" != "10.9"* ]]; then
       checkOS
     fi
 
@@ -1087,8 +1092,8 @@ getInfo() {
   local mtu=""
   local mtu_custom="N"
 
-  if [ -f "/sys/class/net/$VM_NET_DEV/mtu" ]; then
-    mtu=$(< "/sys/class/net/$VM_NET_DEV/mtu")
+  if [ -f "/sys/class/net/$DEV/mtu" ]; then
+    mtu=$(< "/sys/class/net/$DEV/mtu")
   fi
 
   [ -n "$MTU" ] && mtu_custom="Y"
@@ -1103,34 +1108,37 @@ getInfo() {
     GUEST_MTU="1500"
   fi
 
+  local container=""
+  container="$(hostname -s)"
+
   if [ -z "$MAC" ]; then
     local file="$STORAGE/$PROCESS.mac"
     [ -s "$file" ] && MAC=$(<"$file")
     MAC="${MAC//[![:print:]]/}"
     if [ -z "$MAC" ]; then
       # Generate MAC address based on Docker container ID in hostname
-      MAC=$(echo "$HOST" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
+      MAC=$(echo "$container" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
       echo "${MAC^^}" > "$file"
       ! setOwner "$file" && error "Failed to set the owner for \"$file\" !"
     fi
   fi
 
-  VM_NET_MAC="${MAC^^}"
-  VM_NET_MAC="${VM_NET_MAC//-/:}"
+  MAC="${MAC^^}"
+  MAC="${MAC//-/:}"
 
-  if [[ ${#VM_NET_MAC} == 12 ]]; then
-    m="$VM_NET_MAC"
-    VM_NET_MAC="${m:0:2}:${m:2:2}:${m:4:2}:${m:6:2}:${m:8:2}:${m:10:2}"
+  if [[ ${#MAC} == 12 ]]; then
+    m="$MAC"
+    MAC="${m:0:2}:${m:2:2}:${m:4:2}:${m:6:2}:${m:8:2}:${m:10:2}"
   fi
 
-  if [[ ${#VM_NET_MAC} != 17 ]]; then
-    error "Invalid MAC address: '$VM_NET_MAC', should be 12 or 17 digits long!" && exit 28
+  if [[ ${#MAC} != 17 ]]; then
+    error "Invalid MAC address: '$MAC', should be 12 or 17 digits long!" && exit 28
   fi
 
-  GATEWAY_MAC=$(echo "$VM_NET_MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
+  GATEWAY_MAC=$(echo "$MAC" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
 
   if enabled "$DEBUG"; then
-    line="Host: $HOST  IP: $IP  Gateway: $GATEWAY  Interface: $VM_NET_DEV  MAC: $VM_NET_MAC  MTU: $mtu  Mask: $VM_NET_MASK/$VM_NET_PREFIX"
+    line="Host: $container  IP: $UPLINK  Gateway: $GATEWAY  Interface: $DEV  MAC: $MAC  MTU: $mtu  Mask: $MASK/$PREFIX"
     [[ "$MTU" != "0" && "$MTU" != "$mtu" ]] && line+=" ($MTU)"
     info "$line"
     if [ -f /etc/resolv.conf ]; then
@@ -1221,7 +1229,7 @@ else
 
 fi
 
-NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$VM_NET_MAC"
+NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$MAC"
 
 if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" != "1500" ]]; then
   if [[ "${ADAPTER,,}" == "virtio-net-pci" ]]; then
@@ -1231,8 +1239,8 @@ if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" != "1500" ]]; then
   fi
 fi
 
-echo "$VM_NET_IP" > "$QEMU_DIR"/qemu.ip
-echo "http://$VM_NET_IP:$CHECK_PORT" > "$QEMU_DIR"/qemu.url
+echo "$IP" > "$QEMU_DIR"/qemu.ip
+echo "http://$IP:$CHECK_PORT" > "$QEMU_DIR"/qemu.url
 
 html "Initialized network successfully..."
 return 0
