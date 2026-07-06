@@ -357,7 +357,11 @@ convertDisk() {
     fi
   fi
 
-  rm -f "$SOURCE_FILE"
+  if ! rm -f "$SOURCE_FILE"; then
+    error "Failed to remove old $DISK_DESC image $SOURCE_FILE."
+    exit 79
+  fi
+
   if ! mv "$TMP_FILE" "$DST_FILE"; then
     rm -f "$TMP_FILE"
     error "Failed to move converted $DISK_DESC image to $DST_FILE."
