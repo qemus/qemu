@@ -182,26 +182,6 @@ gatewayMAC() {
   echo "$mac" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/'
 }
 
-containerID() {
-
-  local id=""
-
-  id=$(hostname -s 2>/dev/null || true)
-
-  if [ -z "$id" ] && [ -s /etc/machine-id ]; then
-    id=$(< /etc/machine-id)
-  fi
-
-  if [ -z "$id" ] && [ -s /proc/sys/kernel/random/boot_id ]; then
-    id=$(< /proc/sys/kernel/random/boot_id)
-  fi
-
-  [ -z "$id" ] && id="unknown"
-
-  echo "$id"
-  return 0
-}
-
 detectInterface() {
 
   if [ -n "$DEV" ]; then
@@ -249,6 +229,26 @@ detectAdapter() {
   NIC=$(grep -m 1 -i 'driver:' <<< "$result" | awk '{print $2}')
   BUS=$(grep -m 1 -i 'bus-info:' <<< "$result" | awk '{print $2}')
 
+  return 0
+}
+
+containerID() {
+
+  local id=""
+
+  id=$(hostname -s 2>/dev/null || true)
+
+  if [ -z "$id" ] && [ -s /etc/machine-id ]; then
+    id=$(< /etc/machine-id)
+  fi
+
+  if [ -z "$id" ] && [ -s /proc/sys/kernel/random/boot_id ]; then
+    id=$(< /proc/sys/kernel/random/boot_id)
+  fi
+
+  [ -z "$id" ] && id="unknown"
+
+  echo "$id"
   return 0
 }
 
