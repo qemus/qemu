@@ -1303,7 +1303,7 @@ showGateway() {
   return 0
 }
 
-formatNetworkAddress() {
+formatAddress() {
 
   local ip="$1"
   local prefix="$2"
@@ -1341,7 +1341,7 @@ showUplink() {
 
   host=$(containerID)
   msg="Host: $host  Interface: $iface"
-  uplink=$(formatNetworkAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
+  uplink=$(formatAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
 
   [ -n "$uplink" ] && msg+="  Uplink: $uplink"
   [ -n "$MAC" ] && msg+="  MAC: $MAC"
@@ -1357,16 +1357,17 @@ showUplink() {
 
 showNetwork() {
 
+  local ip="{IP:-}"
   local line=""
+  local gateway=""
 
   enabled "$DEBUG" || return 0
-  [ -z "${IP:-}" ] && return 0
+  [ -z "$ip" ] && return 0
 
-  line="Network mode: ${NETWORK,,}  Guest: $IP"
+  gateway="${ip%.*}.1"
+  ip=$(formatAddress "$ip" "$PREFIX" "$gateway" || true)
 
-  if [ -n "$PREFIX" ] && [[ "$PREFIX" != "24" ]]; then
-    line+="/$PREFIX"
-  fi
+  line="Network mode: ${NETWORK,,}  Guest: $ip"
 
   if [ -f /etc/resolv.conf ]; then
     nameservers=$(grep '^nameserver ' /etc/resolv.conf | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
