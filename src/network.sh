@@ -80,6 +80,19 @@ guestIP() {
   return 0
 }
 
+natGuestIP() {
+
+  local ip="$1"
+
+  if [[ "$ip" != "172.30."* ]]; then
+    ip="172.30.$(cut -d. -f3,4 <<< "$ip")"
+  else
+    ip="172.31.$(cut -d. -f3,4 <<< "$ip")"
+  fi
+
+  guestIP "$ip" 2
+}
+
 maskToCIDR() {
 
   local mask="$1"
@@ -793,18 +806,13 @@ configureNAT() {
     fi
   fi
 
-  local ip base exclude subnet
-  base=$(cut -d. -f3,4 <<< "$IP")
+  local ip exclude subnet
 
-  if [[ "$IP" != "172.30."* ]]; then
-    ip="172.30.$base"
+  if [ -n "$VM_NET_IP" ]; then
+    ip=$(guestIP "$VM_NET_IP" 2)
   else
-    ip="172.31.$base"
+    ip=$(natGuestIP "$IP")
   fi
-
-  [ -n "$VM_NET_IP" ] && ip="$VM_NET_IP"
-
-  ip=$(guestIP "$ip" 2)
 
   local gateway="${ip%.*}.1"
   subnet=$(networkCIDR "$ip") || return 1
