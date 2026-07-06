@@ -744,7 +744,7 @@ if [ -z "${MEDIA_TYPE:-}" ]; then
 fi
 
 case "${MEDIA_TYPE,,}" in
-  "ide" | "sata" | "nvme" | "usb" | "scsi" | "blk" | "auto" | "none" ) ;;
+  "ide" | "sata" | "nvme" | "usb" | "scsi" | "blk" | "virtio-blk" | "virtio-scsi" | "auto" | "none" ) ;;
   * ) error "Invalid MEDIA_TYPE specified, value \"$MEDIA_TYPE\" is not recognized!" && exit 80 ;;
 esac
 

@@ -217,6 +217,9 @@ getURL() {
       ;;
     "url" )
 
+      [[ "$url" == "null" ]] && url=""
+      [[ "$arm" == "null" ]] && arm=""
+  
       if [[ "${PLATFORM,,}" != "arm64" ]]; then
         if [ -n "$name" ] && [ -z "$url" ]; then
           error "No image for $name available!"

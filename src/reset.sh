@@ -207,7 +207,7 @@ checkKvm() {
 STORAGE=$(strip "$STORAGE")
 MACHINE=$(strip "$MACHINE")
 DISK_SIZE=$(strip "$DISK_SIZE")
-BOOT_MODE=$(strip "$BOOT_MODE")
+BOOT_MODE=$(strip "${BOOT_MODE,,}")
 BOOT_INDEX=$(strip "$BOOT_INDEX")
 
 # Helper variables
