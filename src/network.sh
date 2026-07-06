@@ -1338,18 +1338,18 @@ showUplink() {
   fi
 
   host=$(containerID)
-  local msg="Host: $host"
-  [ -n "$iface" ] && msg+="  Interface: $iface"
+  local line="Host: $host"
+  [ -n "$iface" ] && line+="  Interface: $iface"
 
   uplink=$(formatAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
-  [ -n "$uplink" ] && msg+="  Uplink: $uplink"
+  [ -n "$uplink" ] && line+="  Uplink: $uplink"
 
   mtu=$(getMTU "$DEV")
   if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
-    msg+="  MTU: $mtu"
+    line+="  MTU: $mtu"
   fi
 
-  info "$msg"
+  info "$line"
   return 0
 }
 
@@ -1368,7 +1368,7 @@ showNetwork() {
 
   local line="Network mode: $mode"
   [ -n "$ip" ] && line+="  Guest: $ip"
-  [ -n "$MAC" ] && msg+=" ($MAC)"
+  [ -n "$MAC" ] && line+=" ($MAC)"
 
   local file="/etc/resolv.dnsmasq"
   [ ! -f "$file" ] && file="/etc/resolv.conf"
