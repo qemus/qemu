@@ -1284,24 +1284,96 @@ configureMAC() {
   return 0
 }
 
-printNetworkDebug() {
+showGateway() {
 
-  local line=""
+  local ip="$1"
+  local gateway="$2"
+
+  [ -z "$ip" ] && return 1
+  [ -z "$gateway" ] && return 1
+
+  local ip_net="${ip%.*}"
+  local gateway_net="${gateway%.*}"
+  local gateway_host="${gateway##*.}"
+
+  if [[ "$ip_net" == "$gateway_net" && "$gateway_host" == "1" ]]; then
+    return 1
+  fi
+
+  return 0
+}
+
+formatNetworkAddress() {
+
+  local ip="$1"
+  local prefix="$2"
+  local gateway="$3"
+  local result="$ip"
+
+  [ -z "$result" ] && return 1
+
+  if [ -n "$prefix" ] && [[ "$prefix" != "24" ]]; then
+    result+="/$prefix"
+  fi
+
+  if [ -n "$gateway" ] && showGateway; then
+    result+=" via $gateway"
+  fi
+
+  echo "$result"
+  return 0
+}
+
+showUplink() {
+
+  local msg=""
+  local mtu=""
   local host=""
-  local nameservers=""
+  local iface=""
+  local uplink=""
 
   enabled "$DEBUG" || return 0
 
-  host=$(containerID)
+  iface="$DEV"
+  if [ -n "$NIC" ] && [[ "${NIC,,}" != "veth" ]]; then
+    iface+="/$NIC"
+  fi
 
-  line="Host: $host  IP: $UPLINK  Gateway: $GATEWAY  Interface: $DEV  MAC: $MAC  MTU: $MTU  Mask: $MASK/$PREFIX"
-  info "$line"
+  host=$(containerID)
+  msg="Host: $host  Interface: $iface"
+  uplink=$(formatNetworkAddress "$UPLINK" "$PREFIX" "$GATEWAY" || true)
+
+  [ -n "$uplink" ] && msg+="  Uplink: $uplink"
+  [ -n "$MAC" ] && msg+="  MAC: $MAC"
+
+  mtu=$(getMTU "$DEV")
+  if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
+    msg+="  MTU: $mtu"
+  fi
+
+  info "$msg"
+  return 0
+}
+
+showNetwork() {
+
+  local line=""
+
+  enabled "$DEBUG" || return 0
+  [ -z "${IP:-}" ] && return 0
+
+  line="Network mode: ${NETWORK,,}  Guest: $IP"
+
+  if [ -n "$PREFIX" ] && [[ "$PREFIX" != "24" ]]; then
+    line+="/$PREFIX"
+  fi
 
   if [ -f /etc/resolv.conf ]; then
     nameservers=$(grep '^nameserver ' /etc/resolv.conf | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
-    [ -n "$nameservers" ] && info "Nameservers: $nameservers"
+    [ -n "$nameservers" ] && line+="  Nameservers: $nameservers"
   fi
 
+  info "$line"
   echo
   return 0
 }
@@ -1322,7 +1394,7 @@ prepareNetwork() {
   configureMTU
   configureMAC
 
-  printNetworkDebug
+  showUplink
 
   return 0
 }
@@ -1404,6 +1476,8 @@ else
   fi
 
 fi
+
+showNetwork
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$MAC"
 
