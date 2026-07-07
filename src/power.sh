@@ -21,15 +21,6 @@ _trap() {
   return 0
 }
 
-app() {
-
-  if [[ "$APP" == "QEMU" ]]; then
-    echo "the virtual machine" && return 0
-  fi
-
-  echo "$APP" && return 0
-}
-
 signalCode() {
 
   local sig="$1"
@@ -71,19 +62,16 @@ readQemuPid() {
 
 forceKillQemu() {
 
-  local pid=""
   local reason="$1"
+  local pid=""
   local display
 
-  if [ -s "$QEMU_PID" ]; then
-    if read -r pid <"$QEMU_PID"; then
-      if [ -n "$pid" ] && isAlive "$pid"; then
-        display="$(displayReason "$reason")"
-        error "Forcefully terminating $(app), reason: $display..."
-        { disown "$pid" || :; kill -9 -- "$pid" || :; } 2>/dev/null
-      fi
-    fi
-  fi
+  ! readQemuPid "$QEMU_PID" pid && return 0
+  ! isAlive "$pid" && return 0
+  
+  display=$(displayReason "$reason")
+  error "Forcefully terminating $(app), reason: $display..."
+  { disown "$pid" || :; kill -9 -- "$pid" || :; } 2>/dev/null
 
   return 0
 }
@@ -154,10 +142,19 @@ sendAcpiShutdown() {
   return 0
 }
 
+app() {
+
+  if [[ "$APP" == "QEMU" ]]; then
+    echo "the virtual machine" && return 0
+  fi
+
+  echo "$APP" && return 0
+}
+
 waitForShutdown() {
 
   local pid="$1"
-  local name="$2"
+  local name="$(app)"
   local cnt=0
   local slp
 
@@ -219,7 +216,7 @@ graceful_shutdown() {
   fi
 
   normalizeTimeout
-  waitForShutdown "$pid" "$(app)"
+  waitForShutdown "$pid"
 
   finish "$code"
 }
