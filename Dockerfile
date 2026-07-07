@@ -40,6 +40,7 @@ RUN <<EOF
     net-tools \
     e2fsprogs \
     qemu-utils \
+    util-linux \
     websocketd \
     iputils-ping \
     genisoimage \
