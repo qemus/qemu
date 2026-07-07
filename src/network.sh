@@ -1389,7 +1389,7 @@ showHostInfo() {
     line+="  MTU: $mtu"
   fi
 
-  echo "$line"
+  echo && echo "$line"
   return 0
 }
 
