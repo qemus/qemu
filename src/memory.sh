@@ -9,6 +9,18 @@ enabled "$DEBUG" && echo "$msg"
 RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
 AVAIL_MEM=$(formatBytes "$RAM_AVAIL")
 
+app() {
+
+  local name="$APP"
+
+  if [[ "$name" == "QEMU" ]]; then
+    name="the virtual machine"
+  fi
+
+  echo "$name"
+  return 0
+}
+
 checkConfiguredMemory() {
   local wanted msg
 
