@@ -182,7 +182,11 @@ createDisk() {
 
     # Check free diskspace
     DIR=$(dirname "$DISK_FILE")
-    SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+
+    if ! SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1); then
+      error "Failed to check free space in $DIR."
+      exit 76
+    fi
 
     if (( DATA_SIZE > SPACE )); then
       GB=$(formatBytes "$SPACE")
@@ -252,7 +256,11 @@ resizeDisk() {
 
     # Check free diskspace
     DIR=$(dirname "$DISK_FILE")
-    SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+
+    if ! SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1); then
+      error "Failed to check free space in $DIR."
+      exit 76
+    fi
 
     if (( REQ > SPACE )); then
       GB=$(formatBytes "$SPACE")
@@ -312,7 +320,11 @@ convertDisk() {
 
     # Check free diskspace
     CUR_SIZE=$(getSize "$SOURCE_FILE") || exit 79
-    SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1)
+
+    if ! SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1); then
+      error "Failed to check free space in $DIR."
+      exit 76
+    fi
 
     if (( CUR_SIZE > SPACE )); then
       GB=$(formatBytes "$SPACE")
@@ -344,8 +356,13 @@ convertDisk() {
 
   if [[ "$DST_FMT" == "raw" ]]; then
     if ! disabled "$ALLOCATE"; then
+
       # Work around qemu-img bug
-      CUR_SIZE=$(stat -c%s "$TMP_FILE")
+      if ! CUR_SIZE=$(stat -c%s "$TMP_FILE"); then
+        error "Failed to determine converted image size: $TMP_FILE"
+        exit 79
+      fi
+
       if ! fallocate -l "$CUR_SIZE" "$TMP_FILE" &>/dev/null; then
         if ! fallocate -l -x "$CUR_SIZE" "$TMP_FILE"; then
           error "Failed to allocate $CUR_SIZE bytes for $DISK_DESC image $TMP_FILE"
@@ -638,6 +655,7 @@ addDisk () {
   if [ -f "$DISK_FILE" ]; then
     if ! setOwner "$DISK_FILE"; then
       error "Failed to set the owner for \"$DISK_FILE\" !"
+      exit 77
     fi
   fi
 
