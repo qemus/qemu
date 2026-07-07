@@ -1365,10 +1365,16 @@ showHostInfo() {
   local host=""
   local uplink=""
 
-  enabled "$DEBUG" || return 0
-
   host=$(containerID)
-  local line="Host: $host"
+  local line="❯ Host: $host"
+
+  uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
+  [ -z "$uplink" ] && uplink="(none)"
+  line+="  Address: $uplink"
+
+  local gateway="${GATEWAY:-}"
+  [ -z "$gateway" ] && gateway="(none)"
+  line+="  Gateway: $gateway"
 
   local iface="$DEV"
   if [ -n "$NIC" ] && [[ "${NIC,,}" != "veth" ]]; then
@@ -1376,22 +1382,14 @@ showHostInfo() {
   fi
 
   [ -z "$iface" ] && iface="(none)"
-  line+="  Interface: $iface"
-
-  uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
-  [ -z "$uplink" ] && uplink="(none)"
-  line+="  IP: $uplink"
-
-  local gateway="${GATEWAY:-}"
-  [ -z "$gateway" ] && gateway="(none)"
-  line+="  Gateway: $gateway"
+  [[ "$iface" != "eth0" ]] && line+="  Interface: $iface"
 
   mtu=$(getMTU "$DEV")
   if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
     line+="  MTU: $mtu"
   fi
 
-  info "$line"
+  echo "$line"
   return 0
 }
 
@@ -1400,16 +1398,17 @@ showGuestInfo() {
   local ip="${IP:-}"
   local nameservers=""
 
-  enabled "$DEBUG" || return 0
-
   local mode="${NETWORK,,}"
   isNAT && mode="NAT"
+  [[ "${mode,,}" == "dhcp" ]] && mode="DHCP"
   [ -z "$mode" ] && mode="(none)"
-  local line="Network mode: $mode"
+
+  local line="❯ Network mode: $mode"
 
   [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" || true)
   [ -z "$ip" ] && ip="DHCP"
-  line+="  Guest: $ip"
+
+  line+="  Guest Address: $ip"
 
   [ -n "$MAC" ] && line+=" ($MAC)"
 
@@ -1426,10 +1425,10 @@ showGuestInfo() {
 
   if (( count <= 1 )); then
     line+="  Nameserver: $nameservers"
-    info "$line"
+    echo "$line"
   else
-    info "$line"
-    info "Nameservers: $nameservers"
+    echo "$line"
+    echo "Nameservers: $nameservers"
   fi
 
   echo
