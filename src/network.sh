@@ -1432,7 +1432,7 @@ showGuestInfo() {
 
   local line="❯ Guest: $ip"
 
-  if [ -n "$HOST" ]; then
+  if [ -n "${HOST:-}" ]; then
     line+=" ($HOST)"
   fi
 
