@@ -27,9 +27,10 @@ validateVncPort() {
 
 prepareWebFiles() {
 
-  cp -r /var/www/* "$QEMU_DIR"
-  rm -f "$WSD_PID" "$WEB_PID"
+  cp -r /var/www/* "$QEMU_DIR" || return 1
+  rm -f "$WSD_PID" "$WEB_PID" || return 1
 
+  return 0
 }
 
 configureAuthentication() {
@@ -84,14 +85,18 @@ configureWebServer() {
 startWebServer() {
 
   # Start webserver
-  nginx -e stderr
+  nginx -e stderr || return 1
+
+  return 0
 }
 
 startWebsocketServer() {
 
   # Start websocket server
   websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh >/var/log/websocketd.log &
-  echo "$!" > "$WSD_PID"
+  echo "$!" > "$WSD_PID" || return 1
+
+  return 0
 }
 
 validateVncPort
@@ -100,9 +105,9 @@ prepareWebFiles
 html "Starting $APP for $ENGINE..."
 
 if ! disabled "${WEB:-}"; then
-  configureWebServer
-  startWebServer
-  startWebsocketServer
+  configureWebServer || return 1
+  startWebServer || return 1
+  startWebsocketServer || return 1
 fi
 
 return 0
