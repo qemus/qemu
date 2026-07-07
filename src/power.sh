@@ -66,7 +66,7 @@ forceKillQemu() {
   local pid=""
   local display
 
-  ! readQemuPid "$QEMU_PID" pid && return 0
+  ! readQemuPid pid && return 0
   ! isAlive "$pid" && return 0
   
   display=$(displayReason "$reason")
@@ -106,8 +106,9 @@ finish() {
 
 normalizeTimeout() {
 
-  term_grace=3      # seconds before loop ends to send SIGTERM
-  cleanup_grace=3   # seconds reserved after the loop for cleanup
+  local term_grace=3      # seconds before loop ends to send SIGTERM
+  local cleanup_grace=3   # seconds reserved after the loop for cleanup
+  local min
 
   TIMEOUT=$(strip "$TIMEOUT")
   if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]]; then
@@ -122,7 +123,6 @@ normalizeTimeout() {
     cleanup_grace=4
   fi
 
-  local min
   min=$((term_grace + cleanup_grace + 1))
   (( TIMEOUT < min )) && (( TIMEOUT = min ))
 
