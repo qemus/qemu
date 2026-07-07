@@ -142,22 +142,17 @@ sendAcpiShutdown() {
   return 0
 }
 
-app() {
-
-  if [[ "$APP" == "QEMU" ]]; then
-    echo "the virtual machine" && return 0
-  fi
-
-  echo "$APP" && return 0
-}
-
 waitForShutdown() {
 
   local pid="$1"
-  local name="$(app)"
+  local name="$APP"
   local cnt=0
   local slp
 
+  if [[ "$name" == "QEMU" ]]; then
+    name="the virtual machine"
+  fi
+  
   while (( cnt <= wait_until )); do
 
     sleep 1 &
