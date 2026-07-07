@@ -1374,8 +1374,17 @@ showHostInfo() {
   [ -n "$host" ] && line+=" ($host)"
 
   local gateway="${GATEWAY:-}"
-  [ -z "$gateway" ] && gateway="(none)"
-  line+="  |  Gateway: $gateway"
+  local obvious=""
+
+  if [[ "$uplink" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+    obvious="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.1"
+  fi
+
+  if [ -z "$gateway" ]; then
+    line+="  |  Gateway: (none)"
+  elif [[ "$gateway" != "$obvious" ]]; then
+    line+="  |  Gateway: $gateway"
+  fi
 
   local iface="$DEV"
   if [ -n "$NIC" ] && [[ "${NIC,,}" != "veth" ]]; then
@@ -1390,7 +1399,27 @@ showHostInfo() {
     line+="  |  MTU: $mtu"
   fi
 
-  echo && echo "$line"
+  local nameservers=""
+  local file="/etc/resolv.dnsmasq"
+  [ ! -f "$file" ] && file="/etc/resolv.conf"
+
+  if [ -f "$file" ]; then
+    nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
+  fi
+
+  [ -z "$nameservers" ] && nameservers="(none)"
+  [[ "$nameservers" == "127.0.0.1"* ]] && nameservers=""
+
+  echo
+  
+  if (( ${#nameservers} <= 40 )); then
+    [ -n "$nameservers" ] && line+="  |  DNS: $nameservers"
+    echo "$line"
+  else
+    echo "$line"
+    echo "❯ DNS: $nameservers"
+  fi
+
   return 0
 }
 
@@ -1415,25 +1444,6 @@ showGuestInfo() {
   line+="  |  Mode: $mode"
 
   [ -n "$MAC" ] && line+="  |  MAC: $MAC"
-
-  local nameservers=""
-  local file="/etc/resolv.dnsmasq"
-  [ ! -f "$file" ] && file="/etc/resolv.conf"
-
-  if [ -f "$file" ]; then
-    nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
-  fi
-
-  [ -z "$nameservers" ] && nameservers="(none)"
-  [[ "$namservers" == "127.0.0.1"* ]] && nameservers=""
-
-  if (( ${#nameservers} <= 40 )); then
-    [ -n "$nameservers" ] && line+="  |  DNS: $nameservers"
-    echo "$line"
-  else
-    echo "$line"
-    echo "❯ DNS: $nameservers"
-  fi
 
   echo
   return 0
