@@ -565,7 +565,7 @@ getPasst() {
 #  Network mode setup
 # ######################################
 
-configureDHCP() {
+configureVTAP() {
 
   local msg=""
   local rc
@@ -1477,7 +1477,8 @@ cleanUp
 if enabled "$DHCP"; then
 
   # Configure for macvtap interface
-  configureDHCP || exit 20
+  configureVTAP || exit 20
+  showGuestInfo
 
 else
 
@@ -1526,6 +1527,8 @@ else
 
   fi
 
+  showGuestInfo
+
   if [[ "${NETWORK,,}" == "passt" || "${NETWORK,,}" == "slirp" ]]; then
     if [ -z "$USER_PORTS" ]; then
       desc="$APP"
@@ -1535,8 +1538,6 @@ else
   fi
 
 fi
-
-showGuestInfo
 
 NET_OPTS+=" -device $ADAPTER,id=net0,netdev=hostnet0,romfile=,mac=$MAC"
 
