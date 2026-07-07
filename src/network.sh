@@ -1365,16 +1365,17 @@ showHostInfo() {
   local host=""
   local uplink=""
 
-  host=$(containerID)
-  local line="❯ Host: $host"
-
   uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
   [ -z "$uplink" ] && uplink="(none)"
-  line+="  Address: $uplink"
+
+  local line="❯ Host: $uplink"
+
+  host=$(containerID)
+  [ -n "$host" ] && line+=" ($host)"
 
   local gateway="${GATEWAY:-}"
   [ -z "$gateway" ] && gateway="(none)"
-  line+="  Gateway: $gateway"
+  line+="  |  Gateway: $gateway"
 
   local iface="$DEV"
   if [ -n "$NIC" ] && [[ "${NIC,,}" != "veth" ]]; then
@@ -1382,11 +1383,11 @@ showHostInfo() {
   fi
 
   [ -z "$iface" ] && iface="(none)"
-  [[ "$iface" != "eth0" ]] && line+="  Interface: $iface"
+  [[ "$iface" != "eth0" ]] && line+="  |  Interface: $iface"
 
   mtu=$(getMTU "$DEV")
   if [ -n "$mtu" ] && [[ "$mtu" != "0" && "$mtu" != "1500" ]]; then
-    line+="  MTU: $mtu"
+    line+="  |  MTU: $mtu"
   fi
 
   echo && echo "$line"
@@ -1396,39 +1397,41 @@ showHostInfo() {
 showGuestInfo() {
 
   local ip="${IP:-}"
-  local nameservers=""
+
+  [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" || true)
+  [ -z "$ip" ] && ip="DHCP"
+
+  local line="❯ Guest: $ip"
+
+  if [ -n "$HOST" ]; then
+    line+=" ($HOST)"
+  fi
 
   local mode="${NETWORK,,}"
   isNAT && mode="NAT"
   [[ "${mode,,}" == "dhcp" ]] && mode="DHCP"
   [ -z "$mode" ] && mode="(none)"
 
-  local line="❯ Network mode: $mode"
+  line+="  |  Mode: $mode"
 
-  [ -n "$ip" ] && ip=$(formatAddress "$ip" "$PREFIX" || true)
-  [ -z "$ip" ] && ip="DHCP"
+  [ -n "$MAC" ] && line+="  |  MAC: $MAC"
 
-  line+="  Guest Address: $ip"
-
-  [ -n "$MAC" ] && line+=" ($MAC)"
-
-  local count="0"
+  local nameservers=""
   local file="/etc/resolv.dnsmasq"
   [ ! -f "$file" ] && file="/etc/resolv.conf"
 
   if [ -f "$file" ]; then
-    count=$(grep -c '^nameserver ' "$file" || true)
     nameservers=$(grep '^nameserver ' "$file" | sed 's/^nameserver //' | paste -sd ',' | sed 's/,/, /g')
   fi
 
   [ -z "$nameservers" ] && nameservers="(none)"
 
-  if (( count <= 1 )); then
-    line+="  Nameserver: $nameservers"
+  if (( ${#nameservers} <= 40 )); then
+    line+="  |  DNS: $nameservers"
     echo "$line"
   else
     echo "$line"
-    echo "Nameservers: $nameservers"
+    echo "❯ DNS: $nameservers"
   fi
 
   echo
