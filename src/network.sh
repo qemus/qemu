@@ -1311,15 +1311,26 @@ configureMAC() {
   container=$(containerID)
 
   if [ -z "$MAC" ]; then
+
     file="$STORAGE/$PROCESS.mac"
     [ -s "$file" ] && MAC=$(<"$file")
     MAC="${MAC//[![:print:]]/}"
 
     if [ -z "$MAC" ]; then
+
       # Generate a MAC address based on a stable container identifier when possible.
       MAC=$(echo "$container" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/')
-      echo "${MAC^^}" > "$file"
-      ! setOwner "$file" && error "Failed to set the owner for \"$file\" !"
+
+      if ! echo "${MAC^^}" > "$file"; then
+        error "Failed to write MAC address to \"$file\" !"
+        exit 28
+      fi
+
+      if ! setOwner "$file"; then
+        error "Failed to set the owner for \"$file\" !"
+        exit 28
+      fi
+
     fi
   fi
 
