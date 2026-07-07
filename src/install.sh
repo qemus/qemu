@@ -279,8 +279,13 @@ convertImage() {
     fi
   fi
 
-  rm -f "$source_file"
-  if ! mv "$tmp_file" "$dst_file"; then
+  if ! rm -f "$source_file"; then
+    rm -f "$tmp_file"
+    error "Failed to remove old image $source_file."
+    return 1
+  fi
+
+  if ! mv "$tmp_file" "$dst_file"; then  if ! mv "$tmp_file" "$dst_file"; then
     rm -f "$tmp_file"
     error "Failed to move converted image to $dst_file."
     return 1
