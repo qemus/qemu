@@ -534,6 +534,22 @@ addMedia () {
   return 0
 }
 
+topDir() {
+
+  local path="${1%/}"
+
+  [[ -z "$path" || "$path" == "/" ]] && {
+    echo "/"
+    return 0
+  }
+
+  path="${path#/}"
+  path="${path%%/*}"
+
+  echo "/$path"
+  return 0
+}
+
 finishDisks () {
 
   local type
@@ -634,8 +650,9 @@ addDisk () {
 
     if (( LEFT > 0 )); then
 
-      local GB
+      local GB TOP_DIR
       GB=$(formatBytes "$FREE")
+      TOP_DIR=$(topDir "$DIR")
       LEFT=$(formatBytes "$LEFT")
       CUR_SIZE=$(formatBytes "$CUR_SIZE")
       msg="The virtual size of the ${DISK_DESC,,} is $CUR_SIZE"
@@ -645,11 +662,10 @@ addDisk () {
         msg+=" (of which $USED is used)"
       fi
 
-      info "$msg, but there is only $GB of free space remaining in $DIR now."
-      info "Please consider making at least $LEFT more space available in $DIR for future expansions."
+      info "$msg, but there is only $GB of free space remaining in $TOP_DIR now."
+      info "Please consider making at least $LEFT more space available in $TOP_DIR for future expansions."
 
     fi
-
   fi
 
   if [ -f "$DISK_FILE" ]; then
