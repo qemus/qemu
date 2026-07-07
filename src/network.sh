@@ -1373,13 +1373,12 @@ showHostInfo() {
   host=$(containerID)
   [ -n "$host" ] && line+=" ($host)"
 
-  local gateway="${GATEWAY:-}"
   local obvious=""
-
   if [[ "$uplink" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
     obvious="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.1"
   fi
 
+  local gateway="${GATEWAY:-}"
   if [ -z "$gateway" ]; then
     line+="  |  Gateway: (none)"
   elif [[ "$gateway" != "$obvious" ]]; then
