@@ -28,7 +28,7 @@ trap - ERR
 
 cmd=(qemu-system-x86_64)
 version=$("${cmd[@]}" --version | awk 'NR==1 { print $4 }')
-info "Booting image${BOOT_DESC} using QEMU v$version..."
+info "Booting image${BOOT_DESC} using QEMU v$version..." && echo
 
 if ! enabled "$SHUTDOWN"; then
   exec "${cmd[@]}" ${ARGS:+ $ARGS}
