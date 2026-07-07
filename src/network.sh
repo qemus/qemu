@@ -1437,9 +1437,16 @@ showGuestInfo() {
   fi
 
   local mode="${NETWORK,,}"
-  isNAT && mode="NAT"
-  [[ "${mode,,}" == "dhcp" ]] && mode="DHCP"
-  [ -z "$mode" ] && mode="(none)"
+
+  if isNAT; then
+    mode="NAT"
+  elif enabled "$DHCP"; then
+    mode="DHCP"
+  elif isUserMode; then
+    mode="User ($mode)"
+  elif [ -z "$mode" ]; then
+    mode="(none)"
+  fi
 
   line+="  |  Mode: $mode"
 
