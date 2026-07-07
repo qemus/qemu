@@ -9,6 +9,7 @@ set -Eeuo pipefail
 QEMU_END="$QEMU_DIR/qemu.end"
 
 _trap() {
+
   local func="$1"; shift
   local sig
   TRAP_PID=$BASHPID
@@ -20,15 +21,8 @@ _trap() {
   return 0
 }
 
-app() {
-  if [[ "$APP" == "QEMU" ]]; then
-    echo "the virtual machine" && return 0
-  fi
-
-  echo "$APP" && return 0
-}
-
 signalCode() {
+
   local sig="$1"
 
   case "$sig" in
@@ -42,6 +36,7 @@ signalCode() {
 }
 
 displayReason() {
+
   local reason="$1"
 
   case "$reason" in
@@ -55,6 +50,7 @@ displayReason() {
 }
 
 readQemuPid() {
+
   local -n _pid="$1"
 
   if [ ! -s "$QEMU_PID" ] || ! read -r _pid <"$QEMU_PID"; then
@@ -65,19 +61,17 @@ readQemuPid() {
 }
 
 forceKillQemu() {
-  local pid=""
+
   local reason="$1"
+  local pid=""
   local display
 
-  if [ -s "$QEMU_PID" ]; then
-    if read -r pid <"$QEMU_PID"; then
-      if [ -n "$pid" ] && isAlive "$pid"; then
-        display="$(displayReason "$reason")"
-        error "Forcefully terminating $(app), reason: $display..."
-        { disown "$pid" || :; kill -9 -- "$pid" || :; } 2>/dev/null
-      fi
-    fi
-  fi
+  ! readQemuPid "$QEMU_PID" pid && return 0
+  ! isAlive "$pid" && return 0
+  
+  display=$(displayReason "$reason")
+  error "Forcefully terminating $(app), reason: $display..."
+  { disown "$pid" || :; kill -9 -- "$pid" || :; } 2>/dev/null
 
   return 0
 }
@@ -88,15 +82,14 @@ cleanupHelpers() {
                "${PASST_PID:-}" "${DNSMASQ_PID:-}" "${BALLOONING_PID:-}" )
 
   mKill "${pids[@]}"
-  closeNetwork
 
+  closeNetwork
   return 0
 }
 
 finish() {
 
   local reason=$1
-
   touch "$QEMU_END"
 
   forceKillQemu "$reason"
@@ -107,19 +100,14 @@ finish() {
   fi
 
   (( reason != 1 )) && echo && echo "❯ Shutdown completed!"
+
   exit "$reason"
 }
 
 normalizeTimeout() {
 
-  local -n _term_grace="$1"
-  local -n _cleanup_grace="$2"
-  local -n _wait_until="$3"
-  local -n _sigterm_at="$4"
-  local min
-
-  _term_grace=3      # seconds before loop ends to send SIGTERM
-  _cleanup_grace=3   # seconds reserved after the loop for cleanup
+  term_grace=3      # seconds before loop ends to send SIGTERM
+  cleanup_grace=3   # seconds reserved after the loop for cleanup
 
   TIMEOUT=$(strip "$TIMEOUT")
   if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]]; then
@@ -127,28 +115,29 @@ normalizeTimeout() {
   fi
 
   if (( TIMEOUT >= 30 )); then
-    _term_grace=5
-    _cleanup_grace=5
+    term_grace=5
+    cleanup_grace=5
   elif (( TIMEOUT >= 15 )); then
-    _term_grace=4
-    _cleanup_grace=4
+    term_grace=4
+    cleanup_grace=4
   fi
 
-  min=$((_term_grace + _cleanup_grace + 1))
+  local min
+  min=$((term_grace + cleanup_grace + 1))
   (( TIMEOUT < min )) && (( TIMEOUT = min ))
 
-  _wait_until=$((TIMEOUT - _cleanup_grace))
-  _sigterm_at=$((_wait_until - _term_grace))
+  wait_until=$((TIMEOUT - cleanup_grace))
+  sigterm_at=$((wait_until - term_grace))
 
   return 0
 }
 
 sendAcpiShutdown() {
 
+  [ ! -S "$QEMU_DIR/monitor.sock" ] && return 0
+
   # Send ACPI shutdown signal
-  if [ -S "$QEMU_DIR/monitor.sock" ]; then
-    nc -q 1 -w 1 -U "$QEMU_DIR/monitor.sock" &> /dev/null <<<'system_powerdown' || :
-  fi
+  nc -q 1 -w 1 -U "$QEMU_DIR/monitor.sock" &> /dev/null <<<'system_powerdown' || :
 
   return 0
 }
@@ -156,16 +145,14 @@ sendAcpiShutdown() {
 waitForShutdown() {
 
   local pid="$1"
-  local name="$2"
+  local name="$APP"
   local cnt=0
-  local sigterm_at=0
-  local wait_until=0
-  local term_grace=0
-  local cleanup_grace=0
   local slp
 
-  normalizeTimeout term_grace cleanup_grace wait_until sigterm_at
-
+  if [[ "$name" == "QEMU" ]]; then
+    name="the virtual machine"
+  fi
+  
   while (( cnt <= wait_until )); do
 
     sleep 1 &
@@ -199,7 +186,6 @@ graceful_shutdown() {
   local sig="$1"
   local pid=""
   local code=0
-  local name
 
   [[ $BASHPID != "$TRAP_PID" ]] && return
 
@@ -224,8 +210,9 @@ graceful_shutdown() {
     finish "$code"
   fi
 
-  name="$(app)"
-  waitForShutdown "$pid" "$name"
+  normalizeTimeout
+  waitForShutdown "$pid"
+
   finish "$code"
 }
 
