@@ -1445,6 +1445,7 @@ showGuestInfo() {
 
   [ -n "$MAC" ] && line+="  |  MAC: $MAC"
 
+  echo "$line"
   echo
   return 0
 }
