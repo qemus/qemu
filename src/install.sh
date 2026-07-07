@@ -165,11 +165,18 @@ downloadFile() {
   fKill "progress.sh"
 
   if (( rc == 0 )) && [ -f "$dest" ]; then
-    total=$(stat -c%s "$dest")
-    size=$(formatBytes "$total")
+
+    if ! total=$(stat -c%s "$dest"); then
+      error "Failed to determine downloaded file size: $dest"
+      return 1
+    fi
+
+    size=$(formatBytes "$total") || return 1
+  
     if [ "$total" -lt 100000 ]; then
       error "Invalid image file: is only $size ?" && return 1
     fi
+  
     html "Download finished successfully..."
     return 0
   fi
@@ -229,8 +236,15 @@ convertImage() {
   if [ -n "$ALLOCATE" ] && ! disabled "$ALLOCATE"; then
 
     # Check free diskspace
-    src_size=$(qemu-img info "$source_file" -f "$source_fmt" | grep '^virtual size: ' | sed 's/.*(\(.*\) bytes)/\1/')
-    space=$(df --output=avail -B 1 "$dir" | tail -n 1)
+    if ! src_size=$(qemu-img info "$source_file" -f "$source_fmt" | grep '^virtual size: ' | sed 's/.*(\(.*\) bytes)/\1/'); then
+      error "Failed to determine virtual size of $source_file."
+      return 1
+    fi
+
+    if ! space=$(df --output=avail -B 1 "$dir" | tail -n 1); then
+      error "Failed to check free space in $dir."
+      return 1
+    fi
 
     if (( src_size > space )); then
       space_gb=$(formatBytes "$space")
