@@ -1425,9 +1425,10 @@ showGuestInfo() {
   fi
 
   [ -z "$nameservers" ] && nameservers="(none)"
+  [[ "$namservers" == "127.0.0.1"* ]] && nameservers=""
 
   if (( ${#nameservers} <= 40 )); then
-    line+="  |  DNS: $nameservers"
+    [ -n "$nameservers" ] && line+="  |  DNS: $nameservers"
     echo "$line"
   else
     echo "$line"
