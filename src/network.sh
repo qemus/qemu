@@ -54,7 +54,7 @@ ADD_ERR="Please add the following setting to your container:"
 isNAT() {
 
   case "${NETWORK,,}" in
-    "tap" | "tun" | "tuntap" | "y" | "" )
+    "nat" | "tap" | "tun" | "tuntap" | "y" | "" )
       return 0 ;;
     *)
       return 1 ;;
