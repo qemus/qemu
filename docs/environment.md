@@ -36,7 +36,7 @@ This page lists all the environment variables that can be used to configure the 
 
 | Variable | Default | Description |
 |---|---|---|
-| `BOOT_MODE` | `uefi` | Boot mode, for example `uefi`, `secure`, `legacy`, `windows`, `windows_secure`, or `windows_legacy`. |
+| `BOOT_MODE` | `uefi` | Boot mode, for example `uefi`, `secure` or `legacy`. |
 | `BOOT_INDEX` | `9` | Boot priority index for the boot media. |
 | `BIOS` |  | Custom BIOS/firmware file. Setting this enables custom boot mode. |
 | `TPM` | `N` | Enables TPM support. |
