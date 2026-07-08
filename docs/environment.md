@@ -13,10 +13,11 @@ This page lists all the environment variables that can be used to configure the 
 | Variable | Default | Description |
 |---|---|---|
 | `CPU_CORES` | `2` | Number of CPU cores assigned to the VM. Can also be set to `max` or `half`. |
-| `CPU_PIN` |  | Pins QEMU to specific host CPU cores, for example `4,5,6,7`. |
 | `CPU_MODEL` | `host` | QEMU CPU model to use. |
 | `CPU_FLAGS` |  | Additional QEMU CPU flags. |
 | `KVM` | `Y` | Enables KVM hardware acceleration. Set to `N` to disable. |
+| `VMX` | `N` | Exposes Intel VMX virtualization extensions to the guest. |
+| `HV` | `Y` | Enables Hyper-V enlightenments for Windows. |
 | `RAM_SIZE` | `2G` | Amount of RAM assigned to the VM, for example `2G`, `4G`, `max`, or `half`. |
 | `RAM_CHECK` | `Y` | Checks whether enough host memory is available before starting the VM. |
 
@@ -24,8 +25,10 @@ This page lists all the environment variables that can be used to configure the 
 
 | Variable | Default | Description |
 |---|---|---|
-| `MACHINE` | `virt` | QEMU machine type. |
+| `MACHINE` | `q35` | QEMU machine type. |
 | `UUID` |  | QEMU VM UUID. |
+| `HPET` | `off` | Enables or disables the QEMU HPET timer. |
+| `VMPORT` | `off` | Enables or disables the QEMU VMware port. |
 | `SM_BIOS` |  | Additional SMBIOS arguments passed to QEMU. |
 | `ARGUMENTS` |  | Additional raw QEMU arguments appended to the generated command line. |
 
@@ -33,10 +36,11 @@ This page lists all the environment variables that can be used to configure the 
 
 | Variable | Default | Description |
 |---|---|---|
-| `BOOT_MODE` | `uefi` | Boot mode, for example `uefi` or `secure`. |
+| `BOOT_MODE` | `uefi` | Boot mode, for example `uefi`, `secure`, `legacy`, `windows`, `windows_secure`, or `windows_legacy`. |
 | `BOOT_INDEX` | `9` | Boot priority index for the boot media. |
 | `BIOS` |  | Custom BIOS/firmware file. Setting this enables custom boot mode. |
-| `SECURE` | `off` | QEMU secure boot flag. Usually controlled by `BOOT_MODE`. |
+| `TPM` | `N` | Enables TPM support. |
+| `SMM` | `N` | Enables SMM/secure-machine support. |
 | `LOGO` | `Y` | Enables the custom boot logo. |
 | `CLEAR` | `N` | Clears the firmware/NVRAM variables on the next boot. |
 | `USB` | `qemu-xhci,id=xhci,p2=7,p3=7` | QEMU USB controller setting. Set to a `no*` value to disable. |
@@ -83,8 +87,10 @@ This page lists all the environment variables that can be used to configure the 
 
 | Variable | Default | Description |
 |---|---|---|
-| `DISPLAY` | `web` | Display backend. Common values are `web`, `vnc`, `ramfb`, `disabled`, or `none`. |
-| `VGA` | `ramfb` | QEMU video adapter model, can be set to `virtio-gpu` after installation. |
+| `DISPLAY` | `web` | Display backend. Common values are `web`, `vnc`, `disabled`, or `none`. |
+| `VGA` | `virtio` | QEMU video adapter model. |
+| `GPU` | `N` | Enables Intel iGPU acceleration. Experimental. |
+| `RENDERNODE` | `/dev/dri/renderD128` | Render node used for GPU acceleration. |
 
 ## 🌍 Web UI
 
