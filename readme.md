@@ -400,6 +400,10 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     DEBUG: "Y"
   ```
 
+### Are these all available options?
+
+No. For a complete overview of all supported settings, see the [environment variables](docs/environment.md) page.
+
 ### Can I also run Proxmox as a container?
 
   Yes, if you prefer a web-based management interface, or some advanced features that this container may not offer, you can try out [dockur/proxmox](https://github.com/dockur/proxmox).
