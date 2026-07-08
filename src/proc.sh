@@ -37,6 +37,15 @@ appendCpuFeature() {
   return 0
 }
 
+checkCpuArgument() {
+
+  if grep -Eq '(^|[[:space:]])-cpu([[:space:]=]|$)' <<< "${ARGUMENTS:-}"; then
+    warn "Do not pass '-cpu' through ARGUMENTS, it will be ignored. Use the CPU_MODEL and CPU_FLAGS instead."
+  fi
+
+  return 0
+}
+
 configureKvmCpuModel() {
 
   CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
@@ -193,55 +202,14 @@ configureTcg() {
   return 0
 }
 
-extractHostCpuArgument() {
-
-  local args prefix suffix param
-
-  if [[ "$ARGUMENTS" == *"-cpu host,"* ]]; then
-
-    args="${ARGUMENTS} "
-    prefix="${args/-cpu host,*/}"
-    suffix="${args/*-cpu host,/}"
-    param="${suffix%% *}"
-    suffix="${suffix#* }"
-    args="${prefix}${suffix}"
-    ARGUMENTS="${args::-1}"
-
-    if [ -z "$CPU_FLAGS" ]; then
-      CPU_FLAGS="$param"
-    else
-      CPU_FLAGS+=",$param"
-    fi
-
-  else
-
-    if [[ "$ARGUMENTS" == *"-cpu host"* ]]; then
-      ARGUMENTS="${ARGUMENTS//-cpu host/}"
-    fi
-
-  fi
-
-  return 0
-}
-
 composeCpuFlags() {
 
-  if [ -z "$CPU_FLAGS" ]; then
-    if [ -z "$CPU_FEATURES" ]; then
-      CPU_FLAGS="$CPU_MODEL"
-    else
-      CPU_FLAGS="$CPU_MODEL,$CPU_FEATURES"
-    fi
-  else
-    if [ -z "$CPU_FEATURES" ]; then
-      CPU_FLAGS="$CPU_MODEL,$CPU_FLAGS"
-    else
-      CPU_FLAGS="$CPU_MODEL,$CPU_FEATURES,$CPU_FLAGS"
-    fi
-  fi
+  CPU_FLAGS="${CPU_MODEL}${CPU_FEATURES:+,$CPU_FEATURES}${CPU_FLAGS:+,$CPU_FLAGS}"
 
   return 0
 }
+
+checkCpuArgument
 
 if ! disabled "$KVM"; then
   configureKvm
@@ -249,7 +217,6 @@ else
   configureTcg
 fi
 
-extractHostCpuArgument
 composeCpuFlags
 
 return 0
