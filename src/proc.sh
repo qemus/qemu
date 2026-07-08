@@ -37,19 +37,28 @@ appendCpuFeature() {
   return 0
 }
 
+trimSpaces() {
+
+  local value="$1"
+
+  value="${value#"${value%%[![:space:]]*}"}"
+  value="${value%"${value##*[![:space:]]}"}"
+
+  echo "$value"
+  return 0
+}
+
 removeCpuArgument() {
 
-  local args cpu
-
-  args=" ${ARGUMENTS:-} "
+  local args=" ${ARGUMENTS:-} "
 
   while [[ "$args" =~ [[:space:]]-cpu([[:space:]][^[:space:]]+|=[^[:space:]]+)? ]]; do
-    cpu="${BASH_REMATCH[0]}"
+    local cpu="${BASH_REMATCH[0]}"
     args="${args/$cpu/ }"
     warn "Ignoring '${cpu#" "}' from ARGUMENTS, use CPU_MODEL and CPU_FLAGS instead."
   done
 
-  ARGUMENTS=$(strip "$args")
+  ARGUMENTS=$(trimSpaces "$args")
 
   return 0
 }
