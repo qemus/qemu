@@ -37,11 +37,19 @@ appendCpuFeature() {
   return 0
 }
 
-checkCpuArgument() {
+removeCpuArgument() {
 
-  if grep -Eq '(^|[[:space:]])-cpu([[:space:]=]|$)' <<< "${ARGUMENTS:-}"; then
-    warn "Do not pass '-cpu' through ARGUMENTS, it will be ignored. Use the CPU_MODEL and CPU_FLAGS instead."
-  fi
+  local args cpu
+
+  args=" ${ARGUMENTS:-} "
+
+  while [[ "$args" =~ [[:space:]]-cpu([[:space:]][^[:space:]]+|=[^[:space:]]+)? ]]; do
+    cpu="${BASH_REMATCH[0]}"
+    args="${args/$cpu/ }"
+    warn "Ignoring '${cpu#" "}' from ARGUMENTS, use CPU_MODEL and CPU_FLAGS instead."
+  done
+
+  ARGUMENTS=$(strip "$args")
 
   return 0
 }
@@ -209,7 +217,7 @@ composeCpuFlags() {
   return 0
 }
 
-checkCpuArgument
+removeCpuArgument
 
 if ! disabled "$KVM"; then
   configureKvm
