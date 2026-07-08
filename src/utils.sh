@@ -232,6 +232,95 @@ makeDir() {
   return 0
 }
 
+stateFile() {
+
+  local name="$1"
+  local prefix="${2:-$PROCESS}"
+
+  [[ "$name" == */* ]] && printf '%s\n' "$name" && return 0
+
+  printf '%s/%s.%s\n' "$STORAGE" "$prefix" "$name"
+  return 0
+}
+
+writeFile() {
+
+  local txt="$1"
+  local path="$2"
+
+  if ! printf '%s\n' "$txt" >"$path"; then
+    error "Failed to write file \"$path\" !"
+    return 1
+  fi
+
+  if ! setOwner "$path"; then
+    error "Failed to set the owner for \"$path\" !"
+    return 1
+  fi
+
+  return 0
+}
+
+readFile() {
+
+  local path="$1"
+  local value
+
+  [ -s "$path" ] || return 0
+
+  value=$(<"$path") || return 1
+  value="${value//[![:print:]]/}"
+
+  printf '%s\n' "$value"
+  return 0
+}
+
+writeState() {
+
+  local name="$1"
+  local value="$2"
+  local prefix="${3:-$PROCESS}"
+  local path
+
+  [ -z "$value" ] && return 0
+
+  path=$(stateFile "$name" "$prefix") || return 1
+  writeFile "$value" "$path"
+
+  return $?
+}
+
+readState() {
+
+  local name="$1"
+  local prefix="${2:-$PROCESS}"
+  local path
+
+  path=$(stateFile "$name" "$prefix") || return 1
+  readFile "$path"
+
+  return $?
+}
+
+restoreState() {
+
+  local var="$1"
+  local name="$2"
+  local force="${3:-N}"
+  local prefix="${4:-$PROCESS}"
+  local value
+
+  if ! enabled "$force"; then
+    [ -z "${!var:-}" ] || return 0
+  fi
+
+  value=$(readState "$name" "$prefix") || return 1
+  [ -n "$value" ] || return 0
+
+  printf -v "$var" '%s' "$value" || return 1
+  return 0
+}
+
 escape () {
 
   local s
