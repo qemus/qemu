@@ -413,27 +413,48 @@ getHostPorts() {
   local list=""
   local port=""
   local ports=""
+  local proto=""
+  local num=""
+  local filter="${1:-tcp}"
   local display="${DISPLAY:-}"
 
   if [[ "${display,,}" == "web" ]]; then
-    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT,"
+    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT/tcp,"
   fi
 
   if [[ "${display,,}" == "vnc" || "${display,,}" == "web" ]]; then
-    [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT,"
+    [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT/tcp,"
   fi
 
   if ! disabled "${WEB:-}"; then
-    [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT,"
-    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT,"
+    [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT/tcp,"
+    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT/tcp,"
   fi
 
   list+="${HOST_PORTS// /},"
 
   for port in ${list//,/ }; do
-    port="${port%/tcp}"
-    port="${port%/udp}"
-    [ -n "$port" ] && ports+="$port,"
+
+    proto="tcp"
+    num="$port"
+
+    if [[ "$port" == *"/udp" ]]; then
+      proto="udp"
+      num="${port%/udp}"
+    elif [[ "$port" == *"/tcp" ]]; then
+      proto="tcp"
+      num="${port%/tcp}"
+    fi
+
+    [ -z "$num" ] && continue
+
+    case "$filter" in
+      "all" )
+        ports+="$num/$proto," ;;
+      "tcp" | "udp" )
+        [[ "$proto" == "$filter" ]] && ports+="$num," ;;
+    esac
+
   done
 
   # Remove duplicates
