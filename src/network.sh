@@ -504,10 +504,6 @@ getSlirp() {
     if [[ "$port" == *"/udp" ]]; then
       proto="udp"
       num="${port%/udp}"
-    elif [[ "$port" != *"/tcp" ]]; then
-      args+="hostfwd=$proto::$num-$ip:$num,"
-      proto="udp"
-      num="${port%/udp}"
     fi
 
     args+="hostfwd=$proto::$num-$ip:$num,"
@@ -545,7 +541,6 @@ getPasst() {
     else
 
       tcp+="$port,"
-      udp+="$port,"
 
     fi
 
