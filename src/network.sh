@@ -413,22 +413,22 @@ getHostPorts() {
   local list=""
   local port=""
   local ports=""
-  local proto=""
   local num=""
-  local filter="${1:-tcp}"
+  local proto=""
+  local mode="${1:-tcp}"
   local display="${DISPLAY:-}"
 
   if [[ "${display,,}" == "web" ]]; then
-    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT/tcp,"
+    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT,"
   fi
 
   if [[ "${display,,}" == "vnc" || "${display,,}" == "web" ]]; then
-    [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT/tcp,"
+    [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT,"
   fi
 
   if ! disabled "${WEB:-}"; then
-    [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT/tcp,"
-    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT/tcp,"
+    [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT,"
+    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT,"
   fi
 
   list+="${HOST_PORTS// /},"
@@ -448,11 +448,13 @@ getHostPorts() {
 
     [ -z "$num" ] && continue
 
-    case "$filter" in
+    case "$mode" in
       "all" )
         ports+="$num/$proto," ;;
-      "tcp" | "udp" )
-        [[ "$proto" == "$filter" ]] && ports+="$num," ;;
+      "tcp" )
+        [[ "$proto" == "tcp" ]] && ports+="$num," ;;
+      "udp" )
+        [[ "$proto" == "udp" ]] && ports+="$num," ;;
     esac
 
   done
@@ -466,7 +468,7 @@ getHostPorts() {
 
 getUserPorts() {
 
-  local defaults="22/tcp"
+  local defaults="22"
   [[ "${BOOT_MODE:-}" == "windows"* ]] && defaults="3389/tcp,3389/udp"
 
   local list="$defaults,"
