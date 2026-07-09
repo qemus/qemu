@@ -445,39 +445,51 @@ getHostPorts() {
 
 getUserPorts() {
 
-  local ssh="22"
-  [[ "${BOOT_MODE:-}" == "windows"* ]] && ssh="3389"
+  local defaults="22/tcp"
+  [[ "${BOOT_MODE:-}" == "windows"* ]] && defaults="3389/tcp,3389/udp"
 
-  local list="$ssh,"
+  local list="$defaults,"
   list+="${USER_PORTS// /},"
 
-  local exclude
-  exclude=$(getHostPorts)
+  local exclude=""
+  exclude=$(getHostPorts "all")
 
   local ports=""
   local userport=""
   local hostport=""
+  local proto=""
+  local num=""
 
   for userport in ${list//,/ }; do
 
-    local num="${userport///tcp}"
-    num="${num///udp}"
+    proto="tcp"
+    num="$userport"
+
+    if [[ "$userport" == *"/udp" ]]; then
+      proto="udp"
+      num="${userport%/udp}"
+    elif [[ "$userport" == *"/tcp" ]]; then
+      proto="tcp"
+      num="${userport%/tcp}"
+    fi
+
+    [ -z "$num" ] && continue
 
     for hostport in ${exclude//,/ }; do
 
-      local port="${hostport///tcp}"
-      port="${port///udp}"
-
-      if [[ "$num" == "$port" ]]; then
+      if [[ "$num/$proto" == "$hostport" ]]; then
         num=""
-        if [[ "$port" != "${WEB_PORT:-}" ]]; then
-          warn "Could not assign port $port to \"USER_PORTS\" because it is already in \"HOST_PORTS\"!"
+
+        if [[ "$hostport" != "${WEB_PORT:-}/tcp" ]]; then
+          warn "Could not assign port $hostport to \"USER_PORTS\" because it is already in \"HOST_PORTS\"!"
         fi
+
+        break
       fi
 
     done
 
-    [ -n "$num" ] && ports+="$userport,"
+    [ -n "$num" ] && ports+="$num/$proto,"
 
   done
 
