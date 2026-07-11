@@ -924,6 +924,17 @@ configureTables() {
     fi
   fi
 
+  # Preserve outbound connectivity for guests using the legacy 20.20.20.0/24 subnet.
+  if [ -n "${SAMBA_INTERFACE:-}" ]; then
+    if ! iptables -t nat -A POSTROUTING \
+      -o "$DEV" \
+      -s "${SAMBA_INTERFACE%.*}.0/24" \
+      -m comment --comment "$rule_tag" \
+      -j MASQUERADE; then
+      warn "$tables_err" && return 1
+    fi
+  fi
+
   # shellcheck disable=SC2086
   if ! iptables -t nat -A PREROUTING \
     -i "$DEV" \
@@ -977,11 +988,10 @@ configureTables() {
     warn "$tables_err" && return 1
   fi
 
-  # Allow return traffic
+  # Allow forwarding from dev -> bridge
   if ! iptables -A FORWARD \
     -i "$DEV" \
     -o "$BRIDGE" \
-    -m conntrack --ctstate RELATED,ESTABLISHED \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
     warn "$tables_err" && return 1
@@ -1445,7 +1455,7 @@ showHostInfo() {
   [[ "$nameservers" == "127.0.0.1"* ]] && nameservers=""
 
   echo
-  
+
   if (( ${#nameservers} <= 40 )); then
     [ -n "$nameservers" ] && line+="  |  DNS: $nameservers"
     echo "$line"
