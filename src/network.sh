@@ -988,11 +988,10 @@ configureTables() {
     warn "$tables_err" && return 1
   fi
 
-  # Allow inbound and return traffic
+  # Allow forwarding from dev -> bridge
   if ! iptables -A FORWARD \
     -i "$DEV" \
     -o "$BRIDGE" \
-    -m conntrack --ctstate NEW,RELATED,ESTABLISHED \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
     warn "$tables_err" && return 1
