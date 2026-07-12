@@ -293,15 +293,13 @@ convertImage() {
     fi
   fi
 
-  if ! rm -f "$source_file"; then
-    rm -f "$tmp_file"
-    error "Failed to remove old image $source_file."
+  if ! mv -fT "$tmp_file" "$dst_file"; then
+    error "Failed to move converted image to $dst_file."
     return 1
   fi
 
-  if ! mv "$tmp_file" "$dst_file"; then
-    rm -f "$tmp_file"
-    error "Failed to move converted image to $dst_file."
+  if ! rm -f "$source_file"; then
+    error "Failed to remove old image $source_file."
     return 1
   fi
 
@@ -459,12 +457,16 @@ if ! downloadWithRetries "$BOOT" "$base" "$name"; then
 fi
 
 case "${base,,}" in
+
   *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
+
     info "Extracting $base..."
     html "Extracting image..." ;;
+
 esac
 
 case "${base,,}" in
+
   *".gz" | *".gzip" )
 
     out="$STORAGE/${base%.*}"
@@ -484,8 +486,8 @@ case "${base,,}" in
 
     rm -f "$STORAGE/$base"
     base="${base%.*}"
-
     ;;
+
   *".xz" )
 
     out="$STORAGE/${base%.*}"
@@ -505,8 +507,8 @@ case "${base,,}" in
 
     rm -f "$STORAGE/$base"
     base="${base%.*}"
-
     ;;
+
   *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
 
     tmp="$STORAGE/extract"
@@ -538,16 +540,18 @@ case "${base,,}" in
     fi
 
     rm -rf "$tmp"
-
     ;;
+
 esac
 
 case "${base,,}" in
+
   *".iso" | *".img" | *".raw" | *".qcow2" )
 
     ! setOwner "$STORAGE/$base" && error "Failed to set the owner for \"$STORAGE/$base\" !"
     detectType "$STORAGE/$base" && return 0
     error "Cannot read file \"${base}\"" && exit 63 ;;
+
 esac
 
 target_ext="img"
