@@ -227,33 +227,9 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is relatively slow but requires no drivers and is compatible with almost every system.
 
-### How do I verify if my system supports KVM?
+### Can I also run Proxmox as a container?
 
-  First check if your software is compatible using this chart:
-
-  | **Product**  | **Linux** | **Win11** | **Win10** | **macOS** |
-  |---|---|---|---|---|
-  | Docker CLI        | ✅   | ✅       | ❌        | ❌ |
-  | Docker Desktop    | ❌   | ✅       | ❌        | ❌ |
-  | Podman CLI        | ✅   | ✅       | ❌        | ❌ |
-  | Podman Desktop    | ✅   | ✅       | ❌        | ❌ |
-
-  After that you can run the following commands in Linux to check your system:
-
-  ```bash
-  sudo apt install cpu-checker
-  sudo kvm-ok
-  ```
-
-  If you receive an error from `kvm-ok` indicating that KVM cannot be used, please check whether:
-
-  - the virtualization extensions (`Intel VT-x` or `AMD SVM`) are enabled in your BIOS.
-
-  - you enabled "nested virtualization" if you are running the container inside a virtual machine.
-
-  - you are not using a cloud provider, as most of them do not allow nested virtualization for their VPSs.
-
-  If you did not receive any error from `kvm-ok` but the container still complains about a missing KVM device, it could help to add `privileged: true` to your compose file (or `sudo` to your `docker` command) to rule out any permission issue.
+  Yes, if you prefer a web-based management interface, or some advanced features that this container may not offer, you can try out [dockur/proxmox](https://github.com/dockur/proxmox).
 
 ### How do I expose network ports?
 
@@ -402,12 +378,39 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 ### Are these all available options?
 
-No. For a complete overview of all supported settings, see the [environment variables](docs/environment.md) page.
+  No. For a complete overview of all supported settings, see the [environment variables](docs/environment.md) page.
 
-### Can I also run Proxmox as a container?
+### How do I verify that KVM is available?
 
-  Yes, if you prefer a web-based management interface, or some advanced features that this container may not offer, you can try out [dockur/proxmox](https://github.com/dockur/proxmox).
-  
+  First, make sure your platform and container runtime meet the [requirements](#requirements-️) listed above.
+
+  On a Linux host, install `cpu-checker` and run:
+
+  ```bash
+  sudo apt install cpu-checker
+  sudo kvm-ok
+  ```
+
+  A working configuration should report:
+
+  ```text
+  KVM acceleration can be used
+  ```
+
+  You can also verify that the KVM device exists:
+
+  ```bash
+  ls -l /dev/kvm
+  ```
+
+  If KVM is unavailable, check whether:
+
+  - Hardware virtualization (`Intel VT-x` or `AMD-V`) is enabled in your BIOS or UEFI.
+  - Nested virtualization is enabled when the host itself is a virtual machine.
+  - Your VPS or cloud provider supports nested virtualization.
+
+  If `kvm-ok` succeeds but the container still reports that KVM is unavailable, you can temporarily add `privileged: true` to your Compose file to rule out a permission or device-access issue.
+
 ## Stars 🌟
 [![Stargazers](https://raw.githubusercontent.com/star-stats/stars/refs/heads/data/charts/qemus-qemu.svg)](https://github.com/qemus/qemu/stargazers)
 
