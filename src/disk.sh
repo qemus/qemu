@@ -181,6 +181,26 @@ baseDir() {
   return 0
 }
 
+freeSpace() {
+
+  local path="$1"
+  local base
+
+  base=$(baseDir "$path")
+
+  if ! SPACE=$(df --output=avail -B 1 "$path" | tail -n 1); then
+    error "Failed to check free space in $base."
+    exit 76
+  fi
+
+  if [[ ! "$SPACE" =~ ^[0-9]+$ ]]; then
+    error "Failed to check free space in $base."
+    exit 76
+  fi
+
+  return 0
+}
+
 createDisk() {
 
   local DISK_FILE="$1"
@@ -200,10 +220,7 @@ createDisk() {
     DIR=$(dirname "$DISK_FILE")
     BASE_DIR=$(baseDir "$DIR")
 
-    if ! SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1); then
-      error "Failed to check free space in $BASE_DIR."
-      exit 76
-    fi
+    freeSpace "$DIR"
 
     if (( DATA_SIZE > SPACE )); then
       GB=$(formatBytes "$SPACE")
@@ -275,10 +292,7 @@ resizeDisk() {
     DIR=$(dirname "$DISK_FILE")
     BASE_DIR=$(baseDir "$DIR")
 
-    if ! SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1); then
-      error "Failed to check free space in $BASE_DIR."
-      exit 76
-    fi
+    freeSpace "$DIR"
 
     if (( REQ > SPACE )); then
       GB=$(formatBytes "$SPACE")
@@ -340,10 +354,7 @@ convertDisk() {
     # Check free diskspace
     CUR_SIZE=$(getSize "$SOURCE_FILE") || exit 79
 
-    if ! SPACE=$(df --output=avail -B 1 "$DIR" | tail -n 1); then
-      error "Failed to check free space in $BASE_DIR."
-      exit 76
-    fi
+    freeSpace "$DIR"
 
     if (( CUR_SIZE > SPACE )); then
       GB=$(formatBytes "$SPACE")
