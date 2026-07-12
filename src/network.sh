@@ -1658,7 +1658,7 @@ else
 
   showGuestInfo
 
-  if [[ "${NETWORK,,}" == "passt" || "${NETWORK,,}" == "slirp" ]]; then
+  if isUserMode; then
     if [ -z "$USER_PORTS" ]; then
       desc="$APP"
       [[ "${desc,,}" == "qemu" ]] && desc="the VM"
