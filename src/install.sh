@@ -293,7 +293,7 @@ convertImage() {
     fi
   fi
 
-  if ! mv -fT "$tmp_file" "$dst_file"; then
+  if ! mv "$tmp_file" "$dst_file"; then
     error "Failed to move converted image to $dst_file."
     return 1
   fi
