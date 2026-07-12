@@ -413,7 +413,7 @@ convertDisk() {
     fi
   fi
 
-  if ! mv -fT "$TMP_FILE" "$DST_FILE"; then
+  if ! mv "$TMP_FILE" "$DST_FILE"; then
     error "Failed to move converted $DISK_DESC image to $DST_FILE."
     exit 79
   fi
