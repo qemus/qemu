@@ -24,7 +24,6 @@ Docker container for running virtual machines using QEMU.
 - USB passthrough and host folder sharing
 - Supports NAT, user-mode, macvlan, and macvtap networking
 - Automatic downloads for popular Linux distributions
-- Optional audio streaming from the guest to the browser
 
 ## Usage  🐳
 
