@@ -16,6 +16,7 @@ WSS_PORT=$(strip "$WSS_PORT")
 
 WEB_PID="/run/nginx.pid"
 WSD_PID="$QEMU_DIR/websocketd.pid"
+AUX_PID="$QEMU_DIR/audio-websocketd.pid"
 
 validateVncPort() {
 
@@ -30,7 +31,7 @@ validateVncPort() {
 prepareWebFiles() {
 
   cp -r /var/www/* "$QEMU_DIR" || return 1
-  rm -f "$WSD_PID" "$WEB_PID" || return 1
+  rm -f "$WSD_PID" "$AUX_PID" "$WEB_PID" || return 1
 
   return 0
 }
@@ -98,6 +99,27 @@ startWebsocketServer() {
   # Start websocket server
   websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh >/var/log/websocketd.log &
   echo "$!" > "$WSD_PID" || return 1
+
+  return 0
+}
+
+startAudioServer() {
+
+  cat > "$AUDIO_PIPE" <<EOF
+#!/bin/sh
+exec nc 127.0.0.1 $RELAY_PORT
+EOF
+
+  chmod 0700 "$AUDIO_PIPE"
+
+  websocketd \
+    --address 127.0.0.1 \
+    --port="$AUX_PORT" \
+    --binary=true \
+    "$AUDIO_PIPE" \
+    >/var/log/audio-websocket.log 2>&1 &
+
+  echo "$!" > "$AUX_PID" || return 1
 
   return 0
 }
