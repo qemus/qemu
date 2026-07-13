@@ -21,6 +21,7 @@ cd /run
 . power.sh      # Configure shutdown
 . memory.sh     # Check available memory
 . balloon.sh    # Initialize ballooning
+. audio.sh      # Initialize audio
 . config.sh     # Configure arguments
 . finish.sh     # Finish initialization
 
