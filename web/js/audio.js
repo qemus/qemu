@@ -24,37 +24,43 @@
     var leftover = EMPTY;
 
     function stop() {
-      try {
-        if (ws) {
-          ws.close();
-        }
-      } catch (e) {}
-
-      try {
-        if (ctx) {
-          ctx.close();
-        }
-      } catch (e) {}
+      var socket = ws;
+      var context = ctx;
 
       ws = null;
       ctx = null;
       leftover = EMPTY;
+
+      try {
+        if (socket) {
+          socket.close();
+        }
+      } catch (e) {}
+
+      try {
+        if (context) {
+          context.close();
+        }
+      } catch (e) {}
     }
 
     function start() {
       stop();
 
-      ctx = new (window.AudioContext || window.webkitAudioContext)({
+      var context = new (window.AudioContext || window.webkitAudioContext)({
         sampleRate: 48000,
       });
 
-      nextTime = ctx.currentTime + 0.15;
+      var socket = new WebSocket(getURL() + "/audio");
 
-      ws = new WebSocket(getURL() + "/audio");
-      ws.binaryType = "arraybuffer";
+      ctx = context;
+      ws = socket;
+      nextTime = context.currentTime + 0.15;
 
-      ws.onmessage = function (event) {
-        if (!ctx) {
+      socket.binaryType = "arraybuffer";
+
+      socket.onmessage = function (event) {
+        if (ws !== socket || ctx !== context) {
           return;
         }
 
@@ -82,7 +88,7 @@
           usable >> 1,
         );
 
-        var buffer = ctx.createBuffer(2, frames, 48000);
+        var buffer = context.createBuffer(2, frames, 48000);
         var left = buffer.getChannelData(0);
         var right = buffer.getChannelData(1);
 
@@ -91,24 +97,39 @@
           right[i] = samples[j++] / 32768;
         }
 
-        var source = ctx.createBufferSource();
+        var source = context.createBufferSource();
         source.buffer = buffer;
-        source.connect(ctx.destination);
+        source.connect(context.destination);
 
         var startTime =
-          nextTime > ctx.currentTime ? nextTime : ctx.currentTime + 0.02;
+          nextTime > context.currentTime
+            ? nextTime
+            : context.currentTime + 0.02;
 
         source.start(startTime);
         nextTime = startTime + buffer.duration;
       };
 
-      ws.onclose = function () {
-        stop();
+      socket.onclose = function () {
+        if (ws !== socket) {
+          return;
+        }
+
+        ws = null;
+        leftover = EMPTY;
         cb.checked = false;
+
+        if (ctx === context) {
+          ctx = null;
+
+          try {
+            context.close();
+          } catch (e) {}
+        }
       };
 
-      ws.onerror = function () {
-        ws.close();
+      socket.onerror = function () {
+        socket.close();
       };
     }
 
