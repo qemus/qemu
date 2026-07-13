@@ -90,7 +90,7 @@ EOF
 
   websocketd \
     --address=127.0.0.1 \
-    --port="$WEBSOCKET_PORT" \
+    --port="$AUX_PORT" \
     --binary=true \
     "$AUDIO_PIPE" \
     >/var/log/audio-websocket.log 2>&1 &
