@@ -1,6 +1,15 @@
 (function () {
   var EMPTY = new Uint8Array(0);
 
+  function getURL() {
+    var protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+    var path = window.location.pathname
+      .replace(/[^/]*$/, "")
+      .replace(/\/$/, "");
+
+    return protocol + "//" + window.location.host + path;
+  }
+
   function attach() {
     var cb = document.getElementById("noVNC_setting_audio");
 
@@ -41,12 +50,7 @@
 
       nextTime = ctx.currentTime + 0.15;
 
-      ws = new WebSocket(
-        (location.protocol === "https:" ? "wss://" : "ws://") +
-          location.host +
-          "/audio",
-      );
-
+      ws = new WebSocket(getURL() + "/audio");
       ws.binaryType = "arraybuffer";
 
       ws.onmessage = function (event) {
