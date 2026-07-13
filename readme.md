@@ -338,6 +338,17 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     - /dev/bus/usb
   ```
 
+### How do I enable audio?
+
+  Audio is disabled by default. To stream the guest's audio to the browser, add the following environment variable:
+
+  ```yaml
+  environment:
+    AUDIO: "Y"
+  ```
+
+  Then enable **Audio** under **Settings → Advanced** in the web viewer. Audio is only sent while enabled, so it uses no extra bandwidth otherwise.
+
 ### How do I share files with the host?
 
   To share files with the host, first ensure that your guest OS has `9pfs` support compiled in or available as a kernel module. If so, add the following volume to your compose file:
@@ -360,17 +371,6 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   By default, the VM is allocated the full amount of RAM configured via `RAM_SIZE` for its entire lifetime.
 
   However, you can enable [memory ballooning](docs/ballooning.md) if you want the container to dynamically reclaim unused guest RAM based on host memory pressure.
-
-### How do I enable audio?
-
-  Audio is disabled by default. To stream the guest's audio to the browser, add the following environment variable:
-
-  ```yaml
-  environment:
-    AUDIO: "Y"
-  ```
-
-  Then enable **Audio** under **Settings → Advanced** in the web viewer. Audio is only sent while enabled, so it uses no extra bandwidth otherwise.
 
 ### How can I provide custom arguments to QEMU?
 
