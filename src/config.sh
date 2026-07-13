@@ -68,6 +68,18 @@ configureUsbOptions() {
   return 0
 }
 
+configureAudio() {
+
+  [[ "${AUDIO:-N}" =~ ^[Yy] ]] || return 0
+  [ -x /run/audio.sh ] || return 0
+
+  # Stream the guest's audio to the browser (see audio.sh)
+  bash /run/audio.sh || true
+  ARGUMENTS="${ARGUMENTS:-} -audiodev wav,id=snd,path=/run/audio.fifo,out.frequency=48000,out.channels=2,out.format=s16 -device intel-hda -device hda-output,audiodev=snd"
+
+  return 0
+}
+
 buildArguments() {
 
   ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
@@ -80,6 +92,7 @@ configureMachineOptions
 configureVirtioDevices
 configureSharedFolder
 configureUsbOptions
+configureAudio
 
 buildArguments
 

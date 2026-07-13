@@ -24,6 +24,7 @@ Docker container for running virtual machines using QEMU.
 - USB passthrough and host folder sharing
 - Supports NAT, user-mode, macvlan, and macvtap networking
 - Automatic downloads for popular Linux distributions
+- Optional audio streaming from the guest to the browser
 
 ## Usage  🐳
 
@@ -360,6 +361,17 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   By default, the VM is allocated the full amount of RAM configured via `RAM_SIZE` for its entire lifetime.
 
   However, you can enable [memory ballooning](docs/ballooning.md) if you want the container to dynamically reclaim unused guest RAM based on host memory pressure.
+
+### How do I enable audio?
+
+  Audio is off by default. To stream the guest's audio to the browser, add the following environment variable:
+
+  ```yaml
+  environment:
+    AUDIO: "Y"
+  ```
+
+  Then tick the **Audio** box under Settings → Advanced in the web viewer's toolbar. Audio only streams while that box is checked, so it adds no bandwidth when unused.
 
 ### How can I provide custom arguments to QEMU?
 
