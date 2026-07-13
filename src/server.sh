@@ -4,12 +4,14 @@ set -Eeuo pipefail
 : "${VNC_PORT:="5900"}"    # VNC port
 : "${WEB_PORT:="8006"}"    # Webserver port
 : "${WSD_PORT:="8004"}"    # Websockets port
+: "${AUX_PORT:="8003"}"    # Audio streaming
 : "${WSS_PORT:="5700"}"    # Websockets port
 
 # Sanitize port variables
 VNC_PORT=$(strip "$VNC_PORT")
 WEB_PORT=$(strip "$WEB_PORT")
 WSD_PORT=$(strip "$WSD_PORT")
+AUX_PORT=$(strip "$AUX_PORT")
 WSS_PORT=$(strip "$WSS_PORT")
 
 WEB_PID="/run/nginx.pid"
@@ -60,6 +62,7 @@ configureWebPorts() {
   sed -i "s/listen 8006 default_server;/listen $WEB_PORT default_server;/g" /etc/nginx/sites-enabled/web.conf
   sed -i "s/proxy_pass http:\/\/127.0.0.1:5700\/;/proxy_pass http:\/\/127.0.0.1:$WSS_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
   sed -i "s/proxy_pass http:\/\/127.0.0.1:8004\/;/proxy_pass http:\/\/127.0.0.1:$WSD_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
+  sed -i "s/proxy_pass http:\/\/127.0.0.1:8003\/;/proxy_pass http:\/\/127.0.0.1:$AUX_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
 }
 
 configureIpv6Listen() {
