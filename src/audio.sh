@@ -7,10 +7,8 @@ AUDIO_RELAY="/run/audio.py"
 AUDIO_FIFO="/run/audio.fifo"
 AUDIO_PIPE="/run/audio-pipe.sh"
 AUDIO_PLUGIN="/var/www/js/audio.js"
-NGINX_CONFIG="/etc/nginx/sites-enabled/web.conf"
 
 RELAY_PORT="4712"
-WEBSOCKET_PORT="8007"
 
 installAudioPlugin() {
 
@@ -27,9 +25,7 @@ installAudioPlugin() {
   cp -f "$AUDIO_PLUGIN" "$NOVNC/audio-plugin.js"
 
   if ! grep -Fq 'src="audio-plugin.js"' "$NOVNC_HTML"; then
-    sed -i \
-      's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' \
-      "$NOVNC_HTML"
+    sed -i 's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' "$NOVNC_HTML"
   fi
 
   if grep -Fq 'id="noVNC_setting_audio"' "$NOVNC_HTML"; then
@@ -68,50 +64,6 @@ PY
   return 0
 }
 
-configureNginx() {
-
-  [ -f "$NGINX_CONFIG" ] || {
-    echo "nginx configuration not found: $NGINX_CONFIG" >&2
-    return 1
-  }
-
-  if grep -Fq 'location = /audio' "$NGINX_CONFIG"; then
-    return 0
-  fi
-
-  python3 - "$NGINX_CONFIG" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-content = path.read_text()
-position = content.rstrip().rfind("}")
-
-if position < 0:
-    raise SystemExit("Unable to locate the nginx server block")
-
-location = '''
-    location = /audio {
-      proxy_http_version 1.1;
-      proxy_set_header Connection "upgrade";
-      proxy_set_header Upgrade $http_upgrade;
-      proxy_buffering off;
-      proxy_read_timeout 3600s;
-      proxy_send_timeout 3600s;
-      proxy_pass http://127.0.0.1:8007/;
-    }
-'''
-
-updated = content[:position].rstrip() + "\n" + location + "\n}\n"
-path.write_text(updated)
-PY
-
-  nginx -t
-  nginx -s reload
-
-  return 0
-}
-
 startAudioRelay() {
 
   [ -f "$AUDIO_RELAY" ] || {
@@ -127,7 +79,7 @@ startAudioRelay() {
   return 0
 }
 
-startWebsocketServer() {
+startAudioServer() {
 
   cat > "$AUDIO_PIPE" <<EOF
 #!/bin/sh
@@ -146,8 +98,9 @@ EOF
   return 0
 }
 
+disabled "${WEB:-}" && return 0
+
 installAudioPlugin
-configureNginx
 
 startAudioRelay
-startWebsocketServer
+startAudioServer
