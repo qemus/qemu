@@ -73,7 +73,10 @@ configureUsb() {
 configureAudio() {
 
   ! enabled "${AUDIO:-N}" && return 0
-  AUDIO_OPTS="-audiodev wav,id=snd,path=/run/audio.fifo,out.frequency=48000,out.channels=2,out.format=s16 $SOUND -device hda-output,audiodev=snd"
+
+  AUDIO_OPTS="-audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
+  AUDIO_OPTS+=" $SOUND"
+  AUDIO_OPTS+=" -device hda-output,audiodev=snd"
 
   return 0
 }
@@ -89,6 +92,7 @@ buildArguments() {
 configureMachineOptions
 configureVirtioDevices
 configureSharedFolder
+
 configureUsb
 configureAudio
 
