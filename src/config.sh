@@ -72,6 +72,7 @@ configureUsb() {
 
 configureAudio() {
 
+  disabled "${WEB:-}" && return 0
   ! enabled "${AUDIO:-N}" && return 0
 
   AUDIO_OPTS="-audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
