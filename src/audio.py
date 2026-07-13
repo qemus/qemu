@@ -1,24 +1,46 @@
-import os, socket, threading
-FIFO = '/run/audio.fifo'; PORT = 4712
-clients = set(); lock = threading.Lock()
+import os
+import socket
+import threading
+
+PORT = 4712
+FIFO = "/run/audio.fifo"
+
+clients = set()
+lock = threading.Lock()
+
+server = socket.socket()
+server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server.bind(("127.0.0.1", PORT))
+server.listen(16)
+
 def accept_loop():
-    srv = socket.socket(); srv.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    srv.bind(('127.0.0.1', PORT)); srv.listen(16)
     while True:
-        c, _ = srv.accept()
-        c.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
-        with lock: clients.add(c)
+        client, _ = server.accept()
+        client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+
+        with lock:
+            clients.add(client)
+
 threading.Thread(target=accept_loop, daemon=True).start()
+
 while True:
     fd = os.open(FIFO, os.O_RDONLY)
+
     while True:
         data = os.read(fd, 4096)
-        if not data: break
+        if not data:
+            break
+
         with lock:
-            for c in list(clients):
-                try: c.sendall(data)
+            for client in list(clients):
+                try:
+                    client.sendall(data)
                 except Exception:
-                    clients.discard(c)
-                    try: c.close()
-                    except Exception: pass
+                    clients.discard(client)
+
+                    try:
+                        client.close()
+                    except Exception:
+                        pass
+
     os.close(fd)
