@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
+
 NOVNC=/usr/share/novnc
-cp -f /run/audio-plugin.js "$NOVNC/audio-plugin.js"
+
+cp -f /var/www/js/audio.js "$NOVNC/audio-plugin.js"
 grep -q audio-plugin.js "$NOVNC/vnc.html" || \
   sed -i 's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' "$NOVNC/vnc.html"
 if ! grep -q noVNC_setting_audio "$NOVNC/vnc.html"; then
@@ -25,7 +27,9 @@ b='''                            <li>
 if a in s: open(f,'w').write(s.replace(a,b,1))
 PY
 fi
+
 NGINX=/etc/nginx/sites-enabled/web.conf
+
 if [ -f "$NGINX" ] && ! grep -q 'location = /audio' "$NGINX"; then
   python3 - "$NGINX" <<'PY'
 import sys
@@ -46,7 +50,13 @@ open(f,'w').write(s[:i]+blk+'\n}\n')
 PY
   nginx -s reload 2>/dev/null || true
 fi
-rm -f /run/audio.fifo; mkfifo /run/audio.fifo
-nohup python3 /run/audio-relay.py >/run/audiorelay.log 2>&1 & disown
-printf '#!/bin/sh\nexec nc 127.0.0.1 4712\n' > /run/audiopipe.sh; chmod +x /run/audiopipe.sh
-nohup websocketd --port=8007 --binary=true /run/audiopipe.sh >/run/audiows.log 2>&1 & disown
+
+rm -f /run/audio.fifo
+mkfifo /run/audio.fifo
+
+nohup python3 /run/audio.py >/run/audio_relay.log 2>&1 & disown
+
+printf '#!/bin/sh\nexec nc 127.0.0.1 4712\n' > /run/audio_pipe.sh
+chmod +x /run/audio_pipe.sh
+
+nohup websocketd --port=8007 --binary=true /run/audio_pipe.sh >/run/audio_ws.log 2>&1 & disown
