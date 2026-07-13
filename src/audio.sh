@@ -76,7 +76,15 @@ startAudioRelay() {
   mkfifo -m 0600 "$AUDIO_FIFO"
 
   python3 "$AUDIO_RELAY" >/var/log/audio-relay.log 2>&1 &
-  echo "$!" > "$AUDIO_PID" || return 1
+  local pid=$!
+  echo "$pid" > "$AUDIO_PID" || return 1
+
+  sleep 0.1
+
+  if ! isAlive "$pid"; then
+    error "Failed to start audio relay!"
+    return 1
+  fi
 
   return 0
 }
