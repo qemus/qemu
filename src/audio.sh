@@ -77,7 +77,11 @@ startAudioRelay() {
 
   python3 "$AUDIO_RELAY" >/var/log/audio-relay.log 2>&1 &
   local pid=$!
-  echo "$pid" > "$AUDIO_PID" || return 1
+
+  if ! echo "$pid" > "$AUDIO_PID"; then
+    kill "$pid" 2>/dev/null || :
+    return 1
+  fi
 
   sleep 0.1
 
