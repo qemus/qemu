@@ -17,9 +17,19 @@ def accept_loop():
     while True:
         client, _ = server.accept()
         client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        client.settimeout(1)
 
         with lock:
             clients.add(client)
+
+def remove_client(client):
+    with lock:
+        clients.discard(client)
+
+    try:
+        client.close()
+    except OSError:
+        pass
 
 threading.Thread(target=accept_loop, daemon=True).start()
 
@@ -32,15 +42,12 @@ while True:
             break
 
         with lock:
-            for client in list(clients):
-                try:
-                    client.sendall(data)
-                except Exception:
-                    clients.discard(client)
+            current_clients = list(clients)
 
-                    try:
-                        client.close()
-                    except Exception:
-                        pass
+        for client in current_clients:
+            try:
+                client.sendall(data)
+            except OSError:
+                remove_client(client)
 
     os.close(fd)
