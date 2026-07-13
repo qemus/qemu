@@ -90,6 +90,7 @@ This page lists all the environment variables that can be used to configure the 
 | `DISPLAY` | `web` | Display backend. Common values are `web`, `vnc`, `disabled`, or `none`. |
 | `VGA` | `virtio` | QEMU video adapter model. |
 | `GPU` | `N` | Enables Intel iGPU acceleration. Experimental. |
+| "AUDIO" | "N" | Streams guest audio to the web viewer. |
 | `RENDERNODE` | `/dev/dri/renderD128` | Render node used for GPU acceleration. |
 
 ## 🌍 Web UI
@@ -101,6 +102,7 @@ This page lists all the environment variables that can be used to configure the 
 | `VNC_PORT` | `5900` | Port for the VNC server. |
 | `WSS_PORT` | `5700` | WebSocket port used by QEMU/noVNC. |
 | `WSD_PORT` | `8004` | Internal websocketd port. |
+| "AUX_PORT" | "8003" | Internal VNC audio port. |
 | `PROTECT` | `N` | Enables password protection for the web interface. |
 
 ## 🎈 Memory Ballooning
