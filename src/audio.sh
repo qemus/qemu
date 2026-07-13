@@ -6,6 +6,7 @@ NOVNC_HTML="$NOVNC/vnc.html"
 AUDIO_RELAY="/run/audio.py"
 AUDIO_FIFO="/run/audio.fifo"
 AUDIO_PIPE="/run/audio-pipe.sh"
+AUDIO_PID="$QEMU_DIR/audio.pid"
 AUDIO_PLUGIN="/var/www/js/audio.js"
 
 RELAY_PORT="4712"
@@ -75,32 +76,17 @@ startAudioRelay() {
   mkfifo -m 0600 "$AUDIO_FIFO"
 
   python3 "$AUDIO_RELAY" >/var/log/audio-relay.log 2>&1 &
+  echo "$!" > "$AUDIO_PID" || return 1
 
   return 0
 }
 
-startAudioServer() {
-
-  cat > "$AUDIO_PIPE" <<EOF
-#!/bin/sh
-exec nc 127.0.0.1 $RELAY_PORT
-EOF
-
-  chmod 0700 "$AUDIO_PIPE"
-
-  websocketd \
-    --address=127.0.0.1 \
-    --port="$AUX_PORT" \
-    --binary=true \
-    "$AUDIO_PIPE" \
-    >/var/log/audio-websocket.log 2>&1 &
-
-  return 0
-}
-
+! enabled "$AUDIO" && return 0
 disabled "${WEB:-}" && return 0
 
-installAudioPlugin
+installAudioPlugin || return 1
 
-startAudioRelay
-startAudioServer
+startAudioRelay || return 1
+startAudioServer || return 1
+
+return 0
