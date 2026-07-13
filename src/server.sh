@@ -120,7 +120,11 @@ EOF
     >/var/log/audio-websocket.log 2>&1 &
 
   local pid=$!
-  echo "$pid" > "$AUX_PID" || return 1
+
+  if ! echo "$pid" > "$AUX_PID"; then
+    kill "$pid" 2>/dev/null || :
+    return 1
+  fi
 
   sleep 0.1
 
