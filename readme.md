@@ -361,6 +361,17 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   However, you can enable [memory ballooning](docs/ballooning.md) if you want the container to dynamically reclaim unused guest RAM based on host memory pressure.
 
+### How do I enable audio?
+
+  Audio is disabled by default. To stream the guest's audio to the browser, add the following environment variable:
+
+  ```yaml
+  environment:
+    AUDIO: "Y"
+  ```
+
+  Then enable **Audio** under **Settings → Advanced** in the web viewer. Audio is only sent while enabled, so it uses no extra bandwidth otherwise.
+
 ### How can I provide custom arguments to QEMU?
 
   You can create the `ARGUMENTS` environment variable to provide additional arguments to QEMU at runtime:

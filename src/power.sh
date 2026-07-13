@@ -78,8 +78,9 @@ forceKillQemu() {
 
 cleanupHelpers() {
 
-  local pids=( "${TPM_PID:-}" "${WSD_PID:-}" "${WEB_PID:-}" \
-               "${PASST_PID:-}" "${DNSMASQ_PID:-}" "${BALLOONING_PID:-}" )
+  local pids=( "${TPM_PID:-}" "${WSD_PID:-}" "${AUX_PID:-}" \
+               "${AUDIO_PID:-}" "${WEB_PID:-}" "${PASST_PID:-}" \
+               "${DNSMASQ_PID:-}" "${BALLOONING_PID:-}" )
 
   mKill "${pids[@]}"
 

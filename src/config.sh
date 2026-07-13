@@ -5,6 +5,7 @@ set -Eeuo pipefail
 : "${HPET:="off"}"
 : "${VMPORT:="off"}"
 : "${SERIAL:="mon:stdio"}"
+: "${SOUND:="-device intel-hda"}"
 : "${USB:="qemu-xhci,id=xhci,p2=7,p3=7"}"
 : "${MONITOR:="unix:$QEMU_DIR/monitor.sock,server,wait=off,nodelay"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
@@ -14,6 +15,7 @@ html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
 DEV_OPTS=""
+AUDIO_OPTS=""
 DEF_OPTS="-nodefaults"
 SERIAL_OPTS="-serial $SERIAL"
 CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
@@ -61,16 +63,33 @@ configureSharedFolder() {
   return 0
 }
 
-configureUsbOptions() {
+configureUsb() {
 
   [ -n "$USB" ] && [[ "${USB,,}" != "no"* ]] && USB_OPTS="-device $USB -device usb-tablet"
 
   return 0
 }
 
+configureAudio() {
+
+  disabled "${WEB:-}" && return 0
+  ! enabled "${AUDIO:-N}" && return 0
+
+  if [ -z "${AUDIO_FIFO:-}" ] || [ ! -p "$AUDIO_FIFO" ]; then
+    warn "Audio support failed to initialize, ignoring AUDIO=Y."
+    return 0
+  fi
+
+  AUDIO_OPTS+=" -audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
+  AUDIO_OPTS+=" $SOUND"
+  AUDIO_OPTS+=" -device hda-output,audiodev=snd"
+
+  return 0
+}
+
 buildArguments() {
 
-  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $ARGUMENTS"
+  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $ARGUMENTS"
   ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 
   return 0
@@ -79,7 +98,9 @@ buildArguments() {
 configureMachineOptions
 configureVirtioDevices
 configureSharedFolder
-configureUsbOptions
+
+configureUsb
+configureAudio
 
 buildArguments
 

@@ -11,6 +11,7 @@ enabled "${TRACE:-}" && set -o functrace && trap 'echo "# $BASH_COMMAND" >&2' DE
 
 : "${KVM:="Y"}"            # KVM acceleration
 : "${BOOT:=""}"            # Path of ISO file
+: "${AUDIO:="N"}"          # Stream guest audio
 : "${DEBUG:="N"}"          # Disable debugging
 : "${MACHINE:="q35"}"      # Machine selection
 : "${ALLOCATE:=""}"        # Preallocate diskspace
