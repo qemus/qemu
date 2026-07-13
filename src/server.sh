@@ -119,7 +119,15 @@ EOF
     "$AUDIO_PIPE" \
     >/var/log/audio-websocket.log 2>&1 &
 
-  echo "$!" > "$AUX_PID" || return 1
+  local pid=$!
+  echo "$pid" > "$AUX_PID" || return 1
+
+  sleep 0.1
+
+  if ! isAlive "$pid"; then
+    error "Failed to start audio websocket server!"
+    return 1
+  fi
 
   return 0
 }
