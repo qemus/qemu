@@ -75,7 +75,12 @@ configureAudio() {
   disabled "${WEB:-}" && return 0
   ! enabled "${AUDIO:-N}" && return 0
 
-  AUDIO_OPTS="-audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
+  if [ -z "${AUDIO_FIFO:-}" ] || [ ! -p "$AUDIO_FIFO" ]; then
+    warn "Audio support failed to initialize, ignoring AUDIO=Y."
+    return 0
+  fi
+
+  AUDIO_OPTS+=" -audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
   AUDIO_OPTS+=" $SOUND"
   AUDIO_OPTS+=" -device hda-output,audiodev=snd"
 
