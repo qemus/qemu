@@ -1,19 +1,53 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-NOVNC=/usr/share/novnc
+NOVNC="/usr/share/novnc"
+NOVNC_HTML="$NOVNC/vnc.html"
+AUDIO_RELAY="/run/audio.py"
+AUDIO_FIFO="/run/audio.fifo"
+AUDIO_PIPE="/run/audio-pipe.sh"
+AUDIO_PLUGIN="/var/www/js/audio.js"
+NGINX_CONFIG="/etc/nginx/sites-enabled/web.conf"
 
-cp -f /var/www/js/audio.js "$NOVNC/audio-plugin.js"
-grep -q audio-plugin.js "$NOVNC/vnc.html" || \
-  sed -i 's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' "$NOVNC/vnc.html"
-if ! grep -q noVNC_setting_audio "$NOVNC/vnc.html"; then
-  python3 - "$NOVNC/vnc.html" <<'PY'
+RELAY_PORT="4712"
+WEBSOCKET_PORT="8007"
+
+installAudioPlugin() {
+
+  [ -f "$AUDIO_PLUGIN" ] || {
+    echo "Audio plugin not found: $AUDIO_PLUGIN" >&2
+    return 1
+  }
+
+  [ -f "$NOVNC_HTML" ] || {
+    echo "noVNC page not found: $NOVNC_HTML" >&2
+    return 1
+  }
+
+  cp -f "$AUDIO_PLUGIN" "$NOVNC/audio-plugin.js"
+
+  if ! grep -Fq 'src="audio-plugin.js"' "$NOVNC_HTML"; then
+    sed -i \
+      's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' \
+      "$NOVNC_HTML"
+  fi
+
+  if grep -Fq 'id="noVNC_setting_audio"' "$NOVNC_HTML"; then
+    return 0
+  fi
+
+  python3 - "$NOVNC_HTML" <<'PY'
+from pathlib import Path
 import sys
-f=sys.argv[1]; s=open(f).read()
-a='''                            <li>
+
+path = Path(sys.argv[1])
+content = path.read_text()
+
+marker = '''                            <li>
                                 <label>
                                     <input id="noVNC_setting_show_dot" type="checkbox"'''
-b='''                            <li>
+
+replacement = '''                            <li>
                                 <label>
                                     <input id="noVNC_setting_audio" type="checkbox"
                                            class="toggle">
@@ -24,20 +58,42 @@ b='''                            <li>
                             <li>
                                 <label>
                                     <input id="noVNC_setting_show_dot" type="checkbox"'''
-if a in s: open(f,'w').write(s.replace(a,b,1))
+
+if marker not in content:
+    raise SystemExit("Unable to locate the noVNC settings menu")
+
+path.write_text(content.replace(marker, replacement, 1))
 PY
-fi
 
-NGINX=/etc/nginx/sites-enabled/web.conf
+  return 0
+}
 
-if [ -f "$NGINX" ] && ! grep -q 'location = /audio' "$NGINX"; then
-  python3 - "$NGINX" <<'PY'
+configureNginx() {
+
+  [ -f "$NGINX_CONFIG" ] || {
+    echo "nginx configuration not found: $NGINX_CONFIG" >&2
+    return 1
+  }
+
+  if grep -Fq 'location = /audio' "$NGINX_CONFIG"; then
+    return 0
+  fi
+
+  python3 - "$NGINX_CONFIG" <<'PY'
+from pathlib import Path
 import sys
-f=sys.argv[1]; s=open(f).read()
-blk='''
+
+path = Path(sys.argv[1])
+content = path.read_text()
+position = content.rstrip().rfind("}")
+
+if position < 0:
+    raise SystemExit("Unable to locate the nginx server block")
+
+location = '''
     location = /audio {
       proxy_http_version 1.1;
-      proxy_set_header Connection 'upgrade';
+      proxy_set_header Connection "upgrade";
       proxy_set_header Upgrade $http_upgrade;
       proxy_buffering off;
       proxy_read_timeout 3600s;
@@ -45,18 +101,53 @@ blk='''
       proxy_pass http://127.0.0.1:8007/;
     }
 '''
-i=s.rstrip().rfind('}')
-open(f,'w').write(s[:i]+blk+'\n}\n')
+
+updated = content[:position].rstrip() + "\n" + location + "\n}\n"
+path.write_text(updated)
 PY
-  nginx -s reload 2>/dev/null || true
-fi
 
-rm -f /run/audio.fifo
-mkfifo /run/audio.fifo
+  nginx -t
+  nginx -s reload
 
-nohup python3 /run/audio.py >/run/audio_relay.log 2>&1 & disown
+  return 0
+}
 
-printf '#!/bin/sh\nexec nc 127.0.0.1 4712\n' > /run/audio_pipe.sh
-chmod +x /run/audio_pipe.sh
+startAudioRelay() {
 
-nohup websocketd --port=8007 --binary=true /run/audio_pipe.sh >/run/audio_ws.log 2>&1 & disown
+  [ -f "$AUDIO_RELAY" ] || {
+    echo "Audio relay not found: $AUDIO_RELAY" >&2
+    return 1
+  }
+
+  rm -f "$AUDIO_FIFO"
+  mkfifo -m 0600 "$AUDIO_FIFO"
+
+  python3 "$AUDIO_RELAY" >/var/log/audio-relay.log 2>&1 &
+
+  return 0
+}
+
+startWebsocketServer() {
+
+  cat > "$AUDIO_PIPE" <<EOF
+#!/bin/sh
+exec nc 127.0.0.1 $RELAY_PORT
+EOF
+
+  chmod 0700 "$AUDIO_PIPE"
+
+  websocketd \
+    --address=127.0.0.1 \
+    --port="$WEBSOCKET_PORT" \
+    --binary=true \
+    "$AUDIO_PIPE" \
+    >/var/log/audio-websocket.log 2>&1 &
+
+  return 0
+}
+
+installAudioPlugin
+configureNginx
+
+startAudioRelay
+startWebsocketServer
