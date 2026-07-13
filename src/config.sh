@@ -80,6 +80,13 @@ configureAudio() {
     return 0
   fi
 
+  case "${MACHINE,,}" in
+    microvm|isapc|none|xenpvh*)
+      warn "Audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
+      return 0
+      ;;
+  esac
+
   AUDIO_OPTS+=" -audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
   AUDIO_OPTS+=" $SOUND"
   AUDIO_OPTS+=" -device hda-output,audiodev=snd"
