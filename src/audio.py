@@ -34,16 +34,27 @@ def remove_client(client):
         pass
 
 
+def read_exact(fd, size):
+    data = bytearray()
+
+    while len(data) < size:
+        chunk = os.read(fd, size - len(data))
+        if not chunk:
+            raise RuntimeError("Unexpected end of WAV stream")
+
+        data.extend(chunk)
+
+    return bytes(data)
+
+
 def read_wav_header(fd):
-    header = os.read(fd, 12)
-    if len(header) != 12 or header[:4] != b"RIFF" or header[8:] != b"WAVE":
+    header = read_exact(fd, 12)
+
+    if header[:4] != b"RIFF" or header[8:] != b"WAVE":
         raise RuntimeError("Invalid WAV header")
 
     while True:
-        chunk = os.read(fd, 8)
-        if len(chunk) != 8:
-            raise RuntimeError("Incomplete WAV header")
-
+        chunk = read_exact(fd, 8)
         chunk_id = chunk[:4]
         chunk_size = int.from_bytes(chunk[4:], "little")
 
