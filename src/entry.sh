@@ -14,6 +14,7 @@ cd /run
 . define.sh     # Define images
 . install.sh    # Download image
 . disk.sh       # Initialize disks
+. audio.sh      # Initialize audio
 . display.sh    # Initialize graphics
 . network.sh    # Initialize network
 . boot.sh       # Configure boot
@@ -21,7 +22,6 @@ cd /run
 . power.sh      # Configure shutdown
 . memory.sh     # Check available memory
 . balloon.sh    # Initialize ballooning
-. audio.sh      # Initialize audio
 . config.sh     # Configure arguments
 . finish.sh     # Finish initialization
 
