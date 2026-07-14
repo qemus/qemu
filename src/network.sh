@@ -128,6 +128,11 @@ maskToCIDR() {
   local mask="$1"
   local prefix=""
 
+  if ! command -v ipcalc > /dev/null 2>&1; then
+    error "Required command 'ipcalc' is not installed!"
+    return 1
+  fi
+
   prefix=$(ipcalc -n -b "0.0.0.0/$mask" 2>/dev/null | awk '
     /^Netmask:/ {
       for (i = 1; i <= NF; i++) {
