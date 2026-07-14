@@ -194,6 +194,34 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     CPU_CORES: "4"
   ```
 
+### How do I share files with the host?
+
+  To share files with the host, first ensure that your guest OS has `9pfs` support compiled in or available as a kernel module. If so, add the following volume to your compose file:
+
+  ```yaml
+  volumes:
+    - ./example:/shared
+  ```
+
+  Then start the container and execute the following command in the guest:
+
+  ```shell
+  mount -t 9p -o trans=virtio shared /mnt/example
+  ```
+
+  Now the `./example` directory on the host will be available as `/mnt/example` in the guest.
+
+### How do I enable audio?
+
+  Audio is disabled by default. To stream it to the browser, add the following environment variable:
+
+  ```yaml
+  environment:
+    AUDIO: "Y"
+  ```
+
+  Then enable **Audio** under **Settings → Advanced** in the web viewer. The stream is only active while this option is enabled, so it uses no extra bandwidth otherwise.
+
 ### How do I boot ARM64 images?
 
   You can use the [qemu-arm](https://github.com/qemus/qemu-arm/) container to run ARM64-based images.
@@ -333,34 +361,6 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   devices:
     - /dev/bus/usb
   ```
-
-### How do I share files with the host?
-
-  To share files with the host, first ensure that your guest OS has `9pfs` support compiled in or available as a kernel module. If so, add the following volume to your compose file:
-
-  ```yaml
-  volumes:
-    - ./example:/shared
-  ```
-
-  Then start the container and execute the following command in the guest:
-
-  ```shell
-  mount -t 9p -o trans=virtio shared /mnt/example
-  ```
-
-  Now the `./example` directory on the host will be available as `/mnt/example` in the guest.
-
-### How do I enable audio?
-
-  Audio is disabled by default. To stream it to the browser, add the following environment variable:
-
-  ```yaml
-  environment:
-    AUDIO: "Y"
-  ```
-
-  Then enable **Audio** under **Settings → Advanced** in the web viewer. The stream is only active while this option is enabled, so it uses no extra bandwidth otherwise.
 
 ### How do I enable dynamic memory allocation?
 
