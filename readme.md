@@ -228,9 +228,9 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
   If it still fails to boot, you can set the value to `ide` to emulate a IDE drive, which is relatively slow but requires no drivers and is compatible with almost every system.
 
-### Can I also run Proxmox as a container?
+### How do I run Proxmox as a container?
 
-  Yes, if you prefer a web-based management interface, or some advanced features that this container may not offer, you can try out [dockur/proxmox](https://github.com/dockur/proxmox).
+  If you prefer a web-based management interface, or some advanced features that this container may not offer, you can try out [dockur/proxmox](https://github.com/dockur/proxmox).
 
 ### How do I expose network ports?
 
