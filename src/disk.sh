@@ -517,7 +517,7 @@ createDevice () {
       ;;
     "scsi" | "virtio-scsi" )
       result+=",if=none \
-      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2 \
+      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2,hotplug=off \
       -device scsi-hd,drive=${DISK_ID},bus=${DISK_ID}b.0,channel=0,scsi-id=0,lun=0,rotation_rate=$DISK_ROTATION${index}${DISK_SERIAL}${DISK_SECTORS}"
       echo "$result"
       ;;
@@ -566,7 +566,7 @@ addMedia () {
       ;;
     "scsi" | "virtio-scsi" )
       result+=",if=none \
-      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2 \
+      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2,hotplug=off \
       -device scsi-cd,drive=${DISK_ID},bus=${DISK_ID}b.0${index}"
       echo "$result"
       ;;
