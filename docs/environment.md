@@ -100,13 +100,13 @@ An empty default means the variable is unset and its value is determined automat
 | Variable | Default | Description |
 |---|---|---|
 | `BOOT_MODE` | `uefi` | Boot configuration, such as `uefi`, `secure`, or `legacy`. |
-| `BOOT_INDEX` | `9` | Boot priority index for the boot media. |
+| `BOOT_INDEX` | `9` | Boot priority index for the installation media. |
 | `BIOS` |  | Custom firmware file. |
-| `TPM` | `N` | Enables TPM support. |
-| `SMM` | `N` | Enables System Management Mode. |
+| `TPM` | `N` | Enables the TPM emulator, usually set by `BOOT_MODE`. |
+| `SMM` | `N` | Enables System Management Mode, usually set by `BOOT_MODE`. |
 | `LOGO` | `Y` | Enables the custom boot logo. |
 | `CLEAR` | `N` | Resets the NVRAM variables on the next boot. |
-| `USB` | `qemu-xhci,id=xhci,p2=7,p3=7` | QEMU USB controller configuration. |
+| `USB` | `qemu-xhci` | QEMU USB controller configuration. |
 
 ## 🎈 Memory Ballooning
 
