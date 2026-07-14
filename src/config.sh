@@ -65,7 +65,7 @@ configureSharedFolder() {
 
 configureUsb() {
 
-  if ! disabled "$USB" && [ -n "$USB" ] && [[ "${USB,,}" != "no"* ]]; then
+  if ! disabled "$USB" && [ -n "$USB" ]; then
     USB_OPTS="-device $USB -device usb-tablet"
   fi
 
