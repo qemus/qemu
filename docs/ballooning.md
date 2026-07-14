@@ -21,7 +21,7 @@ The following optional variables control the ballooning behavior:
 | `BALLOONING_PSI_PRESSURE_MAX` | `50.0` | PSI memory pressure level at which ballooning reaches its strongest response. |
 | `BALLOONING_HYSTERESIS` | `128M` | Minimum change required before the balloon target is updated, specified as a percentage, such as `2%`, or an absolute size, such as `256M`. |
 | `BALLOONING_KP` | `0.5` | Proportional gain used by the ballooning controller. Higher values react faster but may cause oscillation. |
-| `BALLOONING_KI` | `0.05` | Integral gain used by the ballooning controller. Higher values correct persistent error faster but may cause overshoot. |
+| `BALLOONING_KI` | `0.05` | Integral gain used by the ballooning controller. Higher values correct steady-state error faster but may cause overshoot. |
 | `BALLOONING_INTERVAL` | `5` | Polling interval in seconds. |
 | `BALLOONING_DEBUG` | `N` | Enables debug output for the ballooning monitor. |
 
