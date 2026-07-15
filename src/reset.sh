@@ -133,13 +133,24 @@ finiteMemoryLimit() {
 
   local limit="$1"
   local sentinel="4611686018427387904"
+  local i=0
+  local left=""
+  local right=""
 
   [[ "$limit" =~ ^[0-9]+$ ]] || return 1
 
   (( ${#limit} < ${#sentinel} )) && return 0
   (( ${#limit} > ${#sentinel} )) && return 1
 
-  [[ "$limit" < "$sentinel" ]]
+  for (( i=0; i<${#sentinel}; i++ )); do
+    left="${limit:i:1}"
+    right="${sentinel:i:1}"
+
+    (( left < right )) && return 0
+    (( left > right )) && return 1
+  done
+
+  return 1
 }
 
 getMemoryInfo() {
