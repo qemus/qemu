@@ -66,7 +66,6 @@ balloon() {
 }
 
 msg="Starting memory ballooning monitor..."
-html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
 ( balloon ) &
