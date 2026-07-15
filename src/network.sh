@@ -1121,11 +1121,10 @@ selectTables() {
   local mode=""
   local modes=()
 
-  # Prefer nftables for Podman namespaces, but retain legacy first for Docker.
-  if [[ "${ENGINE,,}" == "podman" ]]; then
-    modes=( "nft" "legacy" )
-  else
+  if [[ "${ENGINE,,}" == "docker" ]]; then
     modes=( "legacy" "nft" )
+  else
+    modes=( "nft" "legacy" )
   fi
 
   for mode in "${modes[@]}"; do
