@@ -919,6 +919,7 @@ configureUserTables() {
     [ -z "$num" ] && continue
 
     if ! iptables -t nat -A PREROUTING \
+      ! -i "$BRIDGE" \
       -p "$proto" \
       --dport "$num" \
       -m addrtype --dst-type LOCAL \
@@ -1143,7 +1144,7 @@ setTables() {
 testTables() {
 
   # Test actual ruleset access instead of only checking the binary version.
-  iptables -w -t nat -S > /dev/null 2>&1 || return 1
+  iptables -t nat -S > /dev/null 2>&1 || return 1
   iptables-save -t nat > /dev/null 2>&1 || return 1
 
   return 0
