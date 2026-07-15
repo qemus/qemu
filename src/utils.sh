@@ -224,10 +224,16 @@ makeDir() {
   ! mkdir -p "$path" && return 1
 
   dir=$(dirname -- "$path")
-  uid=$(stat -c '%u' "$dir") || return 1
-  gid=$(stat -c '%g' "$dir") || return 1
 
-  ! chown "$uid:$gid" "$path" && return 1
+  if ! uid=$(stat -c '%u' "$dir") || ! gid=$(stat -c '%g' "$dir"); then
+    warn "failed to determine the owner for \"$path\"."
+    return 0
+  fi
+
+  if ! chown "$uid:$gid" "$path"; then
+    warn "failed to set the owner for \"$path\"."
+    return 0
+  fi
 
   return 0
 }
@@ -248,14 +254,13 @@ writeFile() {
   local txt="$1"
   local path="$2"
 
-  if ! printf '%s\n' "$txt" >"$path"; then
+  if ! printf '%s\n' "$txt" > "$path"; then
     error "Failed to write file \"$path\" !"
     return 1
   fi
 
   if ! setOwner "$path"; then
-    error "Failed to set the owner for \"$path\" !"
-    return 1
+    warn "failed to set the owner for \"$path\"."
   fi
 
   return 0
