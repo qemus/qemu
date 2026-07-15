@@ -164,10 +164,11 @@ prepareWebFiles
 
 html "Starting $APP for $ENGINE..."
 
-if ! disabled "${WEB:-}"; then
-  configureWebServer || return 1
-  startWebServer || return 1
-  startWebsocketServer || return 1
-fi
+disabled "${WEB:-}" && return 0
+
+configureWebServer || return 1
+
+startWebServer || return 1
+startWebsocketServer || return 1
 
 return 0
