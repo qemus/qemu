@@ -96,9 +96,9 @@ startAudioRelay() {
 ! enabled "$AUDIO" && return 0
 disabled "${WEB:-}" && return 0
 
-installAudioPlugin || return 1
+installAudioPlugin
 
-startAudioRelay || return 1
-startAudioServer || return 1
+startAudioRelay
+startAudioServer
 
 return 0
