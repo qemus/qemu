@@ -160,7 +160,12 @@ downloadFile() {
 
   /run/progress.sh "$dest" "0" "$msg ([P])..." &
 
-  { wget "$url" -O "$dest" --continue -q --timeout=30 --no-http-keep-alive --show-progress "$progress"; rc=$?; } || :
+  {
+    LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
+      --no-http-keep-alive --show-progress "$progress" \
+      2> >(sed '/ saved \[/d' >&2)
+    rc=$?
+  } || :
 
   fKill "progress.sh"
 
@@ -172,21 +177,27 @@ downloadFile() {
     fi
 
     size=$(formatBytes "$total") || return 1
-  
+
     if [ "$total" -lt 100000 ]; then
       error "Invalid image file: is only $size ?" && return 1
     fi
-  
+
     html "Download finished successfully..."
     return 0
   fi
 
   msg="Failed to download $url"
-  (( rc == 3 )) && error "$msg , cannot write file (disk full?)" && return 1
-  (( rc == 4 )) && error "$msg , network failure!" && return 1
-  (( rc == 8 )) && error "$msg , server issued an error response!" && return 1
 
-  error "$msg , reason: $rc"
+  case "$rc" in
+    3) error "$msg because the file could not be written (disk full?)" ;;
+    4) error "$msg due to a network failure." ;;
+    5) error "$msg due to an SSL verification failure." ;;
+    6) error "$msg due to an authentication failure." ;;
+    7) error "$msg due to a protocol error." ;;
+    8) error "$msg because the server returned an error." ;;
+    *) error "$msg with exit status $rc." ;;
+  esac
+
   return 1
 }
 
