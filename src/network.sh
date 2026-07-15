@@ -1281,7 +1281,7 @@ clearTables() {
 #  Cleanup
 # ######################################
 
-closeBridge() {
+closeInterfaces() {
 
   local pids=( "$PASST_PID" "$DNSMASQ_PID" )
   mKill "${pids[@]}"
@@ -1315,14 +1315,14 @@ closeNetwork() {
 
   disabled "$NETWORK" && return 0
 
-  closeBridge
+  closeInterfaces
 
   return 0
 }
 
 cleanUp() {
 
-  closeBridge
+  closeInterfaces
 
   # Clean up old files
   rm -f "$PASST_PID" "$PASST_SOCKET"
@@ -1729,7 +1729,7 @@ else
     # Configure tap interface
     if ! configureNAT; then
 
-      closeBridge
+      closeInterfaces
       NETWORK="user"
 
       if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
