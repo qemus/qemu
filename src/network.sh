@@ -899,7 +899,12 @@ checkExistingTables() {
     <<< "$rules" || true)
 
   if [ -n "$conflicts" ]; then
-    warn "existing NAT rules may take precedence over VM port forwarding; enable DEBUG=Y to inspect them."
+    local msg="existing NAT rules may take precedence over VM port forwarding"
+    if enabled "$DEBUG"; then
+      warn "${msg}."
+    else
+      warn "${msg}; enable DEBUG=Y to inspect them."
+    fi
   fi
 
   if enabled "$DEBUG" && [ -n "$rules" ]; then
@@ -912,7 +917,12 @@ checkExistingTables() {
     <<< "$rules" || true)
 
   if [ -n "$conflicts" ]; then
-    warn "existing firewall rules may block traffic forwarded to or from the VM; enable DEBUG=Y to inspect them."
+    local msg="existing firewall rules may block traffic forwarded to or from the VM"
+    if enabled "$DEBUG"; then
+      warn "${msg}."
+    else
+      warn "${msg}; enable DEBUG=Y to inspect them."
+    fi
   fi
 
   if enabled "$DEBUG" && [ -n "$rules" ]; then
@@ -980,18 +990,6 @@ configureTables() {
       -m comment --comment "$rule_tag" \
       -j MASQUERADE; then
       warn "$tables"
-      return 1
-    fi
-  fi
-
-  # Preserve compatibility for guests still using 20.20.20.1 as the host gateway.
-  if [ -n "${SAMBA_INTERFACE:-}" ]; then
-    if ! iptables -t nat -A POSTROUTING \
-      -o "$DEV" \
-      -s "${SAMBA_INTERFACE%.*}.0/24" \
-      -m comment --comment "$rule_tag" \
-      -j MASQUERADE; then
-      warn "$tables_err"
       return 1
     fi
   fi
@@ -1176,8 +1174,8 @@ testTables() {
 
   local table=""
 
-  # Test every table used by the networking rules.
-  for table in nat filter mangle; do
+  # Test every table required by the networking rules.
+  for table in nat filter; do
     iptables -t "$table" -S > /dev/null 2>&1 || return 1
     iptables-save -t "$table" > /dev/null 2>&1 || return 1
   done
@@ -1355,7 +1353,7 @@ compat() {
     fi
   fi
 
-  # Backwards compatibility with old installations
+  # Preserve the legacy 20.20.20.1 host.lan address used by older guest hosts-file entries.
   if ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>/dev/null; then
     SAMBA_INTERFACE="$samba"
   else
