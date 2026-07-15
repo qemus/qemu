@@ -984,7 +984,7 @@ configureTables() {
     fi
   fi
 
-  # Preserve outbound connectivity for guests using the legacy 20.20.20.0/24 subnet.
+  # Preserve compatibility for guests still using 20.20.20.1 as the host gateway.
   if [ -n "${SAMBA_INTERFACE:-}" ]; then
     if ! iptables -t nat -A POSTROUTING \
       -o "$DEV" \
@@ -992,7 +992,6 @@ configureTables() {
       -m comment --comment "$rule_tag" \
       -j MASQUERADE; then
       warn "$tables_err"
-      clearTables || :
       return 1
     fi
   fi
@@ -1000,7 +999,6 @@ configureTables() {
   # Use a dedicated chain so protected TCP ports do not depend on multiport support.
   if ! iptables -t nat -N "$dnat_chain"; then
     warn "$tables_err"
-    clearTables || :
     return 1
   fi
 
@@ -1015,7 +1013,6 @@ configureTables() {
       -m comment --comment "$rule_tag" \
       -j RETURN; then
       warn "$tables_err"
-      clearTables || :
       return 1
     fi
 
@@ -1026,7 +1023,6 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
     warn "$tables_err"
-    clearTables || :
     return 1
   fi
 
@@ -1037,7 +1033,6 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j "$dnat_chain"; then
     warn "$tables_err"
-    clearTables || :
     return 1
   fi
 
@@ -1074,7 +1069,6 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
     warn "$tables_err"
-    clearTables || :
     return 1
   fi
 
@@ -1086,7 +1080,6 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
     warn "$tables_err"
-    clearTables || :
     return 1
   fi
 
@@ -1293,6 +1286,9 @@ closeBridge() {
   local pids=( "$PASST_PID" "$DNSMASQ_PID" )
   mKill "${pids[@]}"
 
+  exec 30>&- 2>/dev/null || true
+  exec 40>&- 2>/dev/null || true
+
   ip link set "$TAP" down promisc off &> /dev/null || :
   ip link delete "$TAP" &> /dev/null || :
 
@@ -1318,9 +1314,6 @@ closeNetwork() {
   fi
 
   disabled "$NETWORK" && return 0
-
-  exec 30>&- 2>/dev/null || true
-  exec 40>&- 2>/dev/null || true
 
   closeBridge
 
