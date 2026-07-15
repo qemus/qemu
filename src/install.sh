@@ -327,7 +327,6 @@ convertImage() {
     fi
   fi
 
-  html "Conversion completed..."
   return 0
 }
 
