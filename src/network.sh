@@ -367,9 +367,6 @@ configureDNS() {
   arguments+=" --interface=$fa"
   arguments+=" --bind-interfaces"
 
-  # Set pid file
-  arguments+=" --pid-file=$DNSMASQ_PID"
-
   # Workaround NET_RAW capability
   arguments+=" --no-ping"
 
@@ -383,6 +380,9 @@ configureDNS() {
 
   # Set local dns resolver to dnsmasq when needed
   [ -f /etc/resolv.dnsmasq ] && arguments+=" --resolv-file=/etc/resolv.dnsmasq"
+
+  # Set pid file
+  arguments+=" --pid-file=$DNSMASQ_PID"
 
   # Enable logging to file
   local log="/var/log/dnsmasq.log"
@@ -419,13 +419,8 @@ getHostPorts() {
   local port=""
   local ports=""
   local num=""
-  local proto=""
   local mode="${1:-tcp}"
   local display="${DISPLAY:-}"
-
-  if [[ "${display,,}" == "web" ]]; then
-    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT,"
-  fi
 
   if [[ "${display,,}" == "vnc" || "${display,,}" == "web" ]]; then
     [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT,"
@@ -433,34 +428,35 @@ getHostPorts() {
 
   if ! disabled "${WEB:-}"; then
     [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT,"
-    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT,"
   fi
 
   list+="${HOST_PORTS// /},"
 
   for port in ${list//,/ }; do
 
-    proto="tcp"
-    num="$port"
-
-    if [[ "$port" == *"/udp" ]]; then
-      proto="udp"
-      num="${port%/udp}"
-    elif [[ "$port" == *"/tcp" ]]; then
-      proto="tcp"
-      num="${port%/tcp}"
-    fi
-
-    [ -z "$num" ] && continue
+    [ -z "$port" ] && continue
 
     case "$mode" in
-      "all" )
-        ports+="$num/$proto," ;;
       "tcp" )
-        [[ "$proto" == "tcp" ]] && ports+="$num," ;;
-      "udp" )
-        [[ "$proto" == "udp" ]] && ports+="$num," ;;
+        [[ "$port" == *"/udp" ]] && continue
+        num="${port%/tcp}"
+        ;;
+      "all" )
+        if [[ "$port" == *"/udp" ]]; then
+          num="${port%/udp}"
+          [ -n "$num" ] && ports+="$num/udp,"
+        else
+          num="${port%/tcp}"
+          [ -n "$num" ] && ports+="$num/tcp,"
+        fi
+        continue
+        ;;
+      *)
+        return 1
+        ;;
     esac
+
+    [ -n "$num" ] && ports+="$num,"
 
   done
 
@@ -892,43 +888,68 @@ createTap() {
   return 0
 }
 
-configureUserTables() {
+checkExistingTables() {
 
-  local ip="$1"
-  local rule_tag="$2"
-  local tables_err="$3"
-  local list=""
-  local port=""
-  local proto=""
-  local num=""
+  local rules=""
+  local conflicts=""
 
-  list=$(getUserPorts)
+  rules=$(iptables -t nat -S PREROUTING 2>/dev/null || true)
+  conflicts=$(grep -E -- \
+    '^-A PREROUTING .*(-j DNAT|-j REDIRECT)( |$)' \
+    <<< "$rules" || true)
 
-  for port in ${list//,/ }; do
+  if [ -n "$conflicts" ]; then
+    local msg="existing NAT rules may take precedence over VM port forwarding"
+    if enabled "$DEBUG"; then
+      warn "${msg}."
+    else
+      warn "${msg}; enable DEBUG=Y to inspect them."
+    fi
+  fi
 
-    proto="tcp"
-    num="$port"
+  if enabled "$DEBUG" && [ -n "$rules" ]; then
+    printf "Existing NAT PREROUTING rules:\n\n%s\n\n" "$rules"
+  fi
 
-    if [[ "$port" == *"/udp" ]]; then
-      proto="udp"
-      num="${port%/udp}"
-    elif [[ "$port" == *"/tcp" ]]; then
-      num="${port%/tcp}"
+  rules=$(iptables -t filter -S FORWARD 2>/dev/null || true)
+  conflicts=$(grep -E -- \
+    '^-A FORWARD .*(-j DROP|-j REJECT)( |$)' \
+    <<< "$rules" || true)
+
+  if [ -n "$conflicts" ]; then
+    local msg="existing firewall rules may block traffic forwarded to or from the VM"
+    if enabled "$DEBUG"; then
+      warn "${msg}."
+    else
+      warn "${msg}; enable DEBUG=Y to inspect them."
+    fi
+  fi
+
+  if enabled "$DEBUG" && [ -n "$rules" ]; then
+    printf "Existing filter FORWARD rules:\n\n%s\n\n" "$rules"
+  fi
+
+  if enabled "$DEBUG"; then
+
+    rules=$(iptables -t nat -S POSTROUTING 2>/dev/null || true)
+
+    if [ -n "$rules" ]; then
+      printf "Existing NAT POSTROUTING rules:\n\n%s\n\n" "$rules"
     fi
 
-    [ -z "$num" ] && continue
+    rules=$(iptables -t mangle -S FORWARD 2>/dev/null || true)
 
-    if ! iptables -t nat -A PREROUTING \
-      -p "$proto" \
-      --dport "$num" \
-      -m addrtype --dst-type LOCAL \
-      -m comment --comment "$rule_tag" \
-      -j DNAT --to "$ip:$num"; then
-      warn "$tables_err"
-      return 1
+    if [ -n "$rules" ]; then
+      printf "Existing mangle FORWARD rules:\n\n%s\n\n" "$rules"
     fi
 
-  done
+    rules=$(iptables -t mangle -S POSTROUTING 2>/dev/null || true)
+
+    if [ -n "$rules" ]; then
+      printf "Existing mangle POSTROUTING rules:\n\n%s\n\n" "$rules"
+    fi
+
+  fi
 
   return 0
 }
@@ -937,7 +958,9 @@ configureTables() {
 
   local ip="$1"
   local subnet="$2"
-  local exclude="$3"
+  local exclude=""
+  local port=""
+  local dnat_chain="QEMU_DNAT"
   local rule_tag="remove"
   local tables_err="failed to configure IP tables!"
   local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
@@ -948,67 +971,71 @@ configureTables() {
     return 1
   fi
 
-  if [ -n "$exclude" ]; then
-    if [[ "$exclude" != *","* ]]; then
-      exclude=" ! --dport $exclude"
-    else
-      exclude=" -m multiport ! --dports $exclude"
-    fi
-  fi
+  checkExistingTables
+  exclude=$(getHostPorts)
 
-  # NAT traffic from bridge subnet to Docker uplink
+  # NAT traffic from the VM subnet leaving through any external interface.
   if ! iptables -t nat -A POSTROUTING \
-    -o "$DEV" \
+    ! -o "$BRIDGE" \
     -s "$subnet" \
     ! -d "$subnet" \
     -m comment --comment "$rule_tag" \
     -j MASQUERADE > /dev/null 2>&1; then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+
     if ! iptables -t nat -A POSTROUTING \
-      -o "$DEV" \
+      ! -o "$BRIDGE" \
       -s "$subnet" \
       ! -d "$subnet" \
       -m comment --comment "$rule_tag" \
       -j MASQUERADE; then
-      warn "$tables" && return 1
+      warn "$tables"
+      return 1
     fi
   fi
 
-  # Preserve outbound connectivity for guests using the legacy 20.20.20.0/24 subnet.
-  if [ -n "${SAMBA_INTERFACE:-}" ]; then
-    if ! iptables -t nat -A POSTROUTING \
-      -o "$DEV" \
-      -s "${SAMBA_INTERFACE%.*}.0/24" \
+  # Use a dedicated chain so protected TCP ports do not depend on multiport support.
+  if ! iptables -t nat -N "$dnat_chain"; then
+    warn "$tables_err"
+    return 1
+  fi
+
+  # Keep container-owned TCP ports handled by the container.
+  for port in ${exclude//,/ }; do
+
+    [ -z "$port" ] && continue
+
+    if ! iptables -t nat -A "$dnat_chain" \
+      -p tcp \
+      --dport "$port" \
       -m comment --comment "$rule_tag" \
-      -j MASQUERADE; then
-      warn "$tables_err" && return 1
+      -j RETURN; then
+      warn "$tables_err"
+      return 1
     fi
-  fi
 
-  # Forward USER_PORTS explicitly from the container to the VM.
-  configureUserTables "$ip" "$rule_tag" "$tables_err" || return 1
+  done
 
-  # shellcheck disable=SC2086
-  if ! iptables -t nat -A PREROUTING \
-    -i "$DEV" \
-    -d "$UPLINK" \
-    -p tcp${exclude} \
+  # Forward every remaining protocol and port to the VM.
+  if ! iptables -t nat -A "$dnat_chain" \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
-    warn "$tables_err" && return 1
+    warn "$tables_err"
+    return 1
   fi
 
+  # Process incoming traffic addressed to the container through the VM chain.
   if ! iptables -t nat -A PREROUTING \
-    -i "$DEV" \
-    -d "$UPLINK" \
-    -p udp \
+    ! -i "$BRIDGE" \
+    -m addrtype --dst-type LOCAL \
     -m comment --comment "$rule_tag" \
-    -j DNAT --to "$ip"; then
-    warn "$tables_err" && return 1
+    -j "$dnat_chain"; then
+    warn "$tables_err"
+    return 1
   fi
 
   if (( KERNEL > 4 )); then
-    # Hack for guest VMs complaining about "bad udp checksums in 5 packets"
+    # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
     iptables -t mangle -A POSTROUTING \
       -s "$subnet" \
       -p udp \
@@ -1032,22 +1059,26 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j TCPMSS --clamp-mss-to-pmtu > /dev/null 2>&1 || true
 
-  # Allow forwarding from bridge -> dev
+  # Allow forwarding from the VM bridge to external interfaces.
   if ! iptables -A FORWARD \
     -i "$BRIDGE" \
-    -o "$DEV" \
+    ! -o "$BRIDGE" \
+    -s "$subnet" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    warn "$tables_err" && return 1
+    warn "$tables_err"
+    return 1
   fi
 
-  # Allow forwarding from dev -> guest
+  # Allow forwarding from external interfaces to the VM.
   if ! iptables -A FORWARD \
-    -i "$DEV" \
+    ! -i "$BRIDGE" \
     -o "$BRIDGE" \
+    -d "$ip" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    warn "$tables_err" && return 1
+    warn "$tables_err"
+    return 1
   fi
 
   return 0
@@ -1056,7 +1087,7 @@ configureTables() {
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
-  local rc
+  local rc ip subnet forwarding=""
 
   enabled "$DEBUG" && echo "Configuring NAT networking..."
 
@@ -1074,7 +1105,10 @@ configureNAT() {
   fi
 
   # Check port forwarding flag
-  if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
+  [ -r /proc/sys/net/ipv4/ip_forward ] &&
+    forwarding=$(< /proc/sys/net/ipv4/ip_forward)
+
+  if [[ "$forwarding" != "1" ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
       enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
@@ -1082,8 +1116,6 @@ configureNAT() {
       return 1
     fi
   fi
-
-  local ip exclude subnet
 
   if [ -n "$IP" ]; then
     ip=$(guestIP "$IP" 2)
@@ -1107,8 +1139,7 @@ configureNAT() {
     GUEST_MTU=$(minMTU "$GUEST_MTU" "$(getMTU "$BRIDGE")" "$(getMTU "$TAP")")
   fi
 
-  exclude=$(getHostPorts)
-  configureTables "$ip" "$subnet" "$exclude" || return 1
+  configureTables "$ip" "$subnet" || return 1
 
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$TAP"
 
@@ -1142,9 +1173,13 @@ setTables() {
 
 testTables() {
 
-  # Test actual ruleset access instead of only checking the binary version.
-  iptables -w -t nat -S > /dev/null 2>&1 || return 1
-  iptables-save -t nat > /dev/null 2>&1 || return 1
+  local table=""
+
+  # Test every table required by the networking rules.
+  for table in nat filter; do
+    iptables -t "$table" -S > /dev/null 2>&1 || return 1
+    iptables-save -t "$table" > /dev/null 2>&1 || return 1
+  done
 
   return 0
 }
@@ -1152,13 +1187,24 @@ testTables() {
 selectTables() {
 
   local mode=""
+  local current=""
   local modes=()
 
-  # Prefer nftables for Podman namespaces, but retain legacy first for Docker.
-  if [[ "${ENGINE,,}" == "podman" ]]; then
-    modes=( "nft" "legacy" )
-  else
+  # Keep the currently selected backend when it is fully functional.
+  if testTables; then
+    return 0
+  fi
+
+  current=$(iptables --version 2>/dev/null || true)
+
+  if [[ "$current" == *"nf_tables"* ]]; then
+    modes=( "legacy" )
+  elif [[ "$current" == *"legacy"* ]]; then
+    modes=( "nft" )
+  elif [[ "${ENGINE,,}" == "docker" ]]; then
     modes=( "legacy" "nft" )
+  else
+    modes=( "nft" "legacy" )
   fi
 
   for mode in "${modes[@]}"; do
@@ -1177,6 +1223,7 @@ clearTables() {
   local line=""
   local rules=""
   local failed="N"
+  local dnat_chain="QEMU_DNAT"
   local rule_tag="remove"
   local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
@@ -1184,30 +1231,46 @@ clearTables() {
 
   # Store the current iptables ruleset.
   ! rules=$(iptables-save 2> /dev/null) && return 1
-  [ -z "$rules" ] && return 0
 
-  # Delete every rule tagged with our unique identifier,
-  # leaving all other rules intact.
-  while IFS= read -r line; do
+  if [ -n "$rules" ]; then
 
-    case "$line" in
-      \*nat ) table="nat" ;;
-      \*filter ) table="filter" ;;
-      \*mangle ) table="mangle" ;;
-      \*raw ) table="raw" ;;
-    esac
+    # Delete every rule tagged with our unique identifier,
+    # leaving all other rules intact.
+    while IFS= read -r line; do
 
-    if [[ "$line" == -A* ]] && [[ "$line" =~ $re ]]; then
-      line="${line/-A /-D }"
+      case "$line" in
+        \*nat ) table="nat" ;;
+        \*filter ) table="filter" ;;
+        \*mangle ) table="mangle" ;;
+        \*raw ) table="raw" ;;
+      esac
 
-      # Parse the quoting produced by iptables-save before deleting the rule.
-      if ! printf '%s\n' "$line" |
-        xargs -r iptables -t "$table" > /dev/null 2>&1; then
-        failed="Y"
+      if [[ "$line" == -A* ]] && [[ "$line" =~ $re ]]; then
+        line="${line/-A /-D }"
+
+        # Parse the quoting produced by iptables-save before deleting the rule.
+        if ! printf '%s\n' "$line" |
+          xargs -r iptables -t "$table" > /dev/null 2>&1; then
+          failed="Y"
+        fi
       fi
+
+    done <<< "$rules"
+
+  fi
+
+  # Remove the dedicated DNAT chain after deleting its rules and references.
+  if iptables -t nat -S "$dnat_chain" > /dev/null 2>&1; then
+
+    if ! iptables -t nat -F "$dnat_chain" > /dev/null 2>&1; then
+      failed="Y"
     fi
 
-  done <<< "$rules"
+    if ! iptables -t nat -X "$dnat_chain" > /dev/null 2>&1; then
+      failed="Y"
+    fi
+
+  fi
 
   enabled "$failed" && return 1
   return 0
@@ -1217,10 +1280,13 @@ clearTables() {
 #  Cleanup
 # ######################################
 
-closeBridge() {
+closeInterfaces() {
 
   local pids=( "$PASST_PID" "$DNSMASQ_PID" )
   mKill "${pids[@]}"
+
+  exec 30>&- 2>/dev/null || true
+  exec 40>&- 2>/dev/null || true
 
   ip link set "$TAP" down promisc off &> /dev/null || :
   ip link delete "$TAP" &> /dev/null || :
@@ -1248,17 +1314,14 @@ closeNetwork() {
 
   disabled "$NETWORK" && return 0
 
-  exec 30>&- 2>/dev/null || true
-  exec 40>&- 2>/dev/null || true
-
-  closeBridge
+  closeInterfaces
 
   return 0
 }
 
 cleanUp() {
 
-  closeBridge
+  closeInterfaces
 
   # Clean up old files
   rm -f "$PASST_PID" "$PASST_SOCKET"
@@ -1291,7 +1354,7 @@ compat() {
     fi
   fi
 
-  # Backwards compatibility with old installations
+  # Preserve the legacy 20.20.20.1 host.lan address used by older guest hosts-file entries.
   if ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>/dev/null; then
     SAMBA_INTERFACE="$samba"
   else
@@ -1665,7 +1728,7 @@ else
     # Configure tap interface
     if ! configureNAT; then
 
-      closeBridge
+      closeInterfaces
       NETWORK="user"
 
       if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
