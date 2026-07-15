@@ -892,53 +892,11 @@ createTap() {
   return 0
 }
 
-configureUserTables() {
-
-  local ip="$1"
-  local rule_tag="$2"
-  local tables_err="$3"
-  local list=""
-  local port=""
-  local proto=""
-  local num=""
-
-  list=$(getUserPorts)
-
-  for port in ${list//,/ }; do
-
-    proto="tcp"
-    num="$port"
-
-    if [[ "$port" == *"/udp" ]]; then
-      proto="udp"
-      num="${port%/udp}"
-    elif [[ "$port" == *"/tcp" ]]; then
-      num="${port%/tcp}"
-    fi
-
-    [ -z "$num" ] && continue
-
-    if ! iptables -t nat -A PREROUTING \
-      ! -i "$BRIDGE" \
-      -p "$proto" \
-      --dport "$num" \
-      -m addrtype --dst-type LOCAL \
-      -m comment --comment "$rule_tag" \
-      -j DNAT --to "$ip:$num"; then
-      warn "$tables_err"
-      return 1
-    fi
-
-  done
-
-  return 0
-}
-
 configureTables() {
 
   local ip="$1"
   local subnet="$2"
-  local exclude="$3"
+  local exclude=""
   local rule_tag="remove"
   local tables_err="failed to configure IP tables!"
   local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
@@ -948,6 +906,8 @@ configureTables() {
     warn "failed to select a working IP tables backend!"
     return 1
   fi
+
+  exclude=$(getHostPorts)
 
   if [ -n "$exclude" ]; then
     if [[ "$exclude" != *","* ]]; then
@@ -971,7 +931,8 @@ configureTables() {
       ! -d "$subnet" \
       -m comment --comment "$rule_tag" \
       -j MASQUERADE; then
-      warn "$tables" && return 1
+      warn "$tables"
+      return 1
     fi
   fi
 
@@ -982,30 +943,32 @@ configureTables() {
       -s "${SAMBA_INTERFACE%.*}.0/24" \
       -m comment --comment "$rule_tag" \
       -j MASQUERADE; then
-      warn "$tables_err" && return 1
+      warn "$tables_err"
+      return 1
     fi
   fi
 
-  # Forward USER_PORTS explicitly from the container to the VM.
-  configureUserTables "$ip" "$rule_tag" "$tables_err" || return 1
-
+  # Forward incoming TCP ports to the VM, except ports used by the container.
   # shellcheck disable=SC2086
   if ! iptables -t nat -A PREROUTING \
-    -i "$DEV" \
-    -d "$UPLINK" \
+    ! -i "$BRIDGE" \
+    -m addrtype --dst-type LOCAL \
     -p tcp${exclude} \
     -m comment --comment "$rule_tag" \
-    -j DNAT --to "$ip"; then
-    warn "$tables_err" && return 1
+    -j DNAT --to-destination "$ip"; then
+    warn "$tables_err"
+    return 1
   fi
 
+  # Forward incoming UDP traffic using the original uplink-specific rule.
   if ! iptables -t nat -A PREROUTING \
     -i "$DEV" \
     -d "$UPLINK" \
     -p udp \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
-    warn "$tables_err" && return 1
+    warn "$tables_err"
+    return 1
   fi
 
   if (( KERNEL > 4 )); then
@@ -1033,22 +996,26 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j TCPMSS --clamp-mss-to-pmtu > /dev/null 2>&1 || true
 
-  # Allow forwarding from bridge -> dev
+  # Allow forwarding from the VM bridge to external interfaces.
   if ! iptables -A FORWARD \
     -i "$BRIDGE" \
-    -o "$DEV" \
+    ! -o "$BRIDGE" \
+    -s "$subnet" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    warn "$tables_err" && return 1
+    warn "$tables_err"
+    return 1
   fi
 
-  # Allow forwarding from dev -> guest
+  # Allow forwarded traffic from external interfaces to the VM.
   if ! iptables -A FORWARD \
-    -i "$DEV" \
+    ! -i "$BRIDGE" \
     -o "$BRIDGE" \
+    -d "$ip" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    warn "$tables_err" && return 1
+    warn "$tables_err"
+    return 1
   fi
 
   return 0
@@ -1084,7 +1051,7 @@ configureNAT() {
     fi
   fi
 
-  local ip exclude subnet
+  local ip subnet
 
   if [ -n "$IP" ]; then
     ip=$(guestIP "$IP" 2)
@@ -1108,8 +1075,7 @@ configureNAT() {
     GUEST_MTU=$(minMTU "$GUEST_MTU" "$(getMTU "$BRIDGE")" "$(getMTU "$TAP")")
   fi
 
-  exclude=$(getHostPorts)
-  configureTables "$ip" "$subnet" "$exclude" || return 1
+  configureTables "$ip" "$subnet" || return 1
 
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$TAP"
 
