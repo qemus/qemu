@@ -956,11 +956,11 @@ configureTables() {
     return 1
   fi
 
-  # Forward incoming UDP traffic using the original uplink-specific rule.
+  # Forward incoming non-TCP traffic to the VM.
   if ! iptables -t nat -A PREROUTING \
-    -i "$DEV" \
-    -d "$UPLINK" \
-    -p udp \
+    ! -i "$BRIDGE" \
+    -m addrtype --dst-type LOCAL \
+    ! -p tcp \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
     warn "$tables_err"
@@ -1003,7 +1003,7 @@ configureTables() {
     return 1
   fi
 
-  # Allow forwarded traffic from external interfaces to the VM.
+  # Allow forwarding from external interfaces to the VM.
   if ! iptables -A FORWARD \
     ! -i "$BRIDGE" \
     -o "$BRIDGE" \
@@ -1105,9 +1105,13 @@ setTables() {
 
 testTables() {
 
-  # Test actual ruleset access instead of only checking the binary version.
-  iptables -t nat -S > /dev/null 2>&1 || return 1
-  iptables-save -t nat > /dev/null 2>&1 || return 1
+  local table=""
+
+  # Test every table used by the networking rules.
+  for table in nat filter mangle; do
+    iptables -t "$table" -S > /dev/null 2>&1 || return 1
+    iptables-save -t "$table" > /dev/null 2>&1 || return 1
+  done
 
   return 0
 }
@@ -1115,9 +1119,21 @@ testTables() {
 selectTables() {
 
   local mode=""
+  local current=""
   local modes=()
 
-  if [[ "${ENGINE,,}" == "docker" ]]; then
+  # Keep the currently selected backend when it is fully functional.
+  if testTables; then
+    return 0
+  fi
+
+  current=$(iptables --version 2>/dev/null || true)
+
+  if [[ "$current" == *"nf_tables"* ]]; then
+    modes=( "legacy" )
+  elif [[ "$current" == *"legacy"* ]]; then
+    modes=( "nft" )
+  elif [[ "${ENGINE,,}" == "docker" ]]; then
     modes=( "legacy" "nft" )
   else
     modes=( "nft" "legacy" )
