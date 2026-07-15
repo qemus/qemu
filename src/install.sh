@@ -191,7 +191,6 @@ downloadFile() {
       error "Invalid image file: is only $size ?" && return 1
     fi
 
-    html "Download finished successfully..."
     return 0
   fi
 
