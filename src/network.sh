@@ -955,7 +955,7 @@ configureTables() {
     -m addrtype --dst-type LOCAL \
     -p tcp${exclude} \
     -m comment --comment "$rule_tag" \
-    -j DNAT --to-destination "$ip"; then
+    -j DNAT --to "$ip"; then
     warn "$tables_err"
     return 1
   fi
