@@ -164,8 +164,8 @@ EOF
   return 0
 }
 
-validateVncPort
-prepareWebFiles
+validateVncPort || return 1
+prepareWebFiles || return 1
 
 html "Starting $APP for $ENGINE..."
 
