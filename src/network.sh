@@ -144,8 +144,8 @@ maskToCIDR() {
     }
   ')
 
-  if [[ ! "$prefix" =~ ^[0-9]+$ ]] || (( prefix < 1 || prefix > 30 )); then
-    error "Invalid MASK: '$mask'"
+  if [[ ! "$prefix" =~ ^[0-9]+$ ]] || (( prefix < 1 || prefix > 24 )); then
+    error "Invalid MASK: '$mask' (supported range: /1 through /24)"
     return 1
   fi
 
@@ -1300,7 +1300,7 @@ closeInterfaces() {
 
 closeWeb() {
 
-  local pids=( "$WEB_PID" "$WSD_PID" )
+  local pids=( "${WEB_PID:-}" "${WSD_PID:-}" )
   mKill "${pids[@]}"
 
   return 0
