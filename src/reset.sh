@@ -28,12 +28,27 @@ detectEngine() {
 
   if [ -f "/run/.containerenv" ]; then
     ENGINE="${container:-}"
+
     if [[ "${ENGINE,,}" == *"podman"* ]]; then
-      ROOTLESS="Y"
       ENGINE="Podman"
     else
       [ -z "$ENGINE" ] && ENGINE="Kubernetes"
     fi
+  fi
+
+  return 0
+}
+
+detectRootless() {
+
+  local uid_map=""
+
+  uid_map=$(awk '{$1=$1; print}' /proc/self/uid_map 2>/dev/null || true)
+
+  if [[ "$uid_map" == "0 0 4294967295" ]]; then
+    ROOTLESS="N"
+  else
+    ROOTLESS="Y"
   fi
 
   return 0
@@ -56,7 +71,6 @@ checkPrivileged() {
   max_cap=$(((1 << (last_cap + 1)) - 1))
 
   if [ "$cap_bnd" -eq "$max_cap" ]; then
-    ROOTLESS="N"
     PRIVILEGED="Y"
   fi
 
@@ -219,6 +233,7 @@ PROCESS="${APP,,}"
 PROCESS="${PROCESS// /-}"
 
 detectEngine
+detectRootless
 
 echo "❯ Starting $APP for $ENGINE v$(</etc/version)..."
 echo "❯ For support visit $SUPPORT"
