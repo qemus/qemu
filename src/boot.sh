@@ -128,7 +128,7 @@ prepareUefiRom() {
     error "Failed to move UEFI boot file to $DEST.rom" && exit 44
   fi
 
-  ! setOwner "$DEST.rom" && error "Failed to set the owner for \"$DEST.rom\" !"
+  ! setOwner "$DEST.rom" && warn "failed to set the owner for \"$DEST.rom\" !"
 
   return 0
 }
@@ -145,15 +145,15 @@ prepareUefiVars() {
 
   if ! cp "$OVMF/$VARS" "$DEST.tmp"; then
     rm -f "$DEST.tmp"
-    error "Failed to copy UEFI vars file to $DEST.tmp" && exit 45
+    warn "failed to copy UEFI vars file to $DEST.tmp" && exit 45
   fi
 
   if ! mv "$DEST.tmp" "$DEST.vars"; then
     rm -f "$DEST.tmp"
-    error "Failed to move UEFI vars file to $DEST.vars" && exit 45
+    warn "failed to move UEFI vars file to $DEST.vars" && exit 45
   fi
 
-  ! setOwner "$DEST.vars" && error "Failed to set the owner for \"$DEST.vars\" !"
+  ! setOwner "$DEST.vars" && warn "failed to set the owner for \"$DEST.vars\" !"
 
   return 0
 }
