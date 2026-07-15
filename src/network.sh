@@ -367,9 +367,6 @@ configureDNS() {
   arguments+=" --interface=$fa"
   arguments+=" --bind-interfaces"
 
-  # Set pid file
-  arguments+=" --pid-file=$DNSMASQ_PID"
-
   # Workaround NET_RAW capability
   arguments+=" --no-ping"
 
@@ -383,6 +380,9 @@ configureDNS() {
 
   # Set local dns resolver to dnsmasq when needed
   [ -f /etc/resolv.dnsmasq ] && arguments+=" --resolv-file=/etc/resolv.dnsmasq"
+
+  # Set pid file
+  arguments+=" --pid-file=$DNSMASQ_PID"
 
   # Enable logging to file
   local log="/var/log/dnsmasq.log"
@@ -419,13 +419,8 @@ getHostPorts() {
   local port=""
   local ports=""
   local num=""
-  local proto=""
   local mode="${1:-tcp}"
   local display="${DISPLAY:-}"
-
-  if [[ "${display,,}" == "web" ]]; then
-    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT,"
-  fi
 
   if [[ "${display,,}" == "vnc" || "${display,,}" == "web" ]]; then
     [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT,"
@@ -433,34 +428,35 @@ getHostPorts() {
 
   if ! disabled "${WEB:-}"; then
     [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT,"
-    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT,"
   fi
 
   list+="${HOST_PORTS// /},"
 
   for port in ${list//,/ }; do
 
-    proto="tcp"
-    num="$port"
-
-    if [[ "$port" == *"/udp" ]]; then
-      proto="udp"
-      num="${port%/udp}"
-    elif [[ "$port" == *"/tcp" ]]; then
-      proto="tcp"
-      num="${port%/tcp}"
-    fi
-
-    [ -z "$num" ] && continue
+    [ -z "$port" ] && continue
 
     case "$mode" in
-      "all" )
-        ports+="$num/$proto," ;;
       "tcp" )
-        [[ "$proto" == "tcp" ]] && ports+="$num," ;;
-      "udp" )
-        [[ "$proto" == "udp" ]] && ports+="$num," ;;
+        [[ "$port" == *"/udp" ]] && continue
+        num="${port%/tcp}"
+        ;;
+      "all" )
+        if [[ "$port" == *"/udp" ]]; then
+          num="${port%/udp}"
+          [ -n "$num" ] && ports+="$num/udp,"
+        else
+          num="${port%/tcp}"
+          [ -n "$num" ] && ports+="$num/tcp,"
+        fi
+        continue
+        ;;
+      *)
+        return 1
+        ;;
     esac
+
+    [ -n "$num" ] && ports+="$num,"
 
   done
 
