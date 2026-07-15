@@ -144,8 +144,8 @@ maskToCIDR() {
     }
   ')
 
-  if [[ ! "$prefix" =~ ^[0-9]+$ ]] || (( prefix < 1 || prefix > 30 )); then
-    error "Invalid MASK: '$mask'"
+  if [[ ! "$prefix" =~ ^[0-9]+$ ]] || (( prefix < 1 || prefix > 24 )); then
+    error "Invalid MASK: '$mask' (supported range: /1 through /24)"
     return 1
   fi
 
@@ -415,10 +415,10 @@ configureDNS() {
 
 getHostPorts() {
 
+  local num=""
   local list=""
   local port=""
   local ports=""
-  local num=""
   local mode="${1:-tcp}"
   local display="${DISPLAY:-}"
 
@@ -471,18 +471,16 @@ getUserPorts() {
 
   local defaults="22"
   [[ "${BOOT_MODE:-}" == "windows"* ]] && defaults="3389/tcp,3389/udp"
+  local list="$defaults,${USER_PORTS// /},"
 
-  local list="$defaults,"
-  list+="${USER_PORTS// /},"
+  local num=""
+  local ports=""
+  local proto=""
+  local userport=""
+  local hostport=""
 
   local exclude=""
   exclude=$(getHostPorts "all")
-
-  local ports=""
-  local userport=""
-  local hostport=""
-  local proto=""
-  local num=""
 
   for userport in ${list//,/ }; do
 
@@ -502,12 +500,12 @@ getUserPorts() {
     for hostport in ${exclude//,/ }; do
 
       if [[ "$num/$proto" == "$hostport" ]]; then
-        num=""
 
         if [[ "$hostport" != "${WEB_PORT:-}/tcp" ]]; then
           warn "Could not assign port $hostport to \"USER_PORTS\" because it is already in \"HOST_PORTS\"!"
         fi
 
+        num=""
         break
       fi
 
@@ -823,14 +821,16 @@ configurePasst() {
 createBridge() {
 
   local gateway="$1"
-  local rc
+  local rc msg=""
 
   # Create a bridge with a static IP for the VM guest
-  { ip link add dev "$BRIDGE" type bridge; rc=$?; } || :
+  { msg=$(ip link add dev "$BRIDGE" type bridge 2>&1); rc=$?; } || :
 
   if (( rc != 0 )); then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
-    warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" && return 1
+    [ -n "$msg" ] && echo "$msg" >&2
+    warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN"
+    return 1
   fi
 
   if [[ "$GUEST_MTU" != "0" ]]; then
@@ -858,11 +858,16 @@ createBridge() {
 createTap() {
 
   local tuntap="$1"
+  local rc msg=""
 
   # Set tap to the bridge created
-  if ! ip tuntap add dev "$TAP" mode tap; then
+  { msg=$(ip tuntap add dev "$TAP" mode tap 2>&1); rc=$?; } || :
+
+  if (( rc != 0 )); then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
-    warn "$tuntap" && return 1
+    [ -n "$msg" ] && echo "$msg" >&2
+    warn "$tuntap"
+    return 1
   fi
 
   if [[ "$GUEST_MTU" != "0" ]]; then
@@ -1087,15 +1092,20 @@ configureTables() {
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
-  local rc ip subnet forwarding=""
+  local rc ip subnet msg="" forwarding=""
 
   enabled "$DEBUG" && echo "Configuring NAT networking..."
 
   # Create the necessary file structure for /dev/net/tun
   if [ ! -c /dev/net/tun ]; then
-    [ ! -d /dev/net ] && mkdir -m 755 /dev/net
-    if mknod /dev/net/tun c 10 200; then
+    [ ! -d /dev/net ] && mkdir -m 755 /dev/net > /dev/null 2>&1 || :
+
+    { msg=$(mknod /dev/net/tun c 10 200 2>&1); rc=$?; } || :
+
+    if (( rc == 0 )); then
       chmod 666 /dev/net/tun
+    elif ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+      [ -n "$msg" ] && echo "$msg" >&2
     fi
   fi
 
@@ -1300,7 +1310,7 @@ closeInterfaces() {
 
 closeWeb() {
 
-  local pids=( "$WEB_PID" "$WSD_PID" )
+  local pids=( "${WEB_PID:-}" "${WSD_PID:-}" )
   mKill "${pids[@]}"
 
   return 0
