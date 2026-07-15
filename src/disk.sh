@@ -486,7 +486,7 @@ createDevice () {
   local DISK_ID="data$DISK_INDEX"
 
   local BUS="${PCI_BUS:-pcie.0}"
-  [[ "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ]] && BUS="pci.0"
+  [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] && BUS="pci.0"
 
   local index=""
   [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
@@ -537,7 +537,7 @@ addMedia () {
   local DISK_ADDRESS="$4"
 
   local BUS="${PCI_BUS:-pcie.0}"
-  [[ "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ]] && BUS="pci.0"
+  [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] && BUS="pci.0"
 
   local index=""
   local DISK_ID="cdrom$DISK_INDEX"
