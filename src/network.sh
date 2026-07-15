@@ -974,9 +974,9 @@ configureTables() {
   checkExistingTables
   exclude=$(getHostPorts)
 
-  # NAT traffic from bridge subnet to container uplink.
+  # NAT traffic from the VM subnet leaving through any external interface.
   if ! iptables -t nat -A POSTROUTING \
-    -o "$DEV" \
+    ! -o "$BRIDGE" \
     -s "$subnet" \
     ! -d "$subnet" \
     -m comment --comment "$rule_tag" \
@@ -984,7 +984,7 @@ configureTables() {
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
 
     if ! iptables -t nat -A POSTROUTING \
-      -o "$DEV" \
+      ! -o "$BRIDGE" \
       -s "$subnet" \
       ! -d "$subnet" \
       -m comment --comment "$rule_tag" \
