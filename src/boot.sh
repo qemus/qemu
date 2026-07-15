@@ -145,12 +145,12 @@ prepareUefiVars() {
 
   if ! cp "$OVMF/$VARS" "$DEST.tmp"; then
     rm -f "$DEST.tmp"
-    warn "failed to copy UEFI vars file to $DEST.tmp" && exit 45
+    error "Failed to copy UEFI vars file to $DEST.tmp" && exit 45
   fi
 
   if ! mv "$DEST.tmp" "$DEST.vars"; then
     rm -f "$DEST.tmp"
-    warn "failed to move UEFI vars file to $DEST.vars" && exit 45
+    error "Failed to move UEFI vars file to $DEST.vars" && exit 45
   fi
 
   ! setOwner "$DEST.vars" && warn "failed to set the owner for \"$DEST.vars\" !"
