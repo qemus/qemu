@@ -96,14 +96,34 @@ startWebServer() {
 
 startWebsocketServer() {
 
+  local log="/var/log/websocketd.log"
+  rm -f "$log"
+
   # Start websocket server
-  websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh >/var/log/websocketd.log &
-  echo "$!" > "$WSD_PID" || return 1
+  websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh > "$log" 2>&1 &
+  local pid=$!
+
+  if ! echo "$pid" > "$WSD_PID"; then
+    kill "$pid" 2>/dev/null || :
+    return 1
+  fi
+
+  sleep 0.1
+
+  if ! isAlive "$pid"; then
+    rm -f "$WSD_PID"
+    [ -s "$log" ] && cat "$log" >&2
+    error "Failed to start websocket server!"
+    return 1
+  fi
 
   return 0
 }
 
 startAudioServer() {
+
+  local log="/var/log/audio-websocket.log"
+  rm -f "$log"
 
   cat > "$AUDIO_PIPE" <<EOF
 #!/bin/sh
@@ -112,12 +132,13 @@ EOF
 
   chmod 0700 "$AUDIO_PIPE"
 
+  # Start audio websocket server
   websocketd \
     --address 127.0.0.1 \
     --port="$AUX_PORT" \
     --binary=true \
     "$AUDIO_PIPE" \
-    >/var/log/audio-websocket.log 2>&1 &
+    > "$log" 2>&1 &
 
   local pid=$!
 
@@ -129,6 +150,8 @@ EOF
   sleep 0.1
 
   if ! isAlive "$pid"; then
+    rm -f "$AUX_PID"
+    [ -s "$log" ] && cat "$log" >&2
     error "Failed to start audio websocket server!"
     return 1
   fi
