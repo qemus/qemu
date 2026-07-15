@@ -1087,7 +1087,7 @@ configureTables() {
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
-  local rc
+  local rc ip subnet forwarding=""
 
   enabled "$DEBUG" && echo "Configuring NAT networking..."
 
@@ -1105,7 +1105,10 @@ configureNAT() {
   fi
 
   # Check port forwarding flag
-  if [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
+  [ -r /proc/sys/net/ipv4/ip_forward ] &&
+    forwarding=$(< /proc/sys/net/ipv4/ip_forward)
+
+  if [[ "$forwarding" != "1" ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
     if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
       enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
@@ -1113,8 +1116,6 @@ configureNAT() {
       return 1
     fi
   fi
-
-  local ip subnet
 
   if [ -n "$IP" ]; then
     ip=$(guestIP "$IP" 2)
