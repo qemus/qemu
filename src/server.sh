@@ -132,7 +132,7 @@ startAudioServer() {
 
   cat > "$AUDIO_PIPE" <<EOF
 #!/bin/sh
-exec nc 127.0.0.1 $RELAY_PORT
+exec nc -U "$AUDIO_SOCKET"
 EOF
 
   chmod 0700 "$AUDIO_PIPE"
