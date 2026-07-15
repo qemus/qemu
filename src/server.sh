@@ -37,14 +37,13 @@ prepareWebFiles() {
 }
 
 configureAuthentication() {
-  local user pass
 
   if ! enabled "${PROTECT:-}" && [ -z "${PASS:-}" ]; then
     return 0
   fi
 
-  user="Docker"
-  pass="admin"
+  local user="Docker"
+  local pass="admin"
 
   USERNAME=$(strip "${USERNAME:-}")
   [ -n "${USERNAME:-}" ] && user="$USERNAME"
@@ -55,25 +54,29 @@ configureAuthentication() {
 
   # Set password
   echo "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd
-
   sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
+
+  return 0
 }
 
 configureWebPorts() {
+
   sed -i "s/listen 8006 default_server;/listen $WEB_PORT default_server;/g" /etc/nginx/sites-enabled/web.conf
   sed -i "s/proxy_pass http:\/\/127.0.0.1:5700\/;/proxy_pass http:\/\/127.0.0.1:$WSS_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
   sed -i "s/proxy_pass http:\/\/127.0.0.1:8004\/;/proxy_pass http:\/\/127.0.0.1:$WSD_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
   sed -i "s/proxy_pass http:\/\/127.0.0.1:8003\/;/proxy_pass http:\/\/127.0.0.1:$AUX_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
+
+  return 0
 }
 
 configureIpv6Listen() {
 
   # shellcheck disable=SC2143
-  if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]] && [ -n "$(ifconfig -a | grep inet6)" ]; then
-
+  if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]]; then
     sed -i "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
-
   fi
+
+  return 0
 }
 
 configureWebServer() {
@@ -81,9 +84,11 @@ configureWebServer() {
   mkdir -p /etc/nginx/sites-enabled
   cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
 
-  configureAuthentication
-  configureWebPorts
-  configureIpv6Listen
+  configureAuthentication || return 1
+  configureWebPorts || return 1
+  configureIpv6Listen || return 1
+
+  return 0
 }
 
 startWebServer() {
