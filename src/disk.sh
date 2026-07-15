@@ -431,7 +431,6 @@ convertDisk() {
   fi
 
   msg="Conversion of $DISK_DESC"
-  html "$msg completed..."
   info "$msg to $DST_FMT completed successfully!"
 
   return 0
@@ -593,10 +592,6 @@ finishDisks () {
     esac
   done
 
-  if ! enabled "$DISK_DISABLE"; then
-    html "Initialized disks successfully..."
-  fi
-
   return 0
 }
 
@@ -751,7 +746,6 @@ addDevice () {
 
 if ! enabled "$DISK_DISABLE"; then
   msg="Initializing disks..."
-  html "$msg"
   enabled "$DEBUG" && echo "$msg"
 fi
 
