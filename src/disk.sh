@@ -484,6 +484,7 @@ createDevice () {
   local DISK_SERIAL="$8"
   local DISK_SECTORS="$9"
   local DISK_ID="data$DISK_INDEX"
+  local BUS="${PCI_BUS:-pcie.0}"
 
   local index=""
   [ -n "$DISK_INDEX" ] && index=",bootindex=$DISK_INDEX"
@@ -512,12 +513,12 @@ createDevice () {
       ;;
     "blk" | "virtio-blk" )
       result+=",if=none \
-      -device virtio-blk-pci,drive=${DISK_ID},bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2${index}${DISK_SERIAL}${DISK_SECTORS}"
+      -device virtio-blk-pci,drive=${DISK_ID},bus=$BUS,addr=$DISK_ADDRESS,iothread=io2${index}${DISK_SERIAL}${DISK_SECTORS}"
       echo "$result"
       ;;
     "scsi" | "virtio-scsi" )
       result+=",if=none \
-      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2,hotplug=off \
+      -device virtio-scsi-pci,id=${DISK_ID}b,bus=$BUS,addr=$DISK_ADDRESS,iothread=io2,hotplug=off \
       -device scsi-hd,drive=${DISK_ID},bus=${DISK_ID}b.0,channel=0,scsi-id=0,lun=0,rotation_rate=$DISK_ROTATION${index}${DISK_SERIAL}${DISK_SECTORS}"
       echo "$result"
       ;;
@@ -532,6 +533,7 @@ addMedia () {
   local DISK_TYPE="$2"
   local DISK_INDEX="$3"
   local DISK_ADDRESS="$4"
+  local BUS="${PCI_BUS:-pcie.0}"
 
   local index=""
   local DISK_ID="cdrom$DISK_INDEX"
@@ -561,12 +563,12 @@ addMedia () {
       ;;
     "blk" | "virtio-blk" )
       result+=",if=none \
-      -device virtio-blk-pci,drive=${DISK_ID},bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2${index}"
+      -device virtio-blk-pci,drive=${DISK_ID},bus=$BUS,addr=$DISK_ADDRESS,iothread=io2${index}"
       echo "$result"
       ;;
     "scsi" | "virtio-scsi" )
       result+=",if=none \
-      -device virtio-scsi-pci,id=${DISK_ID}b,bus=pcie.0,addr=$DISK_ADDRESS,iothread=io2,hotplug=off \
+      -device virtio-scsi-pci,id=${DISK_ID}b,bus=$BUS,addr=$DISK_ADDRESS,iothread=io2,hotplug=off \
       -device scsi-cd,drive=${DISK_ID},bus=${DISK_ID}b.0${index}"
       echo "$result"
       ;;
