@@ -6,9 +6,6 @@ msg="Checking memory..."
 html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
-RAM_AVAIL=$(free -b | grep -m 1 Mem: | awk '{print $7}')
-AVAIL_MEM=$(formatBytes "$RAM_AVAIL")
-
 app() {
 
   local name="$APP"
@@ -112,6 +109,9 @@ checkMinimumMemory() {
 
   return 0
 }
+
+getMemoryInfo
+AVAIL_MEM=$(formatBytes "$RAM_AVAIL")
 
 checkConfiguredMemory
 configureHalfMemory
