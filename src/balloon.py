@@ -732,7 +732,7 @@ class BalloonMonitor:
 
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Monitor host PSI and memory and containre memory to dynamically adjust QEMU VM memory via ballooning."
+        description="Monitor host PSI and memory and container memory to dynamically adjust QEMU VM memory via ballooning."
     )
 
     parser.add_argument("--qmp-sock", type=str, required=True,
