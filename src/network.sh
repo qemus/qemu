@@ -888,11 +888,69 @@ createTap() {
   return 0
 }
 
+checkExistingTables() {
+
+  local rules=""
+  local conflicts=""
+
+  rules=$(iptables -t nat -S PREROUTING 2>/dev/null || true)
+  conflicts=$(grep -E -- \
+    '^-A PREROUTING .*(-j DNAT|-j REDIRECT)( |$)' \
+    <<< "$rules" || true)
+
+  if [ -n "$conflicts" ]; then
+    warn "existing NAT rules may take precedence over VM port forwarding; enable DEBUG=Y to inspect them."
+  fi
+
+  if enabled "$DEBUG" && [ -n "$rules" ]; then
+    printf "Existing NAT PREROUTING rules:\n\n%s\n\n" "$rules"
+  fi
+
+  rules=$(iptables -t filter -S FORWARD 2>/dev/null || true)
+  conflicts=$(grep -E -- \
+    '^-A FORWARD .*(-j DROP|-j REJECT)( |$)' \
+    <<< "$rules" || true)
+
+  if [ -n "$conflicts" ]; then
+    warn "existing firewall rules may block traffic forwarded to or from the VM; enable DEBUG=Y to inspect them."
+  fi
+
+  if enabled "$DEBUG" && [ -n "$rules" ]; then
+    printf "Existing filter FORWARD rules:\n\n%s\n\n" "$rules"
+  fi
+
+  if enabled "$DEBUG"; then
+
+    rules=$(iptables -t nat -S POSTROUTING 2>/dev/null || true)
+
+    if [ -n "$rules" ]; then
+      printf "Existing NAT POSTROUTING rules:\n\n%s\n\n" "$rules"
+    fi
+
+    rules=$(iptables -t mangle -S FORWARD 2>/dev/null || true)
+
+    if [ -n "$rules" ]; then
+      printf "Existing mangle FORWARD rules:\n\n%s\n\n" "$rules"
+    fi
+
+    rules=$(iptables -t mangle -S POSTROUTING 2>/dev/null || true)
+
+    if [ -n "$rules" ]; then
+      printf "Existing mangle POSTROUTING rules:\n\n%s\n\n" "$rules"
+    fi
+
+  fi
+
+  return 0
+}
+
 configureTables() {
 
   local ip="$1"
   local subnet="$2"
   local exclude=""
+  local port=""
+  local dnat_chain="QEMU_DNAT"
   local rule_tag="remove"
   local tables_err="failed to configure IP tables!"
   local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
@@ -903,17 +961,10 @@ configureTables() {
     return 1
   fi
 
+  checkExistingTables
   exclude=$(getHostPorts)
 
-  if [ -n "$exclude" ]; then
-    if [[ "$exclude" != *","* ]]; then
-      exclude=" ! --dport $exclude"
-    else
-      exclude=" -m multiport ! --dports $exclude"
-    fi
-  fi
-
-  # NAT traffic from bridge subnet to Docker uplink
+  # NAT traffic from bridge subnet to container uplink.
   if ! iptables -t nat -A POSTROUTING \
     -o "$DEV" \
     -s "$subnet" \
@@ -921,6 +972,7 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j MASQUERADE > /dev/null 2>&1; then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+
     if ! iptables -t nat -A POSTROUTING \
       -o "$DEV" \
       -s "$subnet" \
@@ -940,35 +992,57 @@ configureTables() {
       -m comment --comment "$rule_tag" \
       -j MASQUERADE; then
       warn "$tables_err"
+      clearTables || :
       return 1
     fi
   fi
 
-  # Forward incoming TCP ports to the VM, except ports used by the container.
-  # shellcheck disable=SC2086
-  if ! iptables -t nat -A PREROUTING \
-    ! -i "$BRIDGE" \
-    -m addrtype --dst-type LOCAL \
-    -p tcp${exclude} \
-    -m comment --comment "$rule_tag" \
-    -j DNAT --to "$ip"; then
+  # Use a dedicated chain so protected TCP ports do not depend on multiport support.
+  if ! iptables -t nat -N "$dnat_chain"; then
     warn "$tables_err"
+    clearTables || :
     return 1
   fi
 
-  # Forward incoming non-TCP traffic to the VM.
-  if ! iptables -t nat -A PREROUTING \
-    ! -i "$BRIDGE" \
-    -m addrtype --dst-type LOCAL \
-    ! -p tcp \
+  # Keep container-owned TCP ports handled by the container.
+  for port in ${exclude//,/ }; do
+
+    [ -z "$port" ] && continue
+
+    if ! iptables -t nat -A "$dnat_chain" \
+      -p tcp \
+      --dport "$port" \
+      -m comment --comment "$rule_tag" \
+      -j RETURN; then
+      warn "$tables_err"
+      clearTables || :
+      return 1
+    fi
+
+  done
+
+  # Forward every remaining protocol and port to the VM.
+  if ! iptables -t nat -A "$dnat_chain" \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
     warn "$tables_err"
+    clearTables || :
+    return 1
+  fi
+
+  # Process incoming traffic addressed to the container through the VM chain.
+  if ! iptables -t nat -A PREROUTING \
+    ! -i "$BRIDGE" \
+    -m addrtype --dst-type LOCAL \
+    -m comment --comment "$rule_tag" \
+    -j "$dnat_chain"; then
+    warn "$tables_err"
+    clearTables || :
     return 1
   fi
 
   if (( KERNEL > 4 )); then
-    # Hack for guest VMs complaining about "bad udp checksums in 5 packets"
+    # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
     iptables -t mangle -A POSTROUTING \
       -s "$subnet" \
       -p udp \
@@ -1000,6 +1074,7 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
     warn "$tables_err"
+    clearTables || :
     return 1
   fi
 
@@ -1011,6 +1086,7 @@ configureTables() {
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
     warn "$tables_err"
+    clearTables || :
     return 1
   fi
 
@@ -1155,6 +1231,7 @@ clearTables() {
   local line=""
   local rules=""
   local failed="N"
+  local dnat_chain="QEMU_DNAT"
   local rule_tag="remove"
   local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
@@ -1162,30 +1239,46 @@ clearTables() {
 
   # Store the current iptables ruleset.
   ! rules=$(iptables-save 2> /dev/null) && return 1
-  [ -z "$rules" ] && return 0
 
-  # Delete every rule tagged with our unique identifier,
-  # leaving all other rules intact.
-  while IFS= read -r line; do
+  if [ -n "$rules" ]; then
 
-    case "$line" in
-      \*nat ) table="nat" ;;
-      \*filter ) table="filter" ;;
-      \*mangle ) table="mangle" ;;
-      \*raw ) table="raw" ;;
-    esac
+    # Delete every rule tagged with our unique identifier,
+    # leaving all other rules intact.
+    while IFS= read -r line; do
 
-    if [[ "$line" == -A* ]] && [[ "$line" =~ $re ]]; then
-      line="${line/-A /-D }"
+      case "$line" in
+        \*nat ) table="nat" ;;
+        \*filter ) table="filter" ;;
+        \*mangle ) table="mangle" ;;
+        \*raw ) table="raw" ;;
+      esac
 
-      # Parse the quoting produced by iptables-save before deleting the rule.
-      if ! printf '%s\n' "$line" |
-        xargs -r iptables -t "$table" > /dev/null 2>&1; then
-        failed="Y"
+      if [[ "$line" == -A* ]] && [[ "$line" =~ $re ]]; then
+        line="${line/-A /-D }"
+
+        # Parse the quoting produced by iptables-save before deleting the rule.
+        if ! printf '%s\n' "$line" |
+          xargs -r iptables -t "$table" > /dev/null 2>&1; then
+          failed="Y"
+        fi
       fi
+
+    done <<< "$rules"
+
+  fi
+
+  # Remove the dedicated DNAT chain after deleting its rules and references.
+  if iptables -t nat -S "$dnat_chain" > /dev/null 2>&1; then
+
+    if ! iptables -t nat -F "$dnat_chain" > /dev/null 2>&1; then
+      failed="Y"
     fi
 
-  done <<< "$rules"
+    if ! iptables -t nat -X "$dnat_chain" > /dev/null 2>&1; then
+      failed="Y"
+    fi
+
+  fi
 
   enabled "$failed" && return 1
   return 0
