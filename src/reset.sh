@@ -34,6 +34,8 @@ detectEngine() {
     else
       [ -z "$ENGINE" ] && ENGINE="Kubernetes"
     fi
+  elif [ -f "/.dockerenv" ]; then
+    ENGINE="Docker"
   fi
 
   return 0
