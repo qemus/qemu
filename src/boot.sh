@@ -240,7 +240,26 @@ detectSmbiosSerial() {
   return 0
 }
 
+stopTpm() {
+
+  local pid=""
+
+  if [ -s "$TPM_PID" ] && read -r pid < "$TPM_PID" && [ -n "$pid" ]; then
+    pKill "$pid" 2
+
+    if isAlive "$pid"; then
+      kill -9 -- "$pid" 2>/dev/null || :
+    fi
+  fi
+
+  rm -f "$TPM_PID" "$TPM_SOCKET"
+  return 0
+}
+
 startTpm() {
+
+  local i=0
+  local rc=0
 
   SWTPM="/run/swtpm"
   TPM_PID="/var/run/tpm.pid"
@@ -268,6 +287,7 @@ startTpm() {
   } || :
 
   if (( rc != 0 )); then
+    stopTpm
     error "Failed to start TPM emulator, reason: $rc"
     return 0
   fi
@@ -285,6 +305,7 @@ startTpm() {
   done
 
   if [ ! -S "$TPM_SOCKET" ]; then
+    stopTpm
     error "TPM socket ($TPM_SOCKET) not found? Disabling TPM module..."
     return 0
   fi
@@ -302,11 +323,13 @@ enabled "$DEBUG" && echo "$msg"
 
 configureBootMode
 addWindowsBootOptions
+
 clearNvram
 configureUefi
 enableIgnoreMsrs
 checkClocksource
 detectSmbiosSerial
+
 startTpm
 
 return 0
