@@ -2,8 +2,6 @@
 set -Eeuo pipefail
 
 msg="Checking memory..."
-
-html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
 app() {
@@ -112,7 +110,6 @@ checkMinimumMemory() {
 }
 
 getMemoryInfo
-AVAIL_MEM=$(formatBytes "$RAM_AVAIL")
 
 checkConfiguredMemory
 configureHalfMemory
