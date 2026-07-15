@@ -271,6 +271,10 @@ startTpm() {
     return 0
   fi
 
+  msg="Starting TPM emulator..."
+  html "$msg"
+  enabled "$DEBUG" && echo "$msg"
+
   # Workaround to circumvent AppArmor profile
   if [ ! -x "$SWTPM" ]; then
     if ! cp /usr/bin/swtpm "$SWTPM"; then

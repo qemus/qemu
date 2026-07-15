@@ -1818,5 +1818,4 @@ if [ -n "$IP" ]; then
 
 fi
 
-html "Initialized network successfully..."
 return 0
