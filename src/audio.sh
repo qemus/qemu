@@ -4,12 +4,11 @@ set -Eeuo pipefail
 NOVNC="/usr/share/novnc"
 NOVNC_HTML="$NOVNC/vnc.html"
 AUDIO_RELAY="/run/audio.py"
-AUDIO_FIFO="/run/audio.fifo"
-AUDIO_PIPE="/run/audio-pipe.sh"
 AUDIO_PID="$QEMU_DIR/audio.pid"
+AUDIO_FIFO="$QEMU_DIR/audio.fifo"
+AUDIO_SOCKET="$QEMU_DIR/audio.sock"
 AUDIO_PLUGIN="/var/www/js/audio.js"
-
-RELAY_PORT="4712"
+AUDIO_PIPE="$QEMU_DIR/audio-pipe.sh"
 
 installAudioPlugin() {
 
@@ -72,10 +71,12 @@ startAudioRelay() {
     return 1
   }
 
-  rm -f "$AUDIO_FIFO"
+  rm -f "$AUDIO_FIFO" "$AUDIO_SOCKET"
   mkfifo -m 0600 "$AUDIO_FIFO"
 
-  python3 "$AUDIO_RELAY" >/var/log/audio-relay.log 2>&1 &
+  python3 "$AUDIO_RELAY" "$AUDIO_FIFO" "$AUDIO_SOCKET" \
+    >/var/log/audio-relay.log 2>&1 &
+
   local pid=$!
 
   if ! echo "$pid" > "$AUDIO_PID"; then
@@ -86,6 +87,7 @@ startAudioRelay() {
   sleep 0.1
 
   if ! isAlive "$pid"; then
+    rm -f "$AUDIO_SOCKET"
     error "Failed to start audio relay!"
     return 1
   fi

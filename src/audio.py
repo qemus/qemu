@@ -1,23 +1,28 @@
 import os
+import sys
 import socket
 import threading
 
-PORT = 4712
-FIFO = "/run/audio.fifo"
+FIFO = sys.argv[1]
+SOCKET = sys.argv[2]
 
 clients = set()
 lock = threading.Lock()
 
-server = socket.socket()
-server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-server.bind(("127.0.0.1", PORT))
+try:
+    os.unlink(SOCKET)
+except FileNotFoundError:
+    pass
+
+server = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+server.bind(SOCKET)
+os.chmod(SOCKET, 0o600)
 server.listen(16)
 
 
 def accept_loop():
     while True:
         client, _ = server.accept()
-        client.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
         client.settimeout(1)
 
         with lock:
