@@ -310,10 +310,6 @@ startTpm() {
     return 0
   fi
 
-  if [ -f "$DEST.tpm" ] && ! setOwner "$DEST.tpm"; then
-    error "Failed to set the owner for \"$DEST.tpm\" !"
-  fi
-
   BOOT_OPTS+=" -chardev socket,id=chrtpm,path=$TPM_SOCKET"
   BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm"
   BOOT_OPTS+=" -device tpm-tis,tpmdev=tpm0"
