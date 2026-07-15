@@ -1803,14 +1803,18 @@ if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" != "1500" ]]; then
   fi
 fi
 
-if ! echo "$IP" > "$QEMU_DIR"/qemu.ip; then
-  error "Failed to write QEMU IP file!"
-  exit 24
-fi
+if [ -n "$IP" ]; then
 
-if ! echo "http://$IP:$CHECK_PORT" > "$QEMU_DIR"/qemu.url; then
-  error "Failed to write QEMU URL file!"
-  exit 24
+  if ! echo "$IP" > "$QEMU_DIR"/qemu.ip; then
+    error "Failed to write QEMU IP file!"
+    exit 24
+  fi
+
+  if ! echo "http://$IP:$CHECK_PORT" > "$QEMU_DIR"/qemu.url; then
+    error "Failed to write QEMU URL file!"
+    exit 24
+  fi
+
 fi
 
 html "Initialized network successfully..."
