@@ -137,14 +137,21 @@ downloadFile() {
   local url="$1"
   local base="$2"
   local name="$3"
+  local expected="${4:-0}"
   local dest="$STORAGE/$base"
-  local msg rc total size progress log reason=""
+  local msg rc total size log
+  local reason=""
+  local progress=()
+  local dotbytes=10485760
 
   # Check if running with interactive TTY or redirected to docker log
   if [ -t 1 ]; then
-    progress="--progress=bar:noscroll"
+    progress=( --progress=bar:noscroll )
   else
-    progress="--progress=dot:giga"
+    if [[ "$expected" =~ ^[0-9]+$ ]] && (( expected > 0 )); then
+      dotbytes=$(( (expected + 199) / 200 ))
+    fi
+    progress=( --progress=dot --execute "dotbytes=$dotbytes" )
   fi
 
   if [ -z "$name" ]; then
@@ -158,12 +165,11 @@ downloadFile() {
   html "$msg..."
   log=$(mktemp)
 
-  /run/progress.sh "$dest" "0" "$msg ([P])..." &
+  /run/progress.sh "$dest" "$expected" "$msg ([P])..." &
 
   {
     LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
-      --no-http-keep-alive --show-progress "$progress" \
-      --output-file="$log"
+      --no-http-keep-alive --show-progress "${progress[@]}" --output-file="$log"
     rc=$?
   } || :
 
