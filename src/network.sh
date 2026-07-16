@@ -1396,7 +1396,12 @@ configureNAT() {
 
   if [[ "$forwarding" != "1" ]]; then
     { sysctl -w net.ipv4.ip_forward=1 > /dev/null 2>&1; rc=$?; } || :
-    if (( rc != 0 )) || [[ $(< /proc/sys/net/ipv4/ip_forward) -eq 0 ]]; then
+
+    forwarding=""
+    [ -r /proc/sys/net/ipv4/ip_forward ] &&
+      forwarding=$(< /proc/sys/net/ipv4/ip_forward)
+
+    if (( rc != 0 )) || [[ "$forwarding" != "1" ]]; then
       enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
       warn "IP forwarding is disabled. $ADD_ERR --sysctl net.ipv4.ip_forward=1"
       return 1
