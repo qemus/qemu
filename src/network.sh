@@ -1543,7 +1543,7 @@ compat() {
   local gateway="$1"
   local interface="$2"
   local samba="20.20.20.1"
-  local label="compat" msg=""
+  local label="compat" msg="" rc
   local err="failed to configure IP alias for backwards compatibility."
 
   [[ "$samba" == "$gateway" ]] && return 0
@@ -1558,15 +1558,23 @@ compat() {
   fi
 
   # Preserve the legacy 20.20.20.1 host.lan address used by older guest hosts-file entries.
-  if ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>/dev/null; then
+  { msg=$(ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>&1); rc=$?; } || :
+
+  if (( rc == 0 )); then
     SAMBA_INTERFACE="$samba"
-  else
-    msg=$(ip address add dev "$interface" "$samba/24" label "$interface:$label" 2>&1)
-    if [[ "${msg,,}" != *"address already assigned"* ]]; then
-      if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
-        echo "$msg" >&2
-        warn "$err $ADD_ERR --cap-add NET_ADMIN"
-      fi
+    return 0
+  fi
+
+  if [[ "${msg,,}" != *"address already assigned"* ]]; then
+    if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+      [ -n "$msg" ] && echo "$msg" >&2
+
+      case "${msg,,}" in
+        *"operation not permitted"* | *"permission denied"* )
+          warn "$err Please add the NET_ADMIN capability." ;;
+        * )
+          warn "$err" ;;
+      esac
     fi
   fi
 
