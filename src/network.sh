@@ -1265,6 +1265,7 @@ configureTables() {
   local subnet="$2"
   local preferred=""
   local alternate=""
+  local restore="N"
 
   preferred=$(getTablesBackend) || {
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
@@ -1303,20 +1304,25 @@ configureTables() {
   # Try the alternate backend when it is available.
   if setTables "$alternate"; then
 
+    restore="Y"
+
     # Remove rules left by a previous run from the alternate backend.
     if ! clearTables; then
       warn "failed to clean up the existing $alternate IP tables configuration!"
-      return 1
-    fi
-
-    if applyTables "$ip" "$subnet" "Y"; then
+    elif applyTables "$ip" "$subnet" "Y"; then
       checkExistingTables
       return 0
+    elif ! clearTables; then
+      warn "failed to clean up the partial $alternate IP tables configuration!"
+    else
+      restore="N"
     fi
 
-    # Clean the failed alternate attempt before returning to the preferred backend.
-    if ! clearTables; then
-      warn "failed to clean up the partial $alternate IP tables configuration!"
+    if enabled "$restore"; then
+      if ! setTables "$preferred"; then
+        enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+        warn "failed to restore the preferred $preferred IP tables backend!"
+      fi
       return 1
     fi
 
