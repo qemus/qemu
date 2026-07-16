@@ -938,10 +938,7 @@ showRules() {
 
   { rules=$(iptables -t "$table" -S "$chain" 2>&1); rc=$?; } || :
 
-  if (( rc != 0 )); then
-    warn "the $table iptable is unavailable, so those networking rules will be skipped."
-    return 1
-  fi
+  (( rc == 0 )) || return 1
 
   enabled "$DEBUG" || return 0
 
@@ -990,12 +987,14 @@ checkExistingTables() {
     fi
   fi
 
-  showRules nat PREROUTING "NAT PREROUTING"
-  showRules filter FORWARD "filter FORWARD"
-  showRules nat POSTROUTING "NAT POSTROUTING"
+  showRules nat PREROUTING "NAT PREROUTING" || :
+  showRules filter FORWARD "filter FORWARD" || :
+  showRules nat POSTROUTING "NAT POSTROUTING" || :
 
   if showRules mangle FORWARD "mangle FORWARD"; then
-    showRules mangle POSTROUTING "mangle POSTROUTING"
+    showRules mangle POSTROUTING "mangle POSTROUTING" || :
+  else
+    warn "the mangle iptable is unavailable, so checksum correction and TCP MSS clamping rules will be skipped."
   fi
 
   return 0
@@ -1364,17 +1363,6 @@ closeNetwork() {
   return 0
 }
 
-cleanUp() {
-
-  closeInterfaces
-
-  # Clean up old files
-  rm -f "$PASST_PID" "$PASST_SOCKET"
-  rm -f "$DNSMASQ_PID" /etc/resolv.dnsmasq
-
-  return 0
-}
-
 # ######################################
 #  Detection
 # ######################################
@@ -1706,7 +1694,7 @@ showGuestInfo() {
   return 0
 }
 
-prepareNetwork() {
+initializeNetwork() {
 
   detectInterface
   validateInterface
@@ -1726,6 +1714,12 @@ prepareNetwork() {
 
   showHostInfo
 
+  closeInterfaces
+
+  # Clean up old files
+  rm -f "$PASST_PID" "$PASST_SOCKET"
+  rm -f "$DNSMASQ_PID" /etc/resolv.dnsmasq
+
   return 0
 }
 
@@ -1742,8 +1736,7 @@ msg="Initializing network..."
 html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
-prepareNetwork
-cleanUp
+initializeNetwork
 
 if enabled "$DHCP"; then
 
