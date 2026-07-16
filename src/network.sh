@@ -859,7 +859,7 @@ configurePasst() {
 
     local rc=0
     rm -f "$log"
-  
+
     PASST_OPTS="${PASST_OPTS/ -q/}"
     { "$PASST" ${PASST_OPTS:+$PASST_OPTS}; rc=$?; } || :
 
