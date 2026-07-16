@@ -1011,17 +1011,13 @@ runTableRule() {
   shift
 
   { msg=$("$@" 2>&1); rc=$?; } || :
+  (( rc == 0 )) && return 0
 
-  if (( rc != 0 )); then
-
-    if ! enabled "$silent" || enabled "$DEBUG"; then
-      [ -n "$msg" ] && echo "$msg" >&2
-    fi
-
-    return 1
+  if ! enabled "$silent" || enabled "$DEBUG"; then
+    [ -n "$msg" ] && echo "$msg" >&2
   fi
 
-  return 0
+  return 1
 }
 
 tableError() {
