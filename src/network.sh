@@ -1261,12 +1261,70 @@ applyTables() {
   return 0
 }
 
+clearTables() {
+
+  local table="" line=""
+  local rules="" failed="N"
+  local dnat_chain="QEMU_DNAT"
+  local rule_tag="$dnat_chain"
+  local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
+
+  # Return 2 when the currently selected backend cannot be accessed.
+  # This lets configureTables() distinguish it from an actual rule-cleanup failure.
+  if ! rules=$(iptables-save 2> /dev/null); then
+    return 2
+  fi
+
+  if [ -n "$rules" ]; then
+
+    # Delete every rule tagged with our unique identifier,
+    # leaving all other rules intact.
+    while IFS= read -r line; do
+
+      case "$line" in
+        \*nat ) table="nat" ;;
+        \*filter ) table="filter" ;;
+        \*mangle ) table="mangle" ;;
+        \*raw ) table="raw" ;;
+      esac
+
+      if [[ "$line" == -A* ]] && [[ "$line" =~ $re ]]; then
+        line="${line/-A /-D }"
+
+        # Parse the quoting produced by iptables-save before deleting the rule.
+        if ! printf '%s\n' "$line" |
+          xargs -r iptables -t "$table" > /dev/null 2>&1; then
+          failed="Y"
+        fi
+      fi
+
+    done <<< "$rules"
+
+  fi
+
+  # Remove the dedicated DNAT chain after deleting its rules and references.
+  if iptables -t nat -S "$dnat_chain" > /dev/null 2>&1; then
+
+    if ! iptables -t nat -F "$dnat_chain" > /dev/null 2>&1; then
+      failed="Y"
+    fi
+
+    if ! iptables -t nat -X "$dnat_chain" > /dev/null 2>&1; then
+      failed="Y"
+    fi
+
+  fi
+
+  enabled "$failed" && return 1
+  return 0
+}
+
 configureTables() {
 
   local ip="$1"
   local subnet="$2"
   local preferred=""
-  local alternate=""
+  local alternate="" rc=0
   local preferred_clean="N"
   local alternate_dirty="N"
 
@@ -1303,30 +1361,70 @@ configureTables() {
       return 1
     fi
 
-  elif enabled "$DEBUG"; then
-    warn "failed to clean up the existing $preferred IP tables configuration!"
+  else
+
+    rc=$?
+
+    # The preferred backend was accessible, but its rules could not be removed.
+    # Do not switch while partial or stale rules may still be active.
+    if (( rc == 1 )); then
+      enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+      warn "failed to clean up the existing $preferred IP tables configuration!"
+      return 1
+    fi
+
+    # Return code 2 means the preferred backend itself could not be accessed,
+    # so it is safe to try the alternate backend.
+    if (( rc != 2 )); then
+      enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+      warn "failed to access the $preferred IP tables backend!"
+      return 1
+    fi
+
+    if enabled "$DEBUG"; then
+      warn "failed to access the $preferred IP tables backend!"
+    fi
+
   fi
 
-  # Try the alternate backend even when the preferred backend cannot be accessed.
+  # Try the alternate backend when the preferred backend failed.
   if setTables "$alternate"; then
 
     # Remove rules left by a previous run from the alternate backend.
-    if ! clearTables; then
-      alternate_dirty="Y"
+    if clearTables; then
 
-      if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
-        warn "failed to clean up the existing $alternate IP tables configuration!"
+      if applyTables "$ip" "$subnet" "Y"; then
+        checkExistingTables
+        return 0
       fi
 
-    elif applyTables "$ip" "$subnet" "Y"; then
-      checkExistingTables
-      return 0
+      if ! clearTables; then
+        alternate_dirty="Y"
 
-    elif ! clearTables; then
-      alternate_dirty="Y"
+        if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+          warn "failed to clean up the partial $alternate IP tables configuration!"
+        fi
+      fi
 
-      if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
-        warn "failed to clean up the partial $alternate IP tables configuration!"
+    else
+
+      rc=$?
+
+      # Only mark the alternate backend dirty when it was accessible but cleanup failed.
+      if (( rc == 1 )); then
+        alternate_dirty="Y"
+
+        if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+          warn "failed to clean up the existing $alternate IP tables configuration!"
+        fi
+      elif (( rc != 2 )); then
+        alternate_dirty="Y"
+
+        if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+          warn "failed to inspect the existing $alternate IP tables configuration!"
+        fi
+      elif enabled "$DEBUG"; then
+        warn "failed to access the $alternate IP tables backend!"
       fi
 
     fi
@@ -1340,7 +1438,7 @@ configureTables() {
     return 1
   fi
 
-  # Do not continue while inaccessible or partial rules remain in the alternate backend.
+  # Do not continue while partial rules remain in the alternate backend.
   enabled "$alternate_dirty" && return 1
 
   # Both backend failures were already shown in debug mode.
@@ -1349,9 +1447,9 @@ configureTables() {
   # Rootless NAT failures should remain silent before falling back.
   enabled "$ROOTLESS" && return 1
 
-  # A completely inaccessible preferred backend cannot be retried diagnostically.
+  # An inaccessible preferred backend cannot be retried diagnostically.
   if ! enabled "$preferred_clean"; then
-    warn "failed to clean up the existing $preferred IP tables configuration!"
+    warn "failed to access both IP tables backends!"
     return 1
   fi
 
@@ -1374,10 +1472,6 @@ configureTables() {
 
   return 1
 }
-
-# ######################################
-#  NAT configuration
-# ######################################
 
 configureNAT() {
 
@@ -1461,66 +1555,6 @@ configureNAT() {
   configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" || return 1
 
   IP="$ip"
-  return 0
-}
-
-# ######################################
-#  IP Tables
-# ######################################
-
-clearTables() {
-
-  local table="" line=""
-  local rules="" failed="N"
-  local dnat_chain="QEMU_DNAT"
-  local rule_tag="$dnat_chain"
-  local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
-
-  # Always clean the currently selected backend. Backend selection is handled
-  # exclusively by configureTables().
-  ! rules=$(iptables-save 2> /dev/null) && return 1
-
-  if [ -n "$rules" ]; then
-
-    # Delete every rule tagged with our unique identifier,
-    # leaving all other rules intact.
-    while IFS= read -r line; do
-
-      case "$line" in
-        \*nat ) table="nat" ;;
-        \*filter ) table="filter" ;;
-        \*mangle ) table="mangle" ;;
-        \*raw ) table="raw" ;;
-      esac
-
-      if [[ "$line" == -A* ]] && [[ "$line" =~ $re ]]; then
-        line="${line/-A /-D }"
-
-        # Parse the quoting produced by iptables-save before deleting the rule.
-        if ! printf '%s\n' "$line" |
-          xargs -r iptables -t "$table" > /dev/null 2>&1; then
-          failed="Y"
-        fi
-      fi
-
-    done <<< "$rules"
-
-  fi
-
-  # Remove the dedicated DNAT chain after deleting its rules and references.
-  if iptables -t nat -S "$dnat_chain" > /dev/null 2>&1; then
-
-    if ! iptables -t nat -F "$dnat_chain" > /dev/null 2>&1; then
-      failed="Y"
-    fi
-
-    if ! iptables -t nat -X "$dnat_chain" > /dev/null 2>&1; then
-      failed="Y"
-    fi
-
-  fi
-
-  enabled "$failed" && return 1
   return 0
 }
 
