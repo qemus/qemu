@@ -1572,17 +1572,21 @@ compat() {
     return 0
   fi
 
-  if [[ "${msg,,}" != *"address already assigned"* ]]; then
-    if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
-      [ -n "$msg" ] && echo "$msg" >&2
+  case "${msg,,}" in
+    *"address already assigned"* | *"file exists"* )
+      SAMBA_INTERFACE="$samba"
+      return 0 ;;
+  esac
 
-      case "${msg,,}" in
-        *"operation not permitted"* | *"permission denied"* )
-          warn "$err Please add the NET_ADMIN capability." ;;
-        * )
-          warn "$err" ;;
-      esac
-    fi
+  if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+    [ -n "$msg" ] && echo "$msg" >&2
+
+    case "${msg,,}" in
+      *"operation not permitted"* | *"permission denied"* )
+        warn "$err Please add the NET_ADMIN capability." ;;
+      * )
+        warn "$err" ;;
+    esac
   fi
 
   return 0
