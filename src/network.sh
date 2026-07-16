@@ -932,7 +932,6 @@ createTap() {
 hasTable() {
 
   iptables -t "$1" -S > /dev/null 2>&1
-
 }
 
 showRules() {
@@ -1004,48 +1003,68 @@ checkExistingTables() {
   return 0
 }
 
-configureTables() {
+runTableRule() {
+
+  local silent="$1"
+  local rc msg=""
+
+  shift
+
+  { msg=$("$@" 2>&1); rc=$?; } || :
+
+  if (( rc != 0 )); then
+
+    if ! enabled "$silent" || enabled "$DEBUG"; then
+      [ -n "$msg" ] && echo "$msg" >&2
+    fi
+
+    return 1
+  fi
+
+  return 0
+}
+
+tableError() {
+
+  local silent="$1"
+  local message="$2"
+
+  if ! enabled "$silent" || enabled "$DEBUG"; then
+    warn "$message"
+  fi
+
+  return 1
+}
+
+applyTables() {
 
   local ip="$1"
   local subnet="$2"
+  local silent="${3:-N}"
   local exclude="" port=""
   local rule_tag="remove"
   local dnat_chain="QEMU_DNAT"
   local tables_err="failed to configure IP tables!"
   local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
-  if ! clearTables; then
-    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
-    warn "failed to select a working IP tables backend!"
-    return 1
-  fi
-
-  checkExistingTables
   exclude=$(getHostPorts)
 
   # NAT traffic from the VM subnet leaving through any external interface.
-  if ! iptables -t nat -A POSTROUTING \
+  if ! runTableRule "$silent" \
+    iptables -t nat -A POSTROUTING \
     ! -o "$BRIDGE" \
     -s "$subnet" \
     ! -d "$subnet" \
     -m comment --comment "$rule_tag" \
-    -j MASQUERADE > /dev/null 2>&1; then
-    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
-
-    if ! iptables -t nat -A POSTROUTING \
-      ! -o "$BRIDGE" \
-      -s "$subnet" \
-      ! -d "$subnet" \
-      -m comment --comment "$rule_tag" \
-      -j MASQUERADE; then
-      warn "$tables"
-      return 1
-    fi
+    -j MASQUERADE; then
+    tableError "$silent" "$tables"
+    return 1
   fi
 
   # Use a dedicated chain so protected TCP ports do not depend on multiport support.
-  if ! iptables -t nat -N "$dnat_chain"; then
-    warn "$tables_err"
+  if ! runTableRule "$silent" \
+    iptables -t nat -N "$dnat_chain"; then
+    tableError "$silent" "$tables_err"
     return 1
   fi
 
@@ -1054,32 +1073,35 @@ configureTables() {
 
     [ -z "$port" ] && continue
 
-    if ! iptables -t nat -A "$dnat_chain" \
+    if ! runTableRule "$silent" \
+      iptables -t nat -A "$dnat_chain" \
       -p tcp \
       --dport "$port" \
       -m comment --comment "$rule_tag" \
       -j RETURN; then
-      warn "$tables_err"
+      tableError "$silent" "$tables_err"
       return 1
     fi
 
   done
 
   # Forward every remaining protocol and port to the VM.
-  if ! iptables -t nat -A "$dnat_chain" \
+  if ! runTableRule "$silent" \
+    iptables -t nat -A "$dnat_chain" \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
-    warn "$tables_err"
+    tableError "$silent" "$tables_err"
     return 1
   fi
 
   # Process incoming traffic addressed to the container through the VM chain.
-  if ! iptables -t nat -A PREROUTING \
+  if ! runTableRule "$silent" \
+    iptables -t nat -A PREROUTING \
     ! -i "$BRIDGE" \
     -m addrtype --dst-type LOCAL \
     -m comment --comment "$rule_tag" \
     -j "$dnat_chain"; then
-    warn "$tables_err"
+    tableError "$silent" "$tables_err"
     return 1
   fi
 
@@ -1107,28 +1129,130 @@ configureTables() {
     -j TCPMSS --clamp-mss-to-pmtu > /dev/null 2>&1 || true
 
   # Allow forwarding from the VM bridge to external interfaces.
-  if ! iptables -A FORWARD \
+  if ! runTableRule "$silent" \
+    iptables -A FORWARD \
     -i "$BRIDGE" \
     ! -o "$BRIDGE" \
     -s "$subnet" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    warn "$tables_err"
+    tableError "$silent" "$tables_err"
     return 1
   fi
 
   # Allow forwarding from external interfaces to the VM.
-  if ! iptables -A FORWARD \
+  if ! runTableRule "$silent" \
+    iptables -A FORWARD \
     ! -i "$BRIDGE" \
     -o "$BRIDGE" \
     -d "$ip" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    warn "$tables_err"
+    tableError "$silent" "$tables_err"
     return 1
   fi
 
   return 0
+}
+
+configureTables() {
+
+  local ip="$1"
+  local subnet="$2"
+
+  local preferred=""
+  local alternate=""
+  local final_silent="N"
+
+  preferred=$(getTablesBackend) || {
+    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+    warn "failed to determine the active IP tables backend!"
+    return 1
+  }
+
+  case "$preferred" in
+    "nft" )
+      alternate="legacy"
+      ;;
+    "legacy" )
+      alternate="nft"
+      ;;
+    * )
+      enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+      warn "unsupported IP tables backend: $preferred"
+      return 1
+      ;;
+  esac
+
+  # Remove rules left by a previous run from the preferred backend.
+  if ! clearTables; then
+    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+    warn "failed to clean up the existing $preferred IP tables configuration!"
+    return 1
+  fi
+
+  # Try the preferred backend without reporting provisional failures.
+  if applyTables "$ip" "$subnet" "Y"; then
+    checkExistingTables
+    return 0
+  fi
+
+  # Never switch backends while partial rules remain in the current backend.
+  if ! clearTables; then
+    warn "failed to clean up the partial $preferred IP tables configuration!"
+    return 1
+  fi
+
+  # Try the alternate backend when it is available.
+  if setTables "$alternate"; then
+
+    # Remove rules left by a previous run from the alternate backend.
+    if ! clearTables; then
+      warn "failed to clean up the existing $alternate IP tables configuration!"
+      return 1
+    fi
+
+    if applyTables "$ip" "$subnet" "Y"; then
+      checkExistingTables
+      return 0
+    fi
+
+    # Clean the failed alternate attempt before returning to the preferred backend.
+    if ! clearTables; then
+      warn "failed to clean up the partial $alternate IP tables configuration!"
+      return 1
+    fi
+
+  fi
+
+  # Restore the preferred backend so its failure can be reported.
+  if ! setTables "$preferred"; then
+    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+    warn "failed to restore the preferred $preferred IP tables backend!"
+    return 1
+  fi
+
+  # Verify that no rules remain before the diagnostic attempt.
+  if ! clearTables; then
+    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+    warn "failed to clean up the existing $preferred IP tables configuration!"
+    return 1
+  fi
+
+  # Preserve the existing silent fallback behaviour for rootless containers.
+  enabled "$ROOTLESS" && ! enabled "$DEBUG" && final_silent="Y"
+
+  if applyTables "$ip" "$subnet" "$final_silent"; then
+    checkExistingTables
+    return 0
+  fi
+
+  # Do not leave a partial ruleset after the final failed attempt.
+  if ! clearTables; then
+    warn "failed to clean up the partial $preferred IP tables configuration!"
+  fi
+
+  return 1
 }
 
 configureNAT() {
@@ -1212,6 +1336,25 @@ configureNAT() {
 #  IP Tables
 # ######################################
 
+getTablesBackend() {
+
+  local version=""
+
+  version=$(iptables --version 2>/dev/null || true)
+
+  case "$version" in
+    *nf_tables* )
+      echo "nft"
+      ;;
+    *legacy* )
+      echo "legacy"
+      ;;
+    * )
+      return 1
+      ;;
+  esac
+}
+
 setTables() {
 
   local mode="$1"
@@ -1223,50 +1366,6 @@ setTables() {
   update-alternatives --set iptables "$path" > /dev/null 2>&1
 }
 
-testTables() {
-
-  local table=""
-
-  # Test every table required by the networking rules.
-  for table in nat filter; do
-    iptables -t "$table" -S > /dev/null 2>&1 || return 1
-    iptables-save -t "$table" > /dev/null 2>&1 || return 1
-  done
-
-  return 0
-}
-
-selectTables() {
-
-  local mode="" modes=() current=""
-
-  # Keep the currently selected backend when it is fully functional.
-  if testTables; then
-    return 0
-  fi
-
-  current=$(iptables --version 2>/dev/null || true)
-
-  if [[ "$current" == *"nf_tables"* ]]; then
-    modes=( "legacy" )
-  elif [[ "$current" == *"legacy"* ]]; then
-    modes=( "nft" )
-  elif [[ "${ENGINE,,}" == "docker" ]]; then
-    modes=( "legacy" "nft" )
-  else
-    modes=( "nft" "legacy" )
-  fi
-
-  for mode in "${modes[@]}"; do
-
-    command -v "iptables-$mode" > /dev/null 2>&1 || continue
-    setTables "$mode" && testTables && return 0
-
-  done
-
-  return 1
-}
-
 clearTables() {
 
   local table="" line=""
@@ -1275,9 +1374,8 @@ clearTables() {
   local dnat_chain="QEMU_DNAT"
   local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
-  selectTables || return 1
-
-  # Store the current iptables ruleset.
+  # Always clean the currently selected backend. Backend selection is handled
+  # exclusively by configureTables().
   ! rules=$(iptables-save 2> /dev/null) && return 1
 
   if [ -n "$rules" ]; then
