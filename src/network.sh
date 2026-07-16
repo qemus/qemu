@@ -899,7 +899,14 @@ createBridge() {
   if (( rc != 0 )); then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
     [ -n "$msg" ] && echo "$msg" >&2
-    warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN"
+
+    case "${msg,,}" in
+      *"operation not permitted"* | *"permission denied"* )
+        warn "failed to create bridge. $ADD_ERR --cap-add NET_ADMIN" ;;
+      * )
+        warn "failed to create bridge." ;;
+    esac
+
     return 1
   fi
 
