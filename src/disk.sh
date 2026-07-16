@@ -43,7 +43,7 @@ ext2fmt() {
 getSize() {
 
   local diskFile="$1"
-  local diskExt="" diskFmt="" size=""
+  local diskExt diskFmt size
 
   diskExt=$(echo "${diskFile//*./}" | sed 's/^.*\.//')
   diskFmt=$(ext2fmt "$diskExt")
@@ -140,8 +140,8 @@ normalizeSize() {
   local diskDesc="$2"
   local dir="$3"
 
-  local gb="" free="" space=""
-  local spare=1073741824 dataSize=""
+  local gb free space
+  local dataSize spare=1073741824
 
   if [[ "${diskSpace,,}" == "max" || "${diskSpace,,}" == "half" ]]; then
 
@@ -197,8 +197,8 @@ baseDir() {
 freeSpace() {
 
   local path="$1"
-  local base=""
 
+  local base
   base=$(baseDir "$path")
 
   if ! available=$(df --output=avail -B 1 "$path" | tail -n 1); then
@@ -222,8 +222,8 @@ createDisk() {
   local diskFmt="$4"
   local fs="$5"
 
-  local gb="" dir="" base=""
-  local attributes="" available=""
+  local gb dir base
+  local attributes available
 
   rm -f "$diskFile"
 
@@ -296,10 +296,8 @@ resizeDisk() {
   local diskFmt="$4"
   local fs="$5"
 
-  local gb="" dir="" base=""
-  local msg="" required=""
-  local failure="" available=""
-  local dataSize="" currentSize=""
+  local gb dir base dataSize
+  local available currentSize
 
   currentSize=$(getSize "$diskFile") || exit 71
   dataSize=$(numfmt --from=iec "$diskSpace")
@@ -356,11 +354,10 @@ convertDisk() {
   local diskBase="$5"
   local diskDesc="$6"
   local fs="$7"
-
-  local gb="" dir="" base=""
   local tmpFile="$diskBase.tmp"
-  local attributes="" available=""
-  local currentSize=""
+
+  local gb dir base attributes
+  local available currentSize
 
   [ -f "$destinationFile" ] && error "Conversion failed, destination file $destinationFile already exists?" && exit 79
   [ ! -f "$sourceFile" ] && error "Conversion failed, source file $sourceFile does not exist?" && exit 79
@@ -451,8 +448,8 @@ checkFS () {
   local diskFile="$2"
   local diskDesc="$3"
 
-  local dir="" base=""
-  local attributes=""
+  local dir base
+  local attributes
 
   dir=$(dirname "$diskFile")
   base=$(baseDir "$dir")
@@ -493,8 +490,8 @@ createDevice () {
   local diskCache="$7"
   local diskSerial="$8"
   local diskSectors="$9"
-
   local bus="${PCI_BUS:-pcie.0}"
+
   [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] && bus="pci.0"
 
   local bootIndex=""
@@ -545,8 +542,8 @@ addMedia () {
   local diskType="$2"
   local diskIndex="$3"
   local diskAddress="$4"
-
   local bus="${PCI_BUS:-pcie.0}"
+
   [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] && bus="pci.0"
 
   local bootIndex=""
@@ -618,12 +615,11 @@ addDisk () {
   local diskIo="$8"
   local diskCache="$9"
 
-  local fs="" dir=""
-  local used="" space=""
-  local diskExt="" diskFile=""
-  local dataSize="" missing=""
-  local available="" currentSize=""
-  local previousExt="" previousFmt=""
+  local fs dir used space
+  local diskExt diskFile
+  local dataSize missing
+  local available currentSize
+  local previousExt previousFmt
 
   diskExt=$(fmt2ext "$diskFmt")
   diskFile="$diskBase.$diskExt"
@@ -693,7 +689,7 @@ addDisk () {
 
     if (( missing > 0 )); then
 
-      local gb="" base="" msg=""
+      local gb base msg
 
       gb=$(formatBytes "$available")
       base=$(baseDir "$dir")
@@ -729,13 +725,12 @@ addDevice () {
   local diskType="$2"
   local diskIndex="$3"
   local diskAddress="$4"
-
-  local result="" sectors=""
-  local logical="" physical=""
+  local sectors="" logical="" physical=""
 
   [ -z "$diskDev" ] && return 0
   [ ! -b "$diskDev" ] && error "Device $diskDev cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
 
+  local result
   result=$(fdisk -l "$diskDev" 2>/dev/null | grep -m 1 -o "(logical/physical): .*" | cut -c 21- || true)
 
   if [ -n "$result" ]; then
