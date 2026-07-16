@@ -417,16 +417,58 @@ cpu() {
 
 hasDisk() {
 
+  local bytes=102400
+  local file="" tmp=""
+  local files=( "/disk" "/disk1" "/dev/disk1" )
+
   enabled "${DISK_DISABLE:-}" && return 1
 
-  [ -b "/disk" ] && return 0
-  [ -b "/disk1" ] && return 0
-  [ -b "/dev/disk1" ] && return 0
-  [ -b "${DEVICE:-}" ] && return 0
-
   [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
-  [ -s "$STORAGE/$DISK_NAME.img" ]  && return 0
-  [ -s "$STORAGE/$DISK_NAME.qcow2" ] && return 0
+  [ -n "${DEVICE:-}" ] && files+=( "$DEVICE" )
+
+  files+=(
+    "$STORAGE/$DISK_NAME.img"
+    "$STORAGE/$DISK_NAME.qcow2"
+  )
+
+  for file in "${files[@]}"; do
+
+    if [ -b "$file" ]; then
+      cmp -s -n "$bytes" "$file" /dev/zero || return 0
+      continue
+    fi
+
+    [ -s "$file" ] || continue
+
+    case "${file,,}" in
+
+      *.img)
+
+        cmp -s -n "$bytes" "$file" /dev/zero || return 0 ;;
+
+      *.qcow2)
+
+        tmp=$(mktemp) || {
+          warn "failed to create a temporary file while inspecting \"$file\"."
+          return 0
+        }
+
+        if ! qemu-img dd -f qcow2 -O raw bs="$bytes" count=1 \
+            "if=$file" "of=$tmp" >/dev/null 2>&1; then
+          rm -f "$tmp"
+          warn "failed to inspect disk \"$file\", assuming it contains data."
+          return 0
+        fi
+
+        if ! cmp -s -n "$bytes" "$tmp" /dev/zero; then
+          rm -f "$tmp"
+          return 0
+        fi
+
+        rm -f "$tmp" ;;
+    esac
+
+  done
 
   return 1
 }
