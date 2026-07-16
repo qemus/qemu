@@ -857,7 +857,9 @@ configurePasst() {
 
   if ! "$PASST" ${PASST_OPTS:+$PASST_OPTS} >/dev/null 2>&1; then
 
+    local rc=0
     rm -f "$log"
+  
     PASST_OPTS="${PASST_OPTS/ -q/}"
     { "$PASST" ${PASST_OPTS:+$PASST_OPTS}; rc=$?; } || :
 
