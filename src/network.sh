@@ -273,6 +273,23 @@ disableIPv6() {
   return 0
 }
 
+subnetInUse() {
+
+  local subnet="$1"
+  local routes=""
+
+  routes=$(
+    {
+      ip route show match "$subnet"
+      ip route show root "$subnet"
+    } 2>/dev/null |
+      awk '$1 != "default"' |
+      sort -u
+  )
+
+  [ -n "$routes" ]
+}
+
 guestIP() {
 
   local ip="$1"
@@ -309,7 +326,7 @@ natGuestIP() {
     guest="172.$second.$third.$fourth"
     subnet=$(networkCIDR "$guest") || return 1
 
-    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
+    if ! subnetInUse "$subnet"; then
       echo "$guest"
       return 0
     fi
@@ -319,7 +336,7 @@ natGuestIP() {
     guest="172.$second.$third.$fourth"
     subnet=$(networkCIDR "$guest") || return 1
 
-    if ! ip route show "$subnet" 2>/dev/null | grep -q .; then
+    if ! subnetInUse "$subnet"; then
       echo "$guest"
       return 0
     fi
@@ -1318,7 +1335,7 @@ configureNAT() {
   local gateway="${ip%.*}.1"
   subnet=$(networkCIDR "$ip") || return 1
 
-  if ip route show "$subnet" 2>/dev/null | grep -q .; then
+  if subnetInUse "$subnet"; then
     error "VM subnet $subnet conflicts with an existing route inside the container."
     return 1
   fi
@@ -1527,8 +1544,8 @@ validateMask() {
 
   PREFIX=$(maskToCIDR "$MASK") || exit 28
 
-  if (( PREFIX < 1 || PREFIX > 24 )); then
-    error "Unsupported MASK: '$MASK' (supported range: /1 through /24)"
+  if (( PREFIX < 16 || PREFIX > 24 )); then
+    error "Unsupported MASK: '$MASK' (supported range: /16 through /24)"
     exit 28
   fi
 
