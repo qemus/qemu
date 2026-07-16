@@ -180,7 +180,7 @@ detectInterface() {
     return 0
   fi
 
-  # Give Kubernetes priority over the default interface
+  # Prefer the last attached Kubernetes network
   [ -d "/sys/class/net/net0" ] && DEV="net0"
   [ -d "/sys/class/net/net1" ] && DEV="net1"
   [ -d "/sys/class/net/net2" ] && DEV="net2"
