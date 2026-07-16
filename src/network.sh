@@ -873,10 +873,8 @@ configurePasst() {
 
   if enabled "$PASST_DEBUG"; then
     tail -fn +0 "$log" --pid=$$ &
-  else
-    if enabled "$DEBUG"; then
-      [ -f "$log" ] && [ -s "$log" ] && cat "$log" && echo ""
-    fi
+  elif enabled "$DEBUG"; then
+    [ -f "$log" ] && [ -s "$log" ] && cat "$log" && echo ""
   fi
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=$PASST_SOCKET"
