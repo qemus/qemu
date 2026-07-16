@@ -21,7 +21,6 @@ DISK_DISCARD=$(strip "$DISK_DISCARD")
 DISK_ROTATION=$(strip "$DISK_ROTATION")
 
 fmt2ext() {
-
   local diskFmt="$1"
 
   case "${diskFmt,,}" in
@@ -32,7 +31,6 @@ fmt2ext() {
 }
 
 ext2fmt() {
-
   local diskExt="$1"
 
   case "${diskExt,,}" in
@@ -44,9 +42,8 @@ ext2fmt() {
 
 getSize() {
 
-  local size=""
-  local diskExt="" diskFmt=""
   local diskFile="$1"
+  local diskExt="" diskFmt="" size=""
 
   diskExt=$(echo "${diskFile//*./}" | sed 's/^.*\.//')
   diskFmt=$(ext2fmt "$diskExt")
@@ -58,12 +55,10 @@ getSize() {
 
     qcow2)
       size=$(qemu-img info --output=json -f "$diskFmt" "$diskFile" | jq -r '."virtual-size" // empty')
-
       if [[ ! "$size" =~ ^[0-9]+$ ]]; then
         error "Failed to determine virtual size of $diskFile"
         exit 78
       fi
-
       echo "$size"
       ;;
 
@@ -75,7 +70,6 @@ getSize() {
 }
 
 isCow() {
-
   local fs="$1"
 
   if [[ "${fs,,}" == "btrfs" ]]; then
@@ -86,7 +80,6 @@ isCow() {
 }
 
 supportsDirect() {
-
   local fs="$1"
 
   if [[ "${fs,,}" == "ecryptfs" || "${fs,,}" == "tmpfs" ]]; then
@@ -143,10 +136,12 @@ getDiskOptions() {
 
 normalizeSize() {
 
-  local gb="" free="" space=""
-  local dir="$3" spare=1073741824
-  local diskDesc="$2" dataSize=""
   local diskSpace="$1"
+  local diskDesc="$2"
+  local dir="$3"
+
+  local gb="" free="" space=""
+  local spare=1073741824 dataSize=""
 
   if [[ "${diskSpace,,}" == "max" || "${diskSpace,,}" == "half" ]]; then
 
@@ -221,14 +216,18 @@ freeSpace() {
 
 createDisk() {
 
-  local fs="$5" gb="" dir="" base=""
-  local attributes="" available=""
-  local diskFmt="$4" dataSize=""
-  local diskDesc="$3" diskFile="$1"
+  local diskFile="$1"
   local diskSpace="$2"
+  local diskDesc="$3"
+  local diskFmt="$4"
+  local fs="$5"
+
+  local gb="" dir="" base=""
+  local attributes="" available=""
 
   rm -f "$diskFile"
 
+  local dataSize
   dataSize=$(numfmt --from=iec "$diskSpace")
 
   if ! disabled "$ALLOCATE"; then
@@ -259,7 +258,6 @@ createDisk() {
         if ! touch "$diskFile"; then
           error "$failure" && exit 77
         fi
-
         { chattr +C "$diskFile"; } || :
       fi
 
@@ -268,13 +266,12 @@ createDisk() {
         error "$failure" && exit 77
       fi
       ;;
-
     qcow2)
 
-      local diskParam=""
+      local diskParam
       diskParam=$(getDiskOptions "$fs" "$diskFmt")
 
-      if ! qemu-img create -f "$diskFmt" -o "$diskParam" -- "$diskFile" "$dataSize"; then
+      if ! qemu-img create -f "$diskFmt" -o "$diskParam" -- "$diskFile" "$dataSize" ; then
         rm -f "$diskFile"
         error "$failure" && exit 70
       fi
@@ -283,7 +280,6 @@ createDisk() {
 
   if isCow "$fs"; then
     attributes=$(lsattr "$diskFile")
-
     if [[ "$attributes" != *"C"* ]]; then
       error "Failed to disable COW for $diskDesc image $diskFile on ${fs^^} filesystem (returned $attributes)"
     fi
@@ -294,18 +290,21 @@ createDisk() {
 
 resizeDisk() {
 
-  local fs="$5" gb="" dir="" base="" msg=""
-  local required="" failure="" available=""
-  local diskFmt="$4" dataSize="" currentSize=""
-  local diskDesc="$3" diskFile="$1" diskSpace="$2"
+  local diskFile="$1"
+  local diskSpace="$2"
+  local diskDesc="$3"
+  local diskFmt="$4"
+  local fs="$5"
+
+  local gb="" dir="" base=""
+  local msg="" required=""
+  local failure="" available=""
+  local dataSize="" currentSize=""
 
   currentSize=$(getSize "$diskFile") || exit 71
   dataSize=$(numfmt --from=iec "$diskSpace")
-  required=$(( dataSize - currentSize ))
-
-  (( required < 1 )) &&
-    error "Shrinking disks is not supported yet, please increase ${diskDesc^^}_SIZE." &&
-    exit 71
+  local required=$(( dataSize - currentSize ))
+  (( required < 1 )) && error "Shrinking disks is not supported yet, please increase ${diskDesc^^}_SIZE." && exit 71
 
   if ! disabled "$ALLOCATE"; then
 
@@ -324,10 +323,10 @@ resizeDisk() {
   fi
 
   gb=$(formatBytes "$currentSize")
-  msg="Resizing $diskDesc from $gb to ${diskSpace/G/ GB}..."
-  info "$msg" && html "$msg"
+  MSG="Resizing $diskDesc from $gb to ${diskSpace/G/ GB}..."
+  info "$MSG" && html "$MSG"
 
-  failure="Could not resize the $DISK_STYLE $diskFmt $diskDesc image from ${gb} to ${diskSpace/G/ GB} ($diskFile)"
+  local failure="Could not resize the $DISK_STYLE $diskFmt $diskDesc image from ${gb} to ${diskSpace/G/ GB} ($diskFile)"
 
   case "${diskFmt,,}" in
     raw)
@@ -336,12 +335,12 @@ resizeDisk() {
         error "$failure" && exit 75
       fi
       ;;
-
     qcow2)
 
-      if ! qemu-img resize -f "$diskFmt" "--$DISK_ALLOC" "$diskFile" "$dataSize"; then
+      if ! qemu-img resize -f "$diskFmt" "--$DISK_ALLOC" "$diskFile" "$dataSize" ; then
         error "$failure" && exit 72
       fi
+
       ;;
   esac
 
@@ -350,20 +349,21 @@ resizeDisk() {
 
 convertDisk() {
 
-  local fs="$7" gb="" dir="" base="" msg=""
-  local tmpFile="$5.tmp"
-  local attributes="" available="" convertFlags="-p"
-  local diskBase="$5" diskDesc="$6" diskParam=""
-  local sourceFmt="$2" currentSize="" sourceFile="$1"
-  local destinationFmt="$4" destinationFile="$3"
+  local sourceFile="$1"
+  local sourceFmt="$2"
+  local destinationFile="$3"
+  local destinationFmt="$4"
+  local diskBase="$5"
+  local diskDesc="$6"
+  local fs="$7"
 
-  [ -f "$destinationFile" ] &&
-    error "Conversion failed, destination file $destinationFile already exists?" &&
-    exit 79
+  local gb="" dir="" base=""
+  local tmpFile="$diskBase.tmp"
+  local attributes="" available=""
+  local currentSize=""
 
-  [ ! -f "$sourceFile" ] &&
-    error "Conversion failed, source file $sourceFile does not exist?" &&
-    exit 79
+  [ -f "$destinationFile" ] && error "Conversion failed, destination file $destinationFile already exists?" && exit 79
+  [ ! -f "$sourceFile" ] && error "Conversion failed, source file $sourceFile does not exist?" && exit 79
 
   rm -f "$tmpFile"
 
@@ -385,10 +385,12 @@ convertDisk() {
 
   fi
 
-  msg="Converting $diskDesc to $destinationFmt"
+  local msg="Converting $diskDesc to $destinationFmt"
   html "$msg..."
   info "$msg, please wait until completed..."
 
+  local convertFlags="-p"
+  local diskParam
   diskParam=$(getDiskOptions "$fs" "$destinationFmt")
 
   if [[ "$destinationFmt" != "raw" ]]; then
@@ -417,7 +419,6 @@ convertDisk() {
           error "Failed to allocate $currentSize bytes for $diskDesc image $tmpFile"
         fi
       fi
-
     fi
   fi
 
@@ -433,7 +434,6 @@ convertDisk() {
 
   if isCow "$fs"; then
     attributes=$(lsattr "$destinationFile")
-
     if [[ "$attributes" != *"C"* ]]; then
       error "Failed to disable COW for $diskDesc image $destinationFile on ${fs^^} filesystem (returned $attributes)"
     fi
@@ -445,11 +445,14 @@ convertDisk() {
   return 0
 }
 
-checkFS() {
+checkFS () {
 
-  local fs="$1" dir="" base=""
-  local attributes="" diskDesc="$3"
+  local fs="$1"
   local diskFile="$2"
+  local diskDesc="$3"
+
+  local dir="" base=""
+  local attributes=""
 
   dir=$(dirname "$diskFile")
   base=$(baseDir "$dir")
@@ -470,7 +473,6 @@ checkFS() {
   if isCow "$fs"; then
     if [ -f "$diskFile" ]; then
       attributes=$(lsattr "$diskFile")
-
       if [[ "$attributes" != *"C"* ]]; then
         warn "COW (copy on write) is not disabled for $diskDesc image file $diskFile, this is recommended on ${fs^^} filesystems!"
       fi
@@ -480,7 +482,7 @@ checkFS() {
   return 0
 }
 
-createDevice() {
+createDevice () {
 
   local diskFile="$1"
   local diskType="$2"
@@ -493,46 +495,39 @@ createDevice() {
   local diskSectors="$9"
 
   local bus="${PCI_BUS:-pcie.0}"
-  local bootIndex="" diskId="data$diskIndex"
-  local result=" -drive file=$diskFile,id=$diskId,format=$diskFmt,cache=$diskCache,aio=$diskIo,discard=$DISK_DISCARD,detect-zeroes=on"
+  [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] && bus="pci.0"
 
-  [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] &&
-    bus="pci.0"
-
+  local bootIndex=""
+  local diskId="data$diskIndex"
   [ -n "$diskIndex" ] && bootIndex=",bootindex=$diskIndex"
+  local result=" -drive file=$diskFile,id=$diskId,format=$diskFmt,cache=$diskCache,aio=$diskIo,discard=$DISK_DISCARD,detect-zeroes=on"
 
   case "${diskType,,}" in
     "none" ) ;;
-
     "auto" )
       echo "$result"
       ;;
-
     "usb" )
       result+=",if=none \
       -device usb-storage,drive=${diskId}${bootIndex}${diskSerial}${diskSectors}"
       echo "$result"
       ;;
-
     "nvme" )
       result+=",if=none \
       -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${diskIndex}${diskSerial}${diskSectors}"
       echo "$result"
       ;;
-
     "ide" | "sata" )
       result+=",if=none \
       -device ich9-ahci,id=ahci${diskIndex},addr=$diskAddress \
       -device ide-hd,drive=${diskId},bus=ahci$diskIndex.0,rotation_rate=$DISK_ROTATION${bootIndex}${diskSerial}${diskSectors}"
       echo "$result"
       ;;
-
     "blk" | "virtio-blk" )
       result+=",if=none \
       -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$diskAddress,iothread=io2${bootIndex}${diskSerial}${diskSectors}"
       echo "$result"
       ;;
-
     "scsi" | "virtio-scsi" )
       result+=",if=none \
       -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress,iothread=io2,hotplug=off \
@@ -544,7 +539,7 @@ createDevice() {
   return 0
 }
 
-addMedia() {
+addMedia () {
 
   local diskFile="$1"
   local diskType="$2"
@@ -552,46 +547,39 @@ addMedia() {
   local diskAddress="$4"
 
   local bus="${PCI_BUS:-pcie.0}"
-  local bootIndex="" diskId="cdrom$diskIndex"
-  local result=" -drive file=$diskFile,id=$diskId,format=raw,cache=unsafe,readonly=on,media=cdrom"
+  [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] && bus="pci.0"
 
-  [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] &&
-    bus="pci.0"
-
+  local bootIndex=""
+  local diskId="cdrom$diskIndex"
   [ -n "$diskIndex" ] && bootIndex=",bootindex=$diskIndex"
+  local result=" -drive file=$diskFile,id=$diskId,format=raw,cache=unsafe,readonly=on,media=cdrom"
 
   case "${diskType,,}" in
     "none" ) ;;
-
     "auto" )
       echo "$result"
       ;;
-
     "usb" )
       result+=",if=none \
       -device usb-storage,drive=${diskId}${bootIndex},removable=on"
       echo "$result"
       ;;
-
     "nvme" )
       result+=",if=none \
       -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${diskIndex}"
       echo "$result"
       ;;
-
     "ide" | "sata" )
       result+=",if=none \
       -device ich9-ahci,id=ahci${diskIndex},addr=$diskAddress \
       -device ide-cd,drive=${diskId},bus=ahci${diskIndex}.0${bootIndex}"
       echo "$result"
       ;;
-
     "blk" | "virtio-blk" )
       result+=",if=none \
       -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$diskAddress,iothread=io2${bootIndex}"
       echo "$result"
       ;;
-
     "scsi" | "virtio-scsi" )
       result+=",if=none \
       -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress,iothread=io2,hotplug=off \
@@ -603,29 +591,22 @@ addMedia() {
   return 0
 }
 
-finishDisks() {
+finishDisks () {
 
-  local type=""
+  local type
 
   for type in "${DISK_TYPE,,}" "${MEDIA_TYPE,,}"; do
     case "$type" in
       "blk" | "scsi" | "virtio-blk" | "virtio-scsi" )
-        [[ "$DISK_OPTS" != *" -object iothread,id=io2"* ]] &&
-          DISK_OPTS+=" -object iothread,id=io2"
-        break
-        ;;
+        [[ "$DISK_OPTS" != *" -object iothread,id=io2"* ]] && DISK_OPTS+=" -object iothread,id=io2"
+        break ;;
     esac
   done
 
   return 0
 }
 
-addDisk() {
-
-  local fs="" dir="" used="" space=""
-  local diskExt="" diskFile=""
-  local dataSize="" missing="" available=""
-  local previousExt="" previousFmt="" currentSize=""
+addDisk () {
 
   local diskBase="$1"
   local diskType="$2"
@@ -636,6 +617,13 @@ addDisk() {
   local diskFmt="$7"
   local diskIo="$8"
   local diskCache="$9"
+
+  local fs="" dir=""
+  local used="" space=""
+  local diskExt="" diskFile=""
+  local dataSize="" missing=""
+  local available="" currentSize=""
+  local previousExt="" previousFmt=""
 
   diskExt=$(fmt2ext "$diskFmt")
   diskFile="$diskBase.$diskExt"
@@ -654,7 +642,7 @@ addDisk() {
     diskCache="writeback"
   fi
 
-  if [ ! -s "$diskFile" ]; then
+  if [ ! -s "$diskFile" ] ; then
 
     if [[ "${diskFmt,,}" != "raw" ]]; then
       previousFmt="raw"
@@ -664,7 +652,7 @@ addDisk() {
 
     previousExt=$(fmt2ext "$previousFmt")
 
-    if [ -s "$diskBase.$previousExt" ]; then
+    if [ -s "$diskBase.$previousExt" ] ; then
       convertDisk "$diskBase.$previousExt" "$previousFmt" "$diskFile" "$diskFmt" "$diskBase" "$diskDesc" "$fs" || exit $?
     fi
 
@@ -735,7 +723,7 @@ addDisk() {
   return 0
 }
 
-addDevice() {
+addDevice () {
 
   local diskDev="$1"
   local diskType="$2"
@@ -784,17 +772,14 @@ fi
 
 case "${DISK_DISCARD,,}" in
   "y" | "yes" | "true" | "1" | "on" | "unmap" )
-    DISK_DISCARD="unmap"
-    ;;
+    DISK_DISCARD="unmap" ;;
 
   "n" | "no" | "false" | "0" | "off" | "ignore" )
-    DISK_DISCARD="ignore"
-    ;;
+    DISK_DISCARD="ignore" ;;
 
   * )
     warn "Invalid DISK_DISCARD value '$DISK_DISCARD', using 'unmap'."
-    DISK_DISCARD="unmap"
-    ;;
+    DISK_DISCARD="unmap" ;;
 esac
 
 if [[ ! "$DISK_ROTATION" =~ ^[0-9]+$ ]]; then
@@ -840,30 +825,22 @@ fi
 if [ -s "$BOOT" ]; then
   case "${BOOT,,}" in
     *".iso" )
-      if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
-        hybrid="0000"
-      else
-        hybrid=$(head -c 512 "$BOOT" | tail -c 2 | xxd -p)
-      fi
-
-      if [[ "$hybrid" != "0000" ]]; then
-        DISK_OPTS+=$(addMedia "$BOOT" "usb" "$BOOT_INDEX" "0x5")
-      else
-        DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "$BOOT_INDEX" "0x5")
-      fi
-      ;;
-
+        if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
+          hybrid="0000"
+        else
+          hybrid=$(head -c 512 "$BOOT" | tail -c 2 | xxd -p)
+        fi
+        if [[ "$hybrid" != "0000" ]]; then
+          DISK_OPTS+=$(addMedia "$BOOT" "usb" "$BOOT_INDEX" "0x5")
+        else
+          DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "$BOOT_INDEX" "0x5")
+        fi ;;
     *".img" | *".raw" )
-      DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "")
-      ;;
-
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "") ;;
     *".qcow2" )
-      DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "qcow2" "$DISK_IO" "$DISK_CACHE" "" "")
-      ;;
-
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "qcow2" "$DISK_IO" "$DISK_CACHE" "" "") ;;
     * )
-      error "Invalid BOOT image specified, extension \".${BOOT/*./}\" is not recognized!" && exit 80
-      ;;
+        error "Invalid BOOT image specified, extension \".${BOOT/*./}\" is not recognized!" && exit 80 ;;
   esac
 fi
 
