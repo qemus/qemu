@@ -1267,7 +1267,8 @@ configureTables() {
   local subnet="$2"
   local preferred=""
   local alternate=""
-  local restore="N"
+  local preferred_clean="N"
+  local alternate_dirty="N"
 
   preferred=$(getTablesBackend) || {
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
@@ -1284,64 +1285,68 @@ configureTables() {
       return 1 ;;
   esac
 
-  # Remove rules left by a previous run from the preferred backend.
-  if ! clearTables; then
-    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+  # Try the preferred backend first.
+  if clearTables; then
+
+    preferred_clean="Y"
+
+    # Try the preferred backend without reporting provisional failures.
+    if applyTables "$ip" "$subnet" "Y"; then
+      checkExistingTables
+      return 0
+    fi
+
+    # Never switch backends while partial rules remain in the preferred backend.
+    if ! clearTables; then
+      enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+      warn "failed to clean up the partial $preferred IP tables configuration!"
+      return 1
+    fi
+
+  elif enabled "$DEBUG"; then
     warn "failed to clean up the existing $preferred IP tables configuration!"
-    return 1
   fi
 
-  # Try the preferred backend without reporting provisional failures.
-  if applyTables "$ip" "$subnet" "Y"; then
-    checkExistingTables
-    return 0
-  fi
-
-  # Never switch backends while partial rules remain in the current backend.
-  if ! clearTables; then
-    warn "failed to clean up the partial $preferred IP tables configuration!"
-    return 1
-  fi
-
-  # Try the alternate backend when it is available.
+  # Try the alternate backend even when the preferred backend cannot be accessed.
   if setTables "$alternate"; then
-
-    restore="Y"
 
     # Remove rules left by a previous run from the alternate backend.
     if ! clearTables; then
-      warn "failed to clean up the existing $alternate IP tables configuration!"
+      alternate_dirty="Y"
+      enabled "$ROOTLESS" && ! enabled "$DEBUG" ||
+        warn "failed to clean up the existing $alternate IP tables configuration!"
     elif applyTables "$ip" "$subnet" "Y"; then
       checkExistingTables
       return 0
     elif ! clearTables; then
-      warn "failed to clean up the partial $alternate IP tables configuration!"
-    else
-      restore="N"
-    fi
-
-    if enabled "$restore"; then
-      if ! setTables "$preferred"; then
-        enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
-        warn "failed to restore the preferred $preferred IP tables backend!"
-      fi
-      return 1
+      alternate_dirty="Y"
+      enabled "$ROOTLESS" && ! enabled "$DEBUG" ||
+        warn "failed to clean up the partial $alternate IP tables configuration!"
     fi
 
   fi
 
-  # Restore the preferred backend.
+  # Restore the preferred backend after the alternate attempt failed.
   if ! setTables "$preferred"; then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
     warn "failed to restore the preferred $preferred IP tables backend!"
     return 1
   fi
 
+  # Do not continue while inaccessible or partial rules remain in the alternate backend.
+  enabled "$alternate_dirty" && return 1
+
   # Both backend failures were already shown in debug mode.
   enabled "$DEBUG" && return 1
 
   # Rootless NAT failures should remain silent before falling back.
   enabled "$ROOTLESS" && return 1
+
+  # A completely inaccessible preferred backend cannot be retried diagnostically.
+  if ! enabled "$preferred_clean"; then
+    warn "failed to clean up the existing $preferred IP tables configuration!"
+    return 1
+  fi
 
   # Verify that no rules remain before the diagnostic attempt.
   if ! clearTables; then
