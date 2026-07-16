@@ -38,6 +38,7 @@ RUN <<EOF
     xz-utils \
     apt-utils \
     net-tools \
+    diffutils \
     e2fsprogs \
     qemu-utils \
     util-linux \
