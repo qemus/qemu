@@ -972,6 +972,29 @@ hasTable() {
   iptables -t "$1" -S > /dev/null 2>&1
 }
 
+getTablesBackend() {
+
+  local version=""
+  version=$(iptables --version 2>/dev/null || true)
+
+  case "$version" in
+    *nf_tables* ) echo "nft" ;;
+    *legacy* ) echo "legacy" ;;
+    * ) return 1 ;;
+  esac
+}
+
+setTables() {
+
+  local mode="$1"
+  local path=""
+
+  path=$(command -v "iptables-$mode" 2>/dev/null || true)
+  [ -z "$path" ] && return 1
+
+  update-alternatives --set iptables "$path" > /dev/null 2>&1
+}
+
 showRules() {
 
   local table="$1"
@@ -1044,12 +1067,17 @@ checkExistingTables() {
 runTableRule() {
 
   local silent="$1"
+  local result="$2"
   local rc msg=""
 
-  shift
+  shift 2
+
+  printf -v "$result" '%s' ""
 
   { msg=$("$@" 2>&1); rc=$?; } || :
   (( rc == 0 )) && return 0
+
+  printf -v "$result" '%s' "$msg"
 
   if ! enabled "$silent" || enabled "$DEBUG"; then
     [ -n "$msg" ] && echo "$msg" >&2
@@ -1061,11 +1089,29 @@ runTableRule() {
 tableError() {
 
   local silent="$1"
-  local message="$2"
+  local message="${2,,}"
 
-  if ! enabled "$silent" || enabled "$DEBUG"; then
-    warn "$message"
+  if enabled "$silent" && ! enabled "$DEBUG"; then
+    return 1
   fi
+
+  case "$message" in
+    *"permission denied"* | *"operation not permitted"* )
+      warn "IP tables access was denied. Add the NET_ADMIN capability or use user-mode networking."
+      ;;
+    *"table does not exist"* | *"can't initialize iptables table"* )
+      warn "The required IP tables kernel modules may be unavailable. Try: sudo modprobe ip_tables iptable_nat"
+      ;;
+    *"no chain/target/match by that name"* )
+      warn "A required IP tables target or match is unavailable in the host kernel."
+      ;;
+    *"could not fetch rule set generation id"* )
+      warn "The nftables backend is unavailable or inaccessible in this container."
+      ;;
+    * )
+      warn "Failed to configure IP tables. Verify NET_ADMIN access and host IP tables support."
+      ;;
+  esac
 
   return 1
 }
@@ -1076,29 +1122,28 @@ applyTables() {
   local subnet="$2"
   local silent="${3:-N}"
   local exclude="" port=""
+  local table_error=""
   local dnat_chain="QEMU_DNAT"
   local rule_tag="$dnat_chain"
-  local tables_err="failed to configure IP tables!"
-  local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
   exclude=$(getHostPorts)
 
   # NAT traffic from the VM subnet leaving through any external interface.
-  if ! runTableRule "$silent" \
+  if ! runTableRule "$silent" table_error \
     iptables -t nat -A POSTROUTING \
     ! -o "$BRIDGE" \
     -s "$subnet" \
     ! -d "$subnet" \
     -m comment --comment "$rule_tag" \
     -j MASQUERADE; then
-    tableError "$silent" "$tables"
+    tableError "$silent" "$table_error"
     return 1
   fi
 
   # Use a dedicated chain so protected TCP ports do not depend on multiport support.
-  if ! runTableRule "$silent" \
+  if ! runTableRule "$silent" table_error \
     iptables -t nat -N "$dnat_chain"; then
-    tableError "$silent" "$tables_err"
+    tableError "$silent" "$table_error"
     return 1
   fi
 
@@ -1107,40 +1152,40 @@ applyTables() {
 
     [ -z "$port" ] && continue
 
-    if ! runTableRule "$silent" \
+    if ! runTableRule "$silent" table_error \
       iptables -t nat -A "$dnat_chain" \
       -p tcp \
       --dport "$port" \
       -m comment --comment "$rule_tag" \
       -j RETURN; then
-      tableError "$silent" "$tables_err"
+      tableError "$silent" "$table_error"
       return 1
     fi
 
   done
 
   # Forward every remaining protocol and port to the VM.
-  if ! runTableRule "$silent" \
+  if ! runTableRule "$silent" table_error \
     iptables -t nat -A "$dnat_chain" \
     -m comment --comment "$rule_tag" \
     -j DNAT --to "$ip"; then
-    tableError "$silent" "$tables_err"
+    tableError "$silent" "$table_error"
     return 1
   fi
 
   # Process incoming traffic addressed to the container through the VM chain.
-  if ! runTableRule "$silent" \
+  if ! runTableRule "$silent" table_error \
     iptables -t nat -A PREROUTING \
     ! -i "$BRIDGE" \
     -m addrtype --dst-type LOCAL \
     -m comment --comment "$rule_tag" \
     -j "$dnat_chain"; then
-    tableError "$silent" "$tables_err"
+    tableError "$silent" "$table_error"
     return 1
   fi
 
   # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
-  runTableRule "Y" \
+  runTableRule "Y" table_error \
     iptables -t mangle -A POSTROUTING \
     -s "$subnet" \
     -p udp \
@@ -1149,7 +1194,7 @@ applyTables() {
     -j CHECKSUM --checksum-fill || true
 
   # Clamp TCP MSS to avoid subtle MTU blackholes when the outer path has a smaller MTU.
-  runTableRule "Y" \
+  runTableRule "Y" table_error \
     iptables -t mangle -A FORWARD \
     -s "$subnet" \
     -p tcp \
@@ -1157,7 +1202,7 @@ applyTables() {
     -m comment --comment "$rule_tag" \
     -j TCPMSS --clamp-mss-to-pmtu || true
 
-  runTableRule "Y" \
+  runTableRule "Y" table_error \
     iptables -t mangle -A FORWARD \
     -d "$ip" \
     -p tcp \
@@ -1166,54 +1211,30 @@ applyTables() {
     -j TCPMSS --clamp-mss-to-pmtu || true
 
   # Allow forwarding from the VM bridge to external interfaces.
-  if ! runTableRule "$silent" \
+  if ! runTableRule "$silent" table_error \
     iptables -A FORWARD \
     -i "$BRIDGE" \
     ! -o "$BRIDGE" \
     -s "$subnet" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    tableError "$silent" "$tables_err"
+    tableError "$silent" "$table_error"
     return 1
   fi
 
   # Allow forwarding from external interfaces to the VM.
-  if ! runTableRule "$silent" \
+  if ! runTableRule "$silent" table_error \
     iptables -A FORWARD \
     ! -i "$BRIDGE" \
     -o "$BRIDGE" \
     -d "$ip" \
     -m comment --comment "$rule_tag" \
     -j ACCEPT; then
-    tableError "$silent" "$tables_err"
+    tableError "$silent" "$table_error"
     return 1
   fi
 
   return 0
-}
-
-getTablesBackend() {
-
-  local version=""
-
-  version=$(iptables --version 2>/dev/null || true)
-
-  case "$version" in
-    *nf_tables* ) echo "nft" ;;
-    *legacy* ) echo "legacy" ;;
-    * ) return 1 ;;
-  esac
-}
-
-setTables() {
-
-  local mode="$1"
-  local path=""
-
-  path=$(command -v "iptables-$mode" 2>/dev/null || true)
-  [ -z "$path" ] && return 1
-
-  update-alternatives --set iptables "$path" > /dev/null 2>&1
 }
 
 configureTables() {
