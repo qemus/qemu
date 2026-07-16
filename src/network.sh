@@ -1155,14 +1155,36 @@ applyTables() {
   return 0
 }
 
+getTablesBackend() {
+
+  local version=""
+
+  version=$(iptables --version 2>/dev/null || true)
+
+  case "$version" in
+    *nf_tables* ) echo "nft" ;;
+    *legacy* ) echo "legacy" ;;
+    * ) return 1 ;;
+  esac
+}
+
+setTables() {
+
+  local mode="$1"
+  local path=""
+
+  path=$(command -v "iptables-$mode" 2>/dev/null || true)
+  [ -z "$path" ] && return 1
+
+  update-alternatives --set iptables "$path" > /dev/null 2>&1
+}
+
 configureTables() {
 
   local ip="$1"
   local subnet="$2"
-
   local preferred=""
   local alternate=""
-  local final_silent="N"
 
   preferred=$(getTablesBackend) || {
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
@@ -1171,17 +1193,12 @@ configureTables() {
   }
 
   case "$preferred" in
-    "nft" )
-      alternate="legacy"
-      ;;
-    "legacy" )
-      alternate="nft"
-      ;;
+    "nft" ) alternate="legacy" ;;
+    "legacy" ) alternate="nft" ;;
     * )
       enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
       warn "unsupported IP tables backend: $preferred"
-      return 1
-      ;;
+      return 1 ;;
   esac
 
   # Remove rules left by a previous run from the preferred backend.
@@ -1225,24 +1242,27 @@ configureTables() {
 
   fi
 
-  # Restore the preferred backend so its failure can be reported.
+  # Restore the preferred backend.
   if ! setTables "$preferred"; then
     enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
     warn "failed to restore the preferred $preferred IP tables backend!"
     return 1
   fi
 
+  # Both backend failures were already shown in debug mode.
+  enabled "$DEBUG" && return 1
+
+  # Rootless NAT failures should remain silent before falling back.
+  enabled "$ROOTLESS" && return 1
+
   # Verify that no rules remain before the diagnostic attempt.
   if ! clearTables; then
-    enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
     warn "failed to clean up the existing $preferred IP tables configuration!"
     return 1
   fi
 
-  # Preserve the existing silent fallback behaviour for rootless containers.
-  enabled "$ROOTLESS" && ! enabled "$DEBUG" && final_silent="Y"
-
-  if applyTables "$ip" "$subnet" "$final_silent"; then
+  # Repeat the preferred backend once to show its actual failure.
+  if applyTables "$ip" "$subnet" "N"; then
     checkExistingTables
     return 0
   fi
@@ -1335,36 +1355,6 @@ configureNAT() {
 # ######################################
 #  IP Tables
 # ######################################
-
-getTablesBackend() {
-
-  local version=""
-
-  version=$(iptables --version 2>/dev/null || true)
-
-  case "$version" in
-    *nf_tables* )
-      echo "nft"
-      ;;
-    *legacy* )
-      echo "legacy"
-      ;;
-    * )
-      return 1
-      ;;
-  esac
-}
-
-setTables() {
-
-  local mode="$1"
-  local path=""
-
-  path=$(command -v "iptables-$mode" 2>/dev/null || true)
-  [ -z "$path" ] && return 1
-
-  update-alternatives --set iptables "$path" > /dev/null 2>&1
-}
 
 clearTables() {
 
