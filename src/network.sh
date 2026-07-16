@@ -1772,9 +1772,20 @@ configureMAC() {
 
 showHostInfo() {
 
-  local mtu="" host="" uplink=""
+  local mtu="" host="" uplink="" prefix=""
 
-  uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
+  prefix=$(ip -4 -o address show dev "$DEV" scope global 2>/dev/null |
+    awk -v ip="$UPLINK" '
+      {
+        split($4, address, "/")
+        if (address[1] == ip) {
+          print address[2]
+          exit
+        }
+      }
+    ')
+
+  uplink=$(formatAddress "$UPLINK" "$prefix" || true)
   [ -z "$uplink" ] && uplink="(none)"
 
   local line="❯ Host: $uplink"
@@ -1783,7 +1794,7 @@ showHostInfo() {
   [ -n "$host" ] && line+=" ($host)"
 
   local obvious=""
-  if [[ "$uplink" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
+  if [[ "$UPLINK" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)\.[0-9]+$ ]]; then
     obvious="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.${BASH_REMATCH[3]}.1"
   fi
 
