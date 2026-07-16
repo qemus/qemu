@@ -1140,27 +1140,30 @@ applyTables() {
   fi
 
   # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
-  iptables -t mangle -A POSTROUTING \
+  runTableRule "Y" \
+    iptables -t mangle -A POSTROUTING \
     -s "$subnet" \
     -p udp \
     --dport bootpc \
     -m comment --comment "$rule_tag" \
-    -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
+    -j CHECKSUM --checksum-fill || true
 
   # Clamp TCP MSS to avoid subtle MTU blackholes when the outer path has a smaller MTU.
-  iptables -t mangle -A FORWARD \
+  runTableRule "Y" \
+    iptables -t mangle -A FORWARD \
     -s "$subnet" \
     -p tcp \
     --tcp-flags SYN,RST SYN \
     -m comment --comment "$rule_tag" \
-    -j TCPMSS --clamp-mss-to-pmtu > /dev/null 2>&1 || true
+    -j TCPMSS --clamp-mss-to-pmtu || true
 
-  iptables -t mangle -A FORWARD \
+  runTableRule "Y" \
+    iptables -t mangle -A FORWARD \
     -d "$ip" \
     -p tcp \
     --tcp-flags SYN,RST SYN \
     -m comment --comment "$rule_tag" \
-    -j TCPMSS --clamp-mss-to-pmtu > /dev/null 2>&1 || true
+    -j TCPMSS --clamp-mss-to-pmtu || true
 
   # Allow forwarding from the VM bridge to external interfaces.
   if ! runTableRule "$silent" \
