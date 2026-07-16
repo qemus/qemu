@@ -193,6 +193,22 @@ detectInterface() {
   return 0
 }
 
+formatAddress() {
+
+  local ip="${1:-}"
+  local prefix="${2:-}"
+  local result="$ip"
+
+  [ -z "$result" ] && return 1
+
+  if [ -n "$prefix" ] && [[ "$prefix" != "24" ]]; then
+    result+="/$prefix"
+  fi
+
+  echo "$result"
+  return 0
+}
+
 detectAddresses() {
 
   GATEWAY=$(ip route list dev "$DEV" | awk ' /^default/ {print $3}' | head -n 1)
@@ -274,12 +290,8 @@ guestIP() {
 natGuestIP() {
 
   local ip="$1"
-  local third=""
-  local fourth=""
-  local start=""
-  local second=""
-  local guest=""
-  local subnet=""
+  local start="" guest="" subnet=""
+  local second="" third="" fourth=""
 
   third=$(cut -d. -f3 <<< "$ip")
   fourth=$(cut -d. -f4 <<< "$ip")
@@ -317,6 +329,36 @@ natGuestIP() {
   return 1
 }
 
+kernelAtLeast() {
+
+  local major="$1"
+  local minor="${2:-0}"
+
+  (( KERNEL > major || (KERNEL == major && MINOR >= minor) ))
+}
+
+canBindToDevice() {
+
+  local dev="$1"
+  [ -n "$dev" ] || return 1
+
+  kernelAtLeast 5 7 || return 1
+  [ -d "/sys/class/net/$dev" ] || return 1
+  command -v python3 > /dev/null 2>&1 || return 0
+
+  python3 - "$dev" > /dev/null 2>&1 <<'PY'
+import socket
+import sys
+
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_BINDTODEVICE,
+        sys.argv[1].encode() + b"\0",
+    )
+PY
+}
+
 # ######################################
 #  DNS / port helpers
 # ######################################
@@ -329,8 +371,7 @@ configureDNS() {
   local host="$4"
   local mask="$5"
   local gateway="$6"
-  local arguments="$DNSMASQ_OPTS"
-  local rc
+  local arguments="$DNSMASQ_OPTS" rc
 
   enabled "${DNSMASQ_DISABLE:-}" && return 0
   enabled "$DEBUG" && echo "Starting dnsmasq daemon..."
@@ -415,10 +456,8 @@ configureDNS() {
 
 getHostPorts() {
 
-  local num=""
-  local list=""
-  local port=""
-  local ports=""
+  local num="" list=""
+  local port="" ports=""
   local mode="${1:-tcp}"
   local display="${DISPLAY:-}"
 
@@ -473,11 +512,8 @@ getUserPorts() {
   [[ "${BOOT_MODE:-}" == "windows"* ]] && defaults="3389/tcp,3389/udp"
   local list="$defaults,${USER_PORTS// /},"
 
-  local num=""
-  local ports=""
-  local proto=""
-  local userport=""
-  local hostport=""
+  local num="" ports="" proto=""
+  local userport="" hostport=""
 
   local exclude=""
   exclude=$(getHostPorts "all")
@@ -524,8 +560,7 @@ getUserPorts() {
 getSlirp() {
 
   local ip="$1"
-  local args=""
-  local list=""
+  local args="" list=""
 
   list=$(getUserPorts)
 
@@ -549,12 +584,9 @@ getSlirp() {
 
 getPasst() {
 
-  local args=""
-  local list=""
-  local port=""
-  local num=""
-  local tcp=""
-  local udp=""
+  local args="" list="" port=""
+  local num="" tcp="" udp=""
+  local bind="$UPLINK"
 
   list=$(getUserPorts)
 
@@ -583,8 +615,12 @@ getPasst() {
   tcp="${tcp%,}"
   udp="${udp%,}"
 
-  [ -n "$tcp" ] && args+=" -t %${DEV}/$tcp"
-  [ -n "$udp" ] && args+=" -u %${DEV}/$udp"
+  if canBindToDevice "$DEV"; then
+    bind="%$DEV"
+  fi
+
+  [ -n "$tcp" ] && args+=" -t $bind/$tcp"
+  [ -n "$udp" ] && args+=" -u $bind/$udp"
 
   echo "$args"
   return 0
@@ -893,6 +929,12 @@ createTap() {
   return 0
 }
 
+hasTable() {
+
+  iptables -t "$1" -S > /dev/null 2>&1
+
+}
+
 showRules() {
 
   local table="$1"
@@ -900,8 +942,9 @@ showRules() {
   local label="$3"
   local rules=""
 
-  rules=$(iptables -t "$table" -S "$chain" 2>/dev/null |
-    awk '$1 == "-A"' || true)
+  enabled "$DEBUG" || return 0
+
+  rules=$(iptables -t "$table" -S "$chain" 2>/dev/null | awk '$1 == "-A"' || true)
 
   [ -n "$rules" ] || return 0
 
@@ -911,9 +954,7 @@ showRules() {
 
 checkExistingTables() {
 
-  local msg=""
-  local rules=""
-  local conflicts=""
+  local msg="" rules="" conflicts=""
 
   rules=$(iptables -t nat -S PREROUTING 2>/dev/null |
     awk '$1 == "-A"' || true)
@@ -949,12 +990,15 @@ checkExistingTables() {
     fi
   fi
 
-  if enabled "$DEBUG"; then
-    showRules nat PREROUTING "NAT PREROUTING"
-    showRules filter FORWARD "filter FORWARD"
-    showRules nat POSTROUTING "NAT POSTROUTING"
+  showRules nat PREROUTING "NAT PREROUTING"
+  showRules filter FORWARD "filter FORWARD"
+  showRules nat POSTROUTING "NAT POSTROUTING"
+
+  if hasTable mangle; then
     showRules mangle FORWARD "mangle FORWARD"
     showRules mangle POSTROUTING "mangle POSTROUTING"
+  else
+    warn "the mangle iptable is unavailable, so checksum correction and TCP MSS clamping rules will be skipped."
   fi
 
   return 0
@@ -964,10 +1008,9 @@ configureTables() {
 
   local ip="$1"
   local subnet="$2"
-  local exclude=""
-  local port=""
-  local dnat_chain="QEMU_DNAT"
+  local exclude="" port=""
   local rule_tag="remove"
+  local dnat_chain="QEMU_DNAT"
   local tables_err="failed to configure IP tables!"
   local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
@@ -1040,15 +1083,13 @@ configureTables() {
     return 1
   fi
 
-  if (( KERNEL > 4 )); then
-    # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
-    iptables -t mangle -A POSTROUTING \
-      -s "$subnet" \
-      -p udp \
-      --dport bootpc \
-      -m comment --comment "$rule_tag" \
-      -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
-  fi
+  # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
+  iptables -t mangle -A POSTROUTING \
+    -s "$subnet" \
+    -p udp \
+    --dport bootpc \
+    -m comment --comment "$rule_tag" \
+    -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
 
   # Clamp TCP MSS to avoid subtle MTU blackholes when the outer path has a smaller MTU.
   iptables -t mangle -A FORWARD \
@@ -1197,9 +1238,7 @@ testTables() {
 
 selectTables() {
 
-  local mode=""
-  local current=""
-  local modes=()
+  local mode="" modes=() current=""
 
   # Keep the currently selected backend when it is fully functional.
   if testTables; then
@@ -1230,12 +1269,10 @@ selectTables() {
 
 clearTables() {
 
-  local table=""
-  local line=""
-  local rules=""
-  local failed="N"
-  local dnat_chain="QEMU_DNAT"
+  local table="" line=""
+  local rules="" failed="N"
   local rule_tag="remove"
+  local dnat_chain="QEMU_DNAT"
   local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
   selectTables || return 1
@@ -1330,17 +1367,6 @@ closeNetwork() {
   return 0
 }
 
-cleanUp() {
-
-  closeInterfaces
-
-  # Clean up old files
-  rm -f "$PASST_PID" "$PASST_SOCKET"
-  rm -f "$DNSMASQ_PID" /etc/resolv.dnsmasq
-
-  return 0
-}
-
 # ######################################
 #  Detection
 # ######################################
@@ -1349,10 +1375,9 @@ compat() {
 
   local gateway="$1"
   local interface="$2"
-  local label="compat"
   local samba="20.20.20.1"
+  local label="compat" msg=""
   local err="failed to configure IP alias for backwards compatibility."
-  local msg=""
 
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
@@ -1383,9 +1408,8 @@ compat() {
 
 checkOS() {
 
-  local os=""
-  local kernel=""
   local iface="macvlan"
+  local os="" kernel=""
 
   kernel=$(uname -a)
 
@@ -1579,27 +1603,9 @@ configureMAC() {
   return 0
 }
 
-formatAddress() {
-
-  local ip="${1:-}"
-  local prefix="${2:-}"
-  local result="$ip"
-
-  [ -z "$result" ] && return 1
-
-  if [ -n "$prefix" ] && [[ "$prefix" != "24" ]]; then
-    result+="/$prefix"
-  fi
-
-  echo "$result"
-  return 0
-}
-
 showHostInfo() {
 
-  local mtu=""
-  local host=""
-  local uplink=""
+  local mtu="" host="" uplink=""
 
   uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
   [ -z "$uplink" ] && uplink="(none)"
@@ -1692,7 +1698,7 @@ showGuestInfo() {
   return 0
 }
 
-prepareNetwork() {
+initializeNetwork() {
 
   detectInterface
   validateInterface
@@ -1712,6 +1718,12 @@ prepareNetwork() {
 
   showHostInfo
 
+  closeInterfaces
+
+  # Clean up old files
+  rm -f "$PASST_PID" "$PASST_SOCKET"
+  rm -f "$DNSMASQ_PID" /etc/resolv.dnsmasq
+
   return 0
 }
 
@@ -1728,8 +1740,7 @@ msg="Initializing network..."
 html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
-prepareNetwork
-cleanUp
+initializeNetwork
 
 if enabled "$DHCP"; then
 
