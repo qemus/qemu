@@ -40,6 +40,7 @@ RUN <<EOF
     net-tools \
     diffutils \
     e2fsprogs \
+    diffutils \
     qemu-utils \
     util-linux \
     websocketd \
