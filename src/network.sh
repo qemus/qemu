@@ -1313,15 +1313,22 @@ configureTables() {
     # Remove rules left by a previous run from the alternate backend.
     if ! clearTables; then
       alternate_dirty="Y"
-      enabled "$ROOTLESS" && ! enabled "$DEBUG" ||
+
+      if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
         warn "failed to clean up the existing $alternate IP tables configuration!"
+      fi
+
     elif applyTables "$ip" "$subnet" "Y"; then
       checkExistingTables
       return 0
+
     elif ! clearTables; then
       alternate_dirty="Y"
-      enabled "$ROOTLESS" && ! enabled "$DEBUG" ||
+
+      if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
         warn "failed to clean up the partial $alternate IP tables configuration!"
+      fi
+
     fi
 
   fi
