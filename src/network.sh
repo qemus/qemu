@@ -193,6 +193,22 @@ detectInterface() {
   return 0
 }
 
+formatAddress() {
+
+  local ip="${1:-}"
+  local prefix="${2:-}"
+  local result="$ip"
+
+  [ -z "$result" ] && return 1
+
+  if [ -n "$prefix" ] && [[ "$prefix" != "24" ]]; then
+    result+="/$prefix"
+  fi
+
+  echo "$result"
+  return 0
+}
+
 detectAddresses() {
 
   GATEWAY=$(ip route list dev "$DEV" | awk ' /^default/ {print $3}' | head -n 1)
@@ -311,6 +327,46 @@ natGuestIP() {
 
   error "No available VM subnet found in 172.30.$third.0/$PREFIX through 172.254.$third.0/$PREFIX."
   return 1
+}
+
+canBindToDevice() {
+
+  local dev="$1"
+  local ipv6="${2:-N}"
+
+  [ -n "$dev" ] || return 1
+  kernelAtLeast 5 7 || return 1
+  [ -d "/sys/class/net/$dev" ] || return 1
+  command -v python3 > /dev/null 2>&1 || return 0
+
+  python3 - "$dev" "$ipv6" > /dev/null 2>&1 <<'PY'
+import socket
+import sys
+
+device = sys.argv[1].encode()
+ipv6 = sys.argv[2].lower() in {"y", "yes", "true", "1", "on"}
+
+if not device or b"\0" in device:
+    sys.exit(1)
+
+device += b"\0"
+families = [socket.AF_INET]
+
+if ipv6:
+    families.append(socket.AF_INET6)
+
+for family in families:
+    for socket_type in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
+        try:
+            with socket.socket(family, socket_type) as sock:
+                sock.setsockopt(
+                    socket.SOL_SOCKET,
+                    socket.SO_BINDTODEVICE,
+                    device,
+                )
+        except OSError:
+            sys.exit(1)
+PY
 }
 
 # ######################################
@@ -888,11 +944,18 @@ showRules() {
   local table="$1"
   local chain="$2"
   local label="$3"
-  local rules=""
+  local rules="" rc
 
-  rules=$(iptables -t "$table" -S "$chain" 2>/dev/null |
-    awk '$1 == "-A"' || true)
+  { rules=$(iptables -t "$table" -S "$chain" 2>&1); rc=$?; } || :
 
+  if (( rc != 0 )); then
+    warn "the $table iptable is unavailable, so those networking rules will be skipped."
+    return 1
+  fi
+
+  enabled "$DEBUG" || return 0
+
+  rules=$(awk '$1 == "-A"' <<< "$rules")
   [ -n "$rules" ] || return 0
 
   printf "Existing %s rules:\n\n%s\n\n" "$label" "$rules"
@@ -937,11 +1000,11 @@ checkExistingTables() {
     fi
   fi
 
-  if enabled "$DEBUG"; then
-    showRules nat PREROUTING "NAT PREROUTING"
-    showRules filter FORWARD "filter FORWARD"
-    showRules nat POSTROUTING "NAT POSTROUTING"
-    showRules mangle FORWARD "mangle FORWARD"
+  showRules nat PREROUTING "NAT PREROUTING"
+  showRules filter FORWARD "filter FORWARD"
+  showRules nat POSTROUTING "NAT POSTROUTING"
+
+  if showRules mangle FORWARD "mangle FORWARD"; then
     showRules mangle POSTROUTING "mangle POSTROUTING"
   fi
 
@@ -1027,15 +1090,13 @@ configureTables() {
     return 1
   fi
 
-  if (( KERNEL > 4 )); then
-    # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
-    iptables -t mangle -A POSTROUTING \
-      -s "$subnet" \
-      -p udp \
-      --dport bootpc \
-      -m comment --comment "$rule_tag" \
-      -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
-  fi
+  # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
+  iptables -t mangle -A POSTROUTING \
+    -s "$subnet" \
+    -p udp \
+    --dport bootpc \
+    -m comment --comment "$rule_tag" \
+    -j CHECKSUM --checksum-fill > /dev/null 2>&1 || true
 
   # Clamp TCP MSS to avoid subtle MTU blackholes when the outer path has a smaller MTU.
   iptables -t mangle -A FORWARD \
@@ -1557,22 +1618,6 @@ configureMAC() {
   # may detect a new network every boot.
   GATEWAY_MAC=$(gatewayMAC "$MAC")
 
-  return 0
-}
-
-formatAddress() {
-
-  local ip="${1:-}"
-  local prefix="${2:-}"
-  local result="$ip"
-
-  [ -z "$result" ] && return 1
-
-  if [ -n "$prefix" ] && [[ "$prefix" != "24" ]]; then
-    result+="/$prefix"
-  fi
-
-  echo "$result"
   return 0
 }
 
