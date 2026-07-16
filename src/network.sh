@@ -340,40 +340,22 @@ kernelAtLeast() {
 canBindToDevice() {
 
   local dev="$1"
-  local ipv6="${2:-N}"
-
   [ -n "$dev" ] || return 1
+
   kernelAtLeast 5 7 || return 1
   [ -d "/sys/class/net/$dev" ] || return 1
   command -v python3 > /dev/null 2>&1 || return 0
 
-  python3 - "$dev" "$ipv6" > /dev/null 2>&1 <<'PY'
+  python3 - "$dev" > /dev/null 2>&1 <<'PY'
 import socket
 import sys
 
-device = sys.argv[1].encode()
-ipv6 = sys.argv[2].lower() in {"y", "yes", "true", "1", "on"}
-
-if not device or b"\0" in device:
-    sys.exit(1)
-
-device += b"\0"
-families = [socket.AF_INET]
-
-if ipv6:
-    families.append(socket.AF_INET6)
-
-for family in families:
-    for socket_type in (socket.SOCK_STREAM, socket.SOCK_DGRAM):
-        try:
-            with socket.socket(family, socket_type) as sock:
-                sock.setsockopt(
-                    socket.SOL_SOCKET,
-                    socket.SO_BINDTODEVICE,
-                    device,
-                )
-        except OSError:
-            sys.exit(1)
+with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+    sock.setsockopt(
+        socket.SOL_SOCKET,
+        socket.SO_BINDTODEVICE,
+        sys.argv[1].encode() + b"\0",
+    )
 PY
 }
 
