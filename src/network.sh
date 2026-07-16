@@ -274,12 +274,8 @@ guestIP() {
 natGuestIP() {
 
   local ip="$1"
-  local third=""
-  local fourth=""
-  local start=""
-  local second=""
-  local guest=""
-  local subnet=""
+  local start="" guest="" subnet=""
+  local second="" third="" fourth=""
 
   third=$(cut -d. -f3 <<< "$ip")
   fourth=$(cut -d. -f4 <<< "$ip")
@@ -329,8 +325,7 @@ configureDNS() {
   local host="$4"
   local mask="$5"
   local gateway="$6"
-  local arguments="$DNSMASQ_OPTS"
-  local rc
+  local arguments="$DNSMASQ_OPTS" rc
 
   enabled "${DNSMASQ_DISABLE:-}" && return 0
   enabled "$DEBUG" && echo "Starting dnsmasq daemon..."
@@ -415,10 +410,8 @@ configureDNS() {
 
 getHostPorts() {
 
-  local num=""
-  local list=""
-  local port=""
-  local ports=""
+  local num="" list=""
+  local port="" ports=""
   local mode="${1:-tcp}"
   local display="${DISPLAY:-}"
 
@@ -473,11 +466,8 @@ getUserPorts() {
   [[ "${BOOT_MODE:-}" == "windows"* ]] && defaults="3389/tcp,3389/udp"
   local list="$defaults,${USER_PORTS// /},"
 
-  local num=""
-  local ports=""
-  local proto=""
-  local userport=""
-  local hostport=""
+  local num="" ports="" proto=""
+  local userport="" hostport=""
 
   local exclude=""
   exclude=$(getHostPorts "all")
@@ -524,8 +514,7 @@ getUserPorts() {
 getSlirp() {
 
   local ip="$1"
-  local args=""
-  local list=""
+  local args="" list=""
 
   list=$(getUserPorts)
 
@@ -549,12 +538,9 @@ getSlirp() {
 
 getPasst() {
 
-  local args=""
-  local list=""
-  local port=""
-  local num=""
-  local tcp=""
-  local udp=""
+  local args="" list="" port=""
+  local num="" tcp="" udp=""
+  local bind="$UPLINK"
 
   list=$(getUserPorts)
 
@@ -583,8 +569,12 @@ getPasst() {
   tcp="${tcp%,}"
   udp="${udp%,}"
 
-  [ -n "$tcp" ] && args+=" -t %${DEV}/$tcp"
-  [ -n "$udp" ] && args+=" -u %${DEV}/$udp"
+  if canBindToDevice "$DEV"; then
+    bind="%$DEV"
+  fi
+
+  [ -n "$tcp" ] && args+=" -t $bind/$tcp"
+  [ -n "$udp" ] && args+=" -u $bind/$udp"
 
   echo "$args"
   return 0
@@ -911,9 +901,7 @@ showRules() {
 
 checkExistingTables() {
 
-  local msg=""
-  local rules=""
-  local conflicts=""
+  local msg="" rules="" conflicts=""
 
   rules=$(iptables -t nat -S PREROUTING 2>/dev/null |
     awk '$1 == "-A"' || true)
@@ -964,10 +952,9 @@ configureTables() {
 
   local ip="$1"
   local subnet="$2"
-  local exclude=""
-  local port=""
-  local dnat_chain="QEMU_DNAT"
+  local exclude="" port=""
   local rule_tag="remove"
+  local dnat_chain="QEMU_DNAT"
   local tables_err="failed to configure IP tables!"
   local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
@@ -1197,9 +1184,7 @@ testTables() {
 
 selectTables() {
 
-  local mode=""
-  local current=""
-  local modes=()
+  local mode="" modes=() current=""
 
   # Keep the currently selected backend when it is fully functional.
   if testTables; then
@@ -1230,12 +1215,10 @@ selectTables() {
 
 clearTables() {
 
-  local table=""
-  local line=""
-  local rules=""
-  local failed="N"
-  local dnat_chain="QEMU_DNAT"
+  local table="" line=""
+  local rules="" failed="N"
   local rule_tag="remove"
+  local dnat_chain="QEMU_DNAT"
   local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
   selectTables || return 1
@@ -1349,10 +1332,9 @@ compat() {
 
   local gateway="$1"
   local interface="$2"
-  local label="compat"
   local samba="20.20.20.1"
-  local err="failed to configure IP alias for backwards compatibility."
-  local msg=""
+  local label="compat" msg=""
+  local err="failed to configure IP alias for backwards compatibility." 
 
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
@@ -1383,9 +1365,8 @@ compat() {
 
 checkOS() {
 
-  local os=""
-  local kernel=""
   local iface="macvlan"
+  local os="" kernel=""
 
   kernel=$(uname -a)
 
@@ -1597,9 +1578,7 @@ formatAddress() {
 
 showHostInfo() {
 
-  local mtu=""
-  local host=""
-  local uplink=""
+  local mtu="" host="" uplink=""
 
   uplink=$(formatAddress "$UPLINK" "$PREFIX" || true)
   [ -z "$uplink" ] && uplink="(none)"
