@@ -417,24 +417,36 @@ cpu() {
 
 getDisk() {
 
-  local name="${DISK_NAME:-data}" path
+  local path
+  local format="${DISK_FMT:-}"
+  local name="${DISK_NAME:-data}"
+
   enabled "${DISK_DISABLE:-}" && return 1
 
-  for path in "/disk" "/disk1" "/dev/disk1" "${DEVICE:-}"; do
-    if [ -n "$path" ] && [ -b "$path" ]; then
+  if [ -n "${DEVICE:-}" ]; then
+    [ -b "$DEVICE" ] || return 1
+    printf '%s\n' "$DEVICE"
+    return 0
+  fi
+
+  for path in "/disk" "/disk1" "/dev/disk1"; do
+    if [ -b "$path" ]; then
       printf '%s\n' "$path"
       return 0
     fi
   done
 
-  for path in "$STORAGE/$name.img" "$STORAGE/$name.qcow2"; do
-    if [ -s "$path" ]; then
-      printf '%s\n' "$path"
-      return 0
-    fi
-  done
+  case "${format,,}" in
+    raw) path="$STORAGE/$name.img" ;;
+    qcow2) path="$STORAGE/$name.qcow2" ;;
+    *) path="$STORAGE/$name.img"
+      [ -s "$STORAGE/$name.qcow2" ] && path="$STORAGE/$name.qcow2" ;;
+  esac
 
-  return 1
+  [ -s "$path" ] || return 1
+
+  printf '%s\n' "$path"
+  return 0
 }
 
 hasDisk() {
