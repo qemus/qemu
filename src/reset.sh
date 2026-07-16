@@ -307,10 +307,9 @@ FOOTER2="<a href='$SUPPORT'>$SUPPORT</a>"
 SOCKETS=1
 CPU=$(cpu)
 SYS=$(uname -r)
-KERNEL=$(echo "$SYS" | cut -b 1)
-MINOR=$(echo "$SYS" | cut -d '.' -f2)
 ARCH=$(dpkg --print-architecture)
 CORES=$(grep -c '^processor' /proc/cpuinfo)
+IFS=. read -r KERNEL MINOR _ <<< "$SYS"
 
 if grep -qi "socket(s)" <<< "$(lscpu)"; then
   SOCKETS=$(lscpu | grep -m 1 -i 'socket(s)' | awk '{print $2}')
