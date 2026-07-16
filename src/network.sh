@@ -329,6 +329,14 @@ natGuestIP() {
   return 1
 }
 
+kernelAtLeast() {
+
+  local major="$1"
+  local minor="${2:-0}"
+
+  (( KERNEL > major || (KERNEL == major && MINOR >= minor) ))
+}
+
 canBindToDevice() {
 
   local dev="$1"
