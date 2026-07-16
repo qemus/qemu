@@ -198,10 +198,10 @@ getURL() {
         url="https://cdimages.ubuntu.com/xubuntu/releases/${version}/release/xubuntu-${version}-desktop-amd64.iso"
       fi ;;
     "zima" | "zimaos" | "zima-os" )
-      version="1.6.1"
+      version="1.6.2"
       name="ZimaOS"
       if [[ "$ret" == "url" ]]; then
-        url="https://github.com/IceWhaleTech/ZimaOS/releases/download/${version}/zimaos-x86_64-${version}_installer.iso"
+        url="https://github.com/zima-os/images/releases/download/v${version}/zimaos-x86_64-${version}.iso"
       fi ;;
     "zorin" | "zorinos" | "zorin-os" )
       version="18"
