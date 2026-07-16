@@ -276,15 +276,22 @@ disableIPv6() {
 subnetInUse() {
 
   local subnet="$1"
-  local routes=""
+  local broader="" narrower="" routes=""
+
+  if ! broader=$(ip -4 route show table all match "$subnet" 2>/dev/null); then
+    error "Failed to inspect existing routes for subnet $subnet."
+    return 2
+  fi
+
+  if ! narrower=$(ip -4 route show table all root "$subnet" 2>/dev/null); then
+    error "Failed to inspect existing routes for subnet $subnet."
+    return 2
+  fi
 
   routes=$(
-    {
-      ip route show match "$subnet"
-      ip route show root "$subnet"
-    } 2>/dev/null |
-      awk '$1 != "default"' |
-      sort -u
+    printf '%s\n%s\n' "$broader" "$narrower" |
+      grep -Ev '(^|[[:space:]])default([[:space:]]|$)' |
+      sort -u || true
   )
 
   [ -n "$routes" ]
@@ -308,7 +315,7 @@ natGuestIP() {
 
   local ip="$1"
   local start="" guest="" subnet=""
-  local second="" third="" fourth=""
+  local second="" third="" fourth="" rc=""
 
   third=$(cut -d. -f3 <<< "$ip")
   fourth=$(cut -d. -f4 <<< "$ip")
@@ -326,20 +333,30 @@ natGuestIP() {
     guest="172.$second.$third.$fourth"
     subnet=$(networkCIDR "$guest") || return 1
 
-    if ! subnetInUse "$subnet"; then
-      echo "$guest"
-      return 0
+    if subnetInUse "$subnet"; then
+      continue
+    else
+      rc=$?
+      (( rc == 1 )) || return 1
     fi
+
+    echo "$guest"
+    return 0
   done
 
   for (( second=30; second<start; second++ )); do
     guest="172.$second.$third.$fourth"
     subnet=$(networkCIDR "$guest") || return 1
 
-    if ! subnetInUse "$subnet"; then
-      echo "$guest"
-      return 0
+    if subnetInUse "$subnet"; then
+      continue
+    else
+      rc=$?
+      (( rc == 1 )) || return 1
     fi
+
+    echo "$guest"
+    return 0
   done
 
   error "No available VM subnet found in 172.30.$third.0/$PREFIX through 172.254.$third.0/$PREFIX."
@@ -1329,7 +1346,7 @@ configureNAT() {
   if [ -n "$IP" ]; then
     ip=$(guestIP "$IP" 2)
   else
-    ip=$(natGuestIP "$UPLINK")
+    ip=$(natGuestIP "$UPLINK") || return 1
   fi
 
   local gateway="${ip%.*}.1"
@@ -1338,6 +1355,9 @@ configureNAT() {
   if subnetInUse "$subnet"; then
     error "VM subnet $subnet conflicts with an existing route inside the container."
     return 1
+  else
+    rc=$?
+    (( rc == 1 )) || return 1
   fi
 
   createBridge "$gateway" || return 1
