@@ -1038,8 +1038,8 @@ applyTables() {
   local subnet="$2"
   local silent="${3:-N}"
   local exclude="" port=""
-  local rule_tag="remove"
   local dnat_chain="QEMU_DNAT"
+  local rule_tag="$dnat_chain"
   local tables_err="failed to configure IP tables!"
   local tables="the 'ip_tables' kernel module is not loaded. Try this command: sudo modprobe ip_tables iptable_nat"
 
@@ -1356,8 +1356,8 @@ clearTables() {
 
   local table="" line=""
   local rules="" failed="N"
-  local rule_tag="remove"
   local dnat_chain="QEMU_DNAT"
+  local rule_tag="$dnat_chain"
   local re="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
   # Always clean the currently selected backend. Backend selection is handled
