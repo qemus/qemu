@@ -929,20 +929,23 @@ createTap() {
   return 0
 }
 
+hasTable() {
+
+  iptables -t "$1" -S > /dev/null 2>&1
+
+}
+
 showRules() {
 
   local table="$1"
   local chain="$2"
   local label="$3"
-  local rules="" rc
-
-  { rules=$(iptables -t "$table" -S "$chain" 2>&1); rc=$?; } || :
-
-  (( rc == 0 )) || return 1
+  local rules=""
 
   enabled "$DEBUG" || return 0
 
-  rules=$(awk '$1 == "-A"' <<< "$rules")
+  rules=$(iptables -t "$table" -S "$chain" 2>/dev/null | awk '$1 == "-A"' || true)
+
   [ -n "$rules" ] || return 0
 
   printf "Existing %s rules:\n\n%s\n\n" "$label" "$rules"
@@ -987,12 +990,13 @@ checkExistingTables() {
     fi
   fi
 
-  showRules nat PREROUTING "NAT PREROUTING" || :
-  showRules filter FORWARD "filter FORWARD" || :
-  showRules nat POSTROUTING "NAT POSTROUTING" || :
+  showRules nat PREROUTING "NAT PREROUTING"
+  showRules filter FORWARD "filter FORWARD"
+  showRules nat POSTROUTING "NAT POSTROUTING"
 
-  if showRules mangle FORWARD "mangle FORWARD"; then
-    showRules mangle POSTROUTING "mangle POSTROUTING" || :
+  if hasTable mangle; then
+    showRules mangle FORWARD "mangle FORWARD"
+    showRules mangle POSTROUTING "mangle POSTROUTING"
   else
     warn "the mangle iptable is unavailable, so checksum correction and TCP MSS clamping rules will be skipped."
   fi
@@ -1373,7 +1377,7 @@ compat() {
   local interface="$2"
   local samba="20.20.20.1"
   local label="compat" msg=""
-  local err="failed to configure IP alias for backwards compatibility." 
+  local err="failed to configure IP alias for backwards compatibility."
 
   [[ "$samba" == "$gateway" ]] && return 0
   [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
