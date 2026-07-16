@@ -1701,9 +1701,9 @@ validateAdapter() {
       # Check if host exposes the bridge-nf sysctl
       # (only visible if br_netfilter is loaded and /proc/sys is accessible)
 
-      BNF="/proc/sys/net/bridge/bridge-nf-call-iptables"
+      local bnf="/proc/sys/net/bridge/bridge-nf-call-iptables"
 
-      if [[ -r "$BNF" ]] && [[ "$(<"$BNF")" != "0" ]]; then
+      if [[ -r "$bnf" ]] && [[ "$(<"$bnf")" != "0" ]]; then
         warn "external LAN clients may not be able to reach this container, because net.bridge.bridge-nf-call-iptables=1."
         warn "you can fix this issue by running 'sysctl -w net.bridge.bridge-nf-call-iptables=0' on the host system."
       fi
