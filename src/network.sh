@@ -1000,11 +1000,17 @@ showRules() {
   local table="$1"
   local chain="$2"
   local label="$3"
+  local rule_tag="$4"
   local rules=""
+  local own_rule="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
   enabled "$DEBUG" || return 0
 
-  rules=$(iptables -t "$table" -S "$chain" 2>/dev/null | awk '$1 == "-A"' || true)
+  rules=$(
+    iptables -t "$table" -S "$chain" 2>/dev/null |
+      awk '$1 == "-A"' |
+      grep -Ev -- "$own_rule" || true
+  )
 
   [ -n "$rules" ] || return 0
 
@@ -1015,9 +1021,14 @@ showRules() {
 checkExistingTables() {
 
   local msg="" rules="" conflicts=""
+  local rule_tag="QEMU_DNAT"
+  local own_rule="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
-  rules=$(iptables -t nat -S PREROUTING 2>/dev/null |
-    awk '$1 == "-A"' || true)
+  rules=$(
+    iptables -t nat -S PREROUTING 2>/dev/null |
+      awk '$1 == "-A"' |
+      grep -Ev -- "$own_rule" || true
+  )
 
   conflicts=$(grep -E -- \
     '^-A PREROUTING .*(-j DNAT|-j REDIRECT)( |$)' \
@@ -1033,8 +1044,11 @@ checkExistingTables() {
     fi
   fi
 
-  rules=$(iptables -t filter -S FORWARD 2>/dev/null |
-    awk '$1 == "-A"' || true)
+  rules=$(
+    iptables -t filter -S FORWARD 2>/dev/null |
+      awk '$1 == "-A"' |
+      grep -Ev -- "$own_rule" || true
+  )
 
   conflicts=$(grep -E -- \
     '^-A FORWARD .*(-j DROP|-j REJECT)( |$)' \
@@ -1050,13 +1064,13 @@ checkExistingTables() {
     fi
   fi
 
-  showRules nat PREROUTING "NAT PREROUTING"
-  showRules filter FORWARD "filter FORWARD"
-  showRules nat POSTROUTING "NAT POSTROUTING"
+  showRules nat PREROUTING "NAT PREROUTING" "$rule_tag"
+  showRules filter FORWARD "filter FORWARD" "$rule_tag"
+  showRules nat POSTROUTING "NAT POSTROUTING" "$rule_tag"
 
   if hasTable mangle; then
-    showRules mangle FORWARD "mangle FORWARD"
-    showRules mangle POSTROUTING "mangle POSTROUTING"
+    showRules mangle FORWARD "mangle FORWARD" "$rule_tag"
+    showRules mangle POSTROUTING "mangle POSTROUTING" "$rule_tag"
   else
     warn "the mangle iptable is unavailable, so checksum correction and TCP MSS clamping rules will be skipped."
   fi
