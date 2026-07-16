@@ -347,7 +347,7 @@ findFile() {
   [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" -print -quit)
 
   if [ -d "$dir" ]; then
-    if hasDisk; then
+    if hasData; then
       BOOT="none"
       return 0
     fi
@@ -411,7 +411,7 @@ findArchiveImage() {
 
 findBootFile && return 0
 
-if hasDisk; then
+if hasData; then
   BOOT="none"
   return 0
 fi
@@ -425,16 +425,20 @@ if [ -z "$BOOT" ] || [[ "$BOOT" == *"example.com/"* ]]; then
 
 fi
 
-folder=$(getFolder "$BOOT")
-STORAGE="$STORAGE/$folder"
+if ! hasDisk; then
 
-if [ -d "$STORAGE" ]; then
+  folder=$(getFolder "$BOOT")
+  STORAGE="$STORAGE/$folder"
 
-  findBootFile && return 0
+  if [ -d "$STORAGE" ]; then
 
-  if hasDisk; then
-    BOOT="none"
-    return 0
+    findBootFile && return 0
+
+    if hasData; then
+      BOOT="none"
+      return 0
+    fi
+
   fi
 
 fi
@@ -470,7 +474,7 @@ if ! makeDir "$STORAGE"; then
 fi
 
 find "$STORAGE" -maxdepth 1 -type f \( -iname '*.rom' -or -iname '*.vars' \) -delete
-find "$STORAGE" -maxdepth 1 -type f \( -iname 'data.*' -or -iname 'qemu.*' \) -delete
+find "$STORAGE" -maxdepth 1 -type f -iname 'qemu.*' -delete
 
 base=$(getBase "$BOOT")
 
