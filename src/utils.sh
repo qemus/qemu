@@ -437,10 +437,13 @@ getDisk() {
   done
 
   case "${format,,}" in
-    raw) path="$STORAGE/$name.img" ;;
-    qcow2) path="$STORAGE/$name.qcow2" ;;
-    *) path="$STORAGE/$name.img"
-      [ -s "$STORAGE/$name.qcow2" ] && path="$STORAGE/$name.qcow2" ;;
+    raw)
+      path="$STORAGE/$name.img"
+      [ -s "$path" ] || path="$STORAGE/$name.qcow2" ;;
+
+    *)
+      path="$STORAGE/$name.qcow2"
+      [ -s "$path" ] || path="$STORAGE/$name.img" ;;
   esac
 
   [ -s "$path" ] || return 1
