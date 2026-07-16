@@ -415,62 +415,72 @@ cpu() {
   return 0
 }
 
-hasDisk() {
+getDisk() {
 
-  local bytes=102400
-  local file="" tmp=""
-  local files=( "/disk" "/disk1" "/dev/disk1" )
-
+  local name="${DISK_NAME:-data}" path
   enabled "${DISK_DISABLE:-}" && return 1
 
-  [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
-  [ -n "${DEVICE:-}" ] && files+=( "$DEVICE" )
-
-  files+=(
-    "$STORAGE/$DISK_NAME.img"
-    "$STORAGE/$DISK_NAME.qcow2"
-  )
-
-  for file in "${files[@]}"; do
-
-    if [ -b "$file" ]; then
-      cmp -s -n "$bytes" "$file" /dev/zero || return 0
-      continue
+  for path in "/disk" "/disk1" "/dev/disk1" "${DEVICE:-}"; do
+    if [ -n "$path" ] && [ -b "$path" ]; then
+      printf '%s\n' "$path"
+      return 0
     fi
+  done
 
-    [ -s "$file" ] || continue
-
-    case "${file,,}" in
-
-      *.img)
-
-        cmp -s -n "$bytes" "$file" /dev/zero || return 0 ;;
-
-      *.qcow2)
-
-        tmp=$(mktemp) || {
-          warn "failed to create a temporary file while inspecting \"$file\"."
-          return 0
-        }
-
-        if ! qemu-img dd -f qcow2 -O raw bs="$bytes" count=1 \
-            "if=$file" "of=$tmp" >/dev/null 2>&1; then
-          rm -f "$tmp"
-          warn "failed to inspect disk \"$file\", assuming it contains data."
-          return 0
-        fi
-
-        if ! cmp -s -n "$bytes" "$tmp" /dev/zero; then
-          rm -f "$tmp"
-          return 0
-        fi
-
-        rm -f "$tmp" ;;
-    esac
-
+  for path in "$STORAGE/$name.img" "$STORAGE/$name.qcow2"; do
+    if [ -s "$path" ]; then
+      printf '%s\n' "$path"
+      return 0
+    fi
   done
 
   return 1
+}
+
+hasDisk() {
+
+  getDisk >/dev/null
+  return $?
+
+}
+
+hasData() {
+
+  local path
+  local rc=0 tmp=""
+  local bytes=102400
+
+  path=$(getDisk) || return 1
+  local source="$path"
+
+  if [[ "${path,,}" == *.qcow2 ]]; then
+
+    tmp=$(mktemp) || {
+      warn "failed to create a temporary file while inspecting \"$path\"."
+      return 0
+    }
+
+    if ! qemu-img dd -f qcow2 -O raw bs="$bytes" count=1 \
+        "if=$path" "of=$tmp" >/dev/null 2>&1; then
+      rm -f "$tmp"
+      warn "failed to inspect disk \"$path\", assuming it contains data."
+      return 0
+    fi
+
+    source="$tmp"
+
+  fi
+
+  cmp -s -n "$bytes" "$source" /dev/zero || rc=$?
+  [ -n "$tmp" ] && rm -f "$tmp"
+
+  case "$rc" in
+    0) return 1 ;;
+    1) return 0 ;;
+  esac
+
+  warn "failed to inspect disk \"$path\", assuming it contains data."
+  return 0
 }
 
 addPackage() {
