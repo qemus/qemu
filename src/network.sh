@@ -963,6 +963,10 @@ createTap() {
   return 0
 }
 
+# ######################################
+#  IP tables
+# ######################################
+
 hasTable() {
 
   iptables -t "$1" -S > /dev/null 2>&1
@@ -1305,6 +1309,10 @@ configureTables() {
   return 1
 }
 
+# ######################################
+#  NAT configuration
+# ######################################
+
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
@@ -1564,7 +1572,7 @@ validateMask() {
 
   PREFIX=$(maskToCIDR "$MASK") || exit 28
 
-  if (( PREFIX < 16 || PREFIX > 24 )); then
+  if ! enabled "$DHCP" && (( PREFIX < 16 || PREFIX > 24 )); then
     error "Unsupported MASK: '$MASK' (supported range: /16 through /24)"
     exit 28
   fi
