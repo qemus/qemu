@@ -235,8 +235,19 @@ detectAdapter() {
 
   result=$(ethtool -i "$DEV" 2>/dev/null || :)
 
-  NIC=$(grep -m 1 -i 'driver:' <<< "$result" | awk '{print $2}')
-  BUS=$(grep -m 1 -i 'bus-info:' <<< "$result" | awk '{print $2}')
+  NIC=$(awk -F':[[:space:]]*' '
+    tolower($1) == "driver" {
+      print $2
+      exit
+    }
+  ' <<< "$result")
+
+  BUS=$(awk -F':[[:space:]]*' '
+    tolower($1) == "bus-info" {
+      print $2
+      exit
+    }
+  ' <<< "$result")
 
   return 0
 }
@@ -859,7 +870,7 @@ configurePasst() {
 
     local rc=0
     rm -f "$log"
-  
+
     PASST_OPTS="${PASST_OPTS/ -q/}"
     { "$PASST" ${PASST_OPTS:+$PASST_OPTS}; rc=$?; } || :
 
@@ -873,10 +884,8 @@ configurePasst() {
 
   if enabled "$PASST_DEBUG"; then
     tail -fn +0 "$log" --pid=$$ &
-  else
-    if enabled "$DEBUG"; then
-      [ -f "$log" ] && [ -s "$log" ] && cat "$log" && echo ""
-    fi
+  elif enabled "$DEBUG"; then
+    [ -f "$log" ] && [ -s "$log" ] && cat "$log" && echo ""
   fi
 
   NET_OPTS="-netdev stream,id=hostnet0,server=off,addr.type=unix,addr.path=$PASST_SOCKET"
@@ -1399,11 +1408,13 @@ configureTables() {
       fi
 
       if ! clearTables; then
+
         alternate_dirty="Y"
 
         if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
           warn "failed to clean up the partial $alternate IP tables configuration!"
         fi
+
       fi
 
     else
@@ -1412,23 +1423,26 @@ configureTables() {
 
       # Only mark the alternate backend dirty when it was accessible but cleanup failed.
       if (( rc == 1 )); then
+
         alternate_dirty="Y"
 
         if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
           warn "failed to clean up the existing $alternate IP tables configuration!"
         fi
+
       elif (( rc != 2 )); then
+
         alternate_dirty="Y"
 
         if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
           warn "failed to inspect the existing $alternate IP tables configuration!"
         fi
+
       elif enabled "$DEBUG"; then
         warn "failed to access the $alternate IP tables backend!"
       fi
 
     fi
-
   fi
 
   # Restore the preferred backend after the alternate attempt failed.
