@@ -4,6 +4,7 @@ set -Eeuo pipefail
 NOVNC="/usr/share/novnc"
 NOVNC_HTML="$NOVNC/vnc.html"
 AUDIO_RELAY="/run/audio.py"
+AUDIO_LOG="/var/log/audio.log"
 AUDIO_PID="$QEMU_DIR/audio.pid"
 AUDIO_FIFO="$QEMU_DIR/audio.fifo"
 AUDIO_SOCKET="$QEMU_DIR/audio.sock"
@@ -79,11 +80,11 @@ startAudioRelay() {
     return 1
   }
 
-  rm -f "$AUDIO_FIFO" "$AUDIO_SOCKET"
+  rm -f "$AUDIO_FIFO" "$AUDIO_SOCKET" "$AUDIO_LOG"
   mkfifo -m 0600 "$AUDIO_FIFO"
 
   python3 "$AUDIO_RELAY" "$AUDIO_FIFO" "$AUDIO_SOCKET" \
-    >/var/log/audio-relay.log 2>&1 &
+    >"$AUDIO_LOG" 2>&1 &
 
   local pid=$!
 
@@ -95,7 +96,8 @@ startAudioRelay() {
   sleep 0.1
 
   if ! isAlive "$pid"; then
-    rm -f "$AUDIO_SOCKET"
+    rm -f "$AUDIO_PID" "$AUDIO_SOCKET"
+    [ -s "$AUDIO_LOG" ] && cat "$AUDIO_LOG" >&2
     error "Failed to start audio relay!"
     return 1
   fi
