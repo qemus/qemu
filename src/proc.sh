@@ -14,18 +14,14 @@ CPU_MODEL=$(strip "$CPU_MODEL")
 
 enabled "$DEBUG" && echo "Configuring KVM..."
 
-vendor=$(lscpu | awk '/Vendor ID/{print $3}')
-flags=$(sed -ne '/^flags/s/^.*: //p' /proc/cpuinfo)
-
 isWindowsBoot() {
-  [[ "${BOOT_MODE,,}" == "windows"* ]]
-}
 
-isAmdCpu() {
-  [[ "$vendor" == "AuthenticAMD" ]]
+  [[ "${BOOT_MODE,,}" == "windows"* ]]
+
 }
 
 appendCpuFeature() {
+
   local feature="$1"
 
   if [ -z "$CPU_FEATURES" ]; then
@@ -84,7 +80,7 @@ configureKvmCpuModel() {
 configureKvmAmdFeatures() {
 
   # AMD processor
-  if grep -qw "tsc_scale" <<< "$flags"; then
+  if hasFlag "tsc_scale"; then
     CPU_FEATURES+=",+invtsc"
   fi
 
@@ -118,7 +114,7 @@ configureHyperVFeatures() {
   if isAmdCpu; then
 
     # AMD processor
-    if ! grep -qw "avic" <<< "$flags"; then
+    if ! hasFlag "avic"; then
       HV_FEATURES+=",-hv-avic"
     fi
 
