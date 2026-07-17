@@ -14,17 +14,9 @@ CPU_MODEL=$(strip "$CPU_MODEL")
 
 enabled "$DEBUG" && echo "Configuring KVM..."
 
-vendor=$(lscpu | awk '/Vendor ID/{print $3}')
-
 isWindowsBoot() {
 
   [[ "${BOOT_MODE,,}" == "windows"* ]]
-
-}
-
-isAmdCpu() {
-
-  [[ "$vendor" == "AuthenticAMD" ]]
 
 }
 
