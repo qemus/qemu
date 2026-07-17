@@ -10,6 +10,15 @@ AUDIO_SOCKET="$QEMU_DIR/audio.sock"
 AUDIO_PLUGIN="/var/www/js/audio.js"
 AUDIO_PIPE="$QEMU_DIR/audio-pipe.sh"
 
+supportsAudio() {
+
+  case "${MACHINE,,}" in
+    q35|virt) return 0 ;;
+  esac
+
+  return 1
+}
+
 installAudioPlugin() {
 
   [ -f "$AUDIO_PLUGIN" ] || {
@@ -96,11 +105,26 @@ startAudioRelay() {
 }
 
 ! enabled "$AUDIO" && return 0
-disabled "${WEB:-}" && return 0
 
-installAudioPlugin
+if disabled "${WEB:-}"; then
+  AUDIO="N"
+  return 0
+fi
 
-startAudioRelay
-startAudioServer
+if ! supportAudio; then
+  AUDIO="N"
+  warn "audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
+  return 0
+fi
 
+if installAudioPlugin; then
+  if startAudioRelay; then
+    if startAudioServer; then
+      return 0
+    fi
+  fi
+fi
+
+AUDIO="N"
+warn "Audio support failed to initialize, ignoring AUDIO=Y."
 return 0
