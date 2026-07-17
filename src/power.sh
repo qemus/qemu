@@ -208,9 +208,9 @@ sendAcpiShutdown() {
 
 waitForShutdown() {
 
+  local cnt=0
   local pid="$1"
   local name="$APP"
-  local cnt=0
   local slp
 
   if [[ "$name" == "QEMU" ]]; then
