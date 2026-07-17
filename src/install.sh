@@ -70,30 +70,32 @@ bootFile() {
 detectType() {
 
   local file="$1"
-  local lower="${file,,}"
-
   [ ! -s "$file" ] && return 1
 
-  case "$lower" in
+  case "${file,,}" in
     *".iso" | *".img" | *".raw" | *".qcow2" ) ;;
     * ) return 1 ;;
   esac
 
-  if [ -z "$BOOT_MODE" ] && [[ "$lower" == *".iso" ]]; then
-
-    if isLegacyIso "$file"; then
-
-      BOOT_MODE="legacy"
-
-    else
-
-      local rc=$?
-
-      # Return code 1 means UEFI, hybrid, or no El Torito catalog.
-      # Return code 2 means the ISO could not be read.
-      (( rc == 2 )) && return 1
-
-    fi
+  if [ -z "$BOOT_MODE" ]; then
+    case "${file,,}" in
+      *".iso" )
+        if isLegacyIso "$file"; then
+          BOOT_MODE="legacy"
+        else
+          case $? in
+            1 ) ;;          # UEFI, hybrid, or unknown
+            * ) return 1 ;; # Failed to inspect the ISO
+          esac
+        fi
+        ;;
+      *".img" | *".raw" )
+        detectDiskMode "$file" || return 1
+        ;;
+      *".qcow2" )
+        # fdisk cannot inspect qcow2 directly.
+        ;;
+    esac
   fi
 
   bootFile "$file" && return 0
