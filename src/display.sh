@@ -34,13 +34,7 @@ case "${DISPLAY,,}" in
     ;;
 esac
 
-if ! enabled "$GPU" || [[ "$ARCH" != "amd64" ]]; then
-  return 0
-fi
-
-CPU_VENDOR=$(lscpu | awk '/Vendor ID/{print $3}')
-
-if [[ "$CPU_VENDOR" != "GenuineIntel" ]]; then
+if ! enabled "$GPU" || isAmdCpu || [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
