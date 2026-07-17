@@ -354,6 +354,6 @@ checkKvm
 rm -rf "$STORAGE/tmp"
 
 # Cleanup files
-rm -f "$QEMU_DIR"/qemu.* "$QEMU_DIR"/*.pid "$QEMU_DIR"/*.sock
+rm -f "$QEMU_DIR"/{qemu.*,*.{pid,sock,pipe}}
 
 return 0
