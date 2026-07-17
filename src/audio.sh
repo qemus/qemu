@@ -111,7 +111,7 @@ if disabled "${WEB:-}"; then
   return 0
 fi
 
-if ! supportAudio; then
+if ! supportsAudio; then
   AUDIO="N"
   warn "audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
   return 0
