@@ -82,7 +82,7 @@ configureAudio() {
   fi
 
   case "${MACHINE,,}" in
-    microvm|isapc|none|xenpvh*)
+    pc|pc-i440fx*|microvm|isapc|none|xenpvh*)
       warn "Audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
       return 0
       ;;
