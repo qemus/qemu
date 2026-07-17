@@ -17,13 +17,46 @@ enabled "$DEBUG" && echo "$msg"
 DEV_OPTS=""
 AUDIO_OPTS=""
 DEF_OPTS="-nodefaults"
-SERIAL_OPTS="-serial $SERIAL"
-CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
-RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-MON_OPTS="-monitor $MONITOR -name $PROCESS,process=$PROCESS,debug-threads=on -pidfile $QEMU_PID"
-MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off,vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 
-configureMachineOptions() {
+configureProcessor() {
+
+  CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
+
+  return 0
+}
+
+configureMemory() {
+
+  RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+
+  return 0
+}
+
+configureSerial() {
+
+  if enabled "${SHUTDOWN:-}" && interactive; then
+    SERIAL_OPTS="-chardev socket,id=console0,path=$CONSOLE_SOCKET,reconnect-ms=1000"
+    SERIAL_OPTS+=" -serial chardev:console0"
+  else
+    SERIAL_OPTS="-serial $SERIAL"
+  fi
+
+  return 0
+}
+
+configureMonitor() {
+
+  MON_OPTS="-monitor $MONITOR"
+  MON_OPTS+=" -name $PROCESS,process=$PROCESS,debug-threads=on"
+  MON_OPTS+=" -pidfile $QEMU_PID"
+
+  return 0
+}
+
+configureMachine() {
+
+  MAC_OPTS="-machine type=${MACHINE},smm=${SECURE},graphics=off"
+  MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 
   UUID=$(strip "$UUID")
   [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
@@ -123,10 +156,14 @@ buildArguments() {
   return 0
 }
 
-configureMachineOptions
+configureSerial
+configureMemory
+configureMonitor
+configureMachine
+configureProcessor
+
 configureVirtioDevices
 configureSharedFolder
-
 configureUsb
 configureAudio
 
