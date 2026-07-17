@@ -236,8 +236,8 @@ waitForShutdown() {
     fi
 
     sendAcpiShutdown
-    wait "$slp" || :
 
+    wait "$slp" || :
     (( cnt++ ))
 
   done
