@@ -14,6 +14,15 @@ hasFlag() {
 
 }
 
+isAmdCpu() {
+
+  local vendor
+  vendor=$(lscpu | awk '/Vendor ID/{print $3}')
+
+  [[ "$vendor" == "AuthenticAMD" ]]
+
+}
+
 interactive() {
 
   [ -t 1 ] &&
