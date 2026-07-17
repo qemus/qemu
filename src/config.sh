@@ -81,12 +81,10 @@ configureAudio() {
     return 0
   fi
 
-  case "${MACHINE,,}" in
-    pc|pc-i440fx*|microvm|isapc|none|xenpvh*)
-      warn "Audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
-      return 0
-      ;;
-  esac
+  if [[ "${MACHINE,,}" != "q35" ]]; then
+    warn "Audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
+    return 0
+  fi
 
   local sound="$SOUND"
   local model="${sound%%,*}"
