@@ -93,7 +93,7 @@ configureAudio() {
 
   AUDIO_OPTS+=" -audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
 
-  if [[ "$model" == usb-* ]] && { [ -z "$USB" ] || [[ "${USB,,}" == "no"* ]]; }; then
+  if [[ "$model" == usb-* ]] && { [ -z "$USB" ] || disabled "$USB"; }; then
     AUDIO_OPTS+=" -device qemu-xhci,id=audio-xhci"
   fi
 
