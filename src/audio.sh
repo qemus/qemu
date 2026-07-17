@@ -126,5 +126,5 @@ if installAudioPlugin; then
 fi
 
 AUDIO="N"
-warn "failed to setup audio, ignoring AUDIO=Y."
+warn "Audio support failed to initialize, ignoring AUDIO=Y."
 return 0
