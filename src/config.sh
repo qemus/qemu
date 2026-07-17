@@ -81,11 +81,6 @@ configureAudio() {
     return 0
   fi
 
-  if [[ "${MACHINE,,}" != "q35" ]]; then
-    warn "Audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
-    return 0
-  fi
-
   local sound="$SOUND"
   local model="${sound%%,*}"
 
