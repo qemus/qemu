@@ -35,32 +35,14 @@ if ! enabled "$SHUTDOWN"; then
   exec "${cmd[@]}" ${ARGS:+ $ARGS}
 fi
 
-pipe="$QEMU_DIR/qemu.pipe"
-rm -f "$pipe" "$QEMU_LOG"
-mkfifo "$pipe"
-
 if [ ! -t 1 ] || [ ! -c /dev/tty ]; then
-  tee "$QEMU_LOG" <"$pipe" &
+  "${cmd[@]}" ${ARGS:+ $ARGS} &
 else
-  tee "$QEMU_LOG" <"$pipe" >/dev/tty &
+  "${cmd[@]}" ${ARGS:+ $ARGS} </dev/tty >/dev/tty 2>&1 &
 fi
 
-output=$!
-
-if [ ! -t 1 ] || [ ! -c /dev/tty ]; then
-  "${cmd[@]}" ${ARGS:+ $ARGS} >"$pipe" 2>&1 &
-else
-  "${cmd[@]}" ${ARGS:+ $ARGS} </dev/tty >"$pipe" 2>&1 &
-fi
-
-pid=$!
 rc=0
-
-wait "$pid" || rc=$?
-wait "$output" || :
-
-rm -f "$pipe"
-
+wait $! || rc=$?
 [ -f "$QEMU_END" ] && exit "$rc"
 
 sleep 1 & wait $!
