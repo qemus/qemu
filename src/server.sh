@@ -130,19 +130,12 @@ startAudioServer() {
   local log="/var/log/audio-websocket.log"
   rm -f "$log"
 
-  cat > "$AUDIO_PIPE" <<EOF
-#!/bin/sh
-exec nc -U "$AUDIO_SOCKET"
-EOF
-
-  chmod 0700 "$AUDIO_PIPE"
-
   # Start audio websocket server
   websocketd \
     --address 127.0.0.1 \
     --port="$AUX_PORT" \
     --binary=true \
-    "$AUDIO_PIPE" \
+    nc -U "$AUDIO_SOCKET" \
     > "$log" 2>&1 &
 
   local pid=$!

@@ -8,7 +8,6 @@ AUDIO_PID="$QEMU_DIR/audio.pid"
 AUDIO_FIFO="$QEMU_DIR/audio.fifo"
 AUDIO_SOCKET="$QEMU_DIR/audio.sock"
 AUDIO_PLUGIN="/var/www/js/audio.js"
-AUDIO_PIPE="$QEMU_DIR/audio-pipe.sh"
 
 supportsAudio() {
 
@@ -111,7 +110,7 @@ if disabled "${WEB:-}"; then
   return 0
 fi
 
-if ! supportAudio; then
+if ! supportsAudio; then
   AUDIO="N"
   warn "audio is not supported with machine type '$MACHINE', ignoring AUDIO=Y."
   return 0
