@@ -67,7 +67,7 @@ bootFile() {
   return 0
 }
 
-detectDiskMode() {
+detectRawDiskMode() {
 
   local file="$1"
   local result=""
@@ -127,6 +127,203 @@ isLegacyIso() {
   ' <<< "$result"
 }
 
+readQcow2Sectors() {
+
+  local file="$1"
+  local skip="$2"
+  local count="$3"
+  local output="$4"
+
+  rm -f "$output"
+
+  qemu-img dd \
+    -f qcow2 \
+    -O raw \
+    bs=512 \
+    skip="$skip" \
+    count="$count" \
+    "if=$file" \
+    "of=$output" >/dev/null 2>&1
+}
+
+detectQcow2Mode() {
+
+  local file="$1"
+  local found="N"
+  local signature=""
+  local tmp=""
+  local type=""
+  local offset=""
+
+  local entry_lba=""
+  local entry_count=""
+  local entry_size=""
+  local entry_units=0
+  local table_size=0
+  local table_sectors=0
+
+  if ! tmp=$(mktemp "$QEMU_DIR/boot-mode.XXXXXX"); then
+    error "Failed to create temporary boot detection file!"
+    return 1
+  fi
+
+  if ! readQcow2Sectors "$file" 0 2 "$tmp"; then
+    rm -f "$tmp"
+    error "Failed to inspect QCOW2 image!"
+    return 1
+  fi
+
+  if ! signature=$(xxd -p -l 2 -s 510 "$tmp"); then
+    rm -f "$tmp"
+    error "Failed to inspect QCOW2 partition table!"
+    return 1
+  fi
+
+  # Check the four MBR partition type fields.
+  if [[ "$signature" == "55aa" ]]; then
+
+    for offset in 450 466 482 498; do
+
+      if ! type=$(xxd -p -l 1 -s "$offset" "$tmp"); then
+        rm -f "$tmp"
+        error "Failed to inspect QCOW2 partition table!"
+        return 1
+      fi
+
+      if [[ "$type" == "ef" ]]; then
+        found="Y"
+        break
+      fi
+
+    done
+  fi
+
+  if [[ "$found" != "Y" ]]; then
+
+    if ! signature=$(xxd -p -l 8 -s 512 "$tmp"); then
+      rm -f "$tmp"
+      error "Failed to inspect QCOW2 partition table!"
+      return 1
+    fi
+
+    if [[ "$signature" == "4546492050415254" ]]; then
+
+      entry_lba=$(od -An -tu8 -j 584 -N 8 "$tmp" | tr -d '[:space:]') || {
+        rm -f "$tmp"
+        error "Failed to read GPT header!"
+        return 1
+      }
+
+      entry_count=$(od -An -tu4 -j 592 -N 4 "$tmp" | tr -d '[:space:]') || {
+        rm -f "$tmp"
+        error "Failed to read GPT header!"
+        return 1
+      }
+
+      entry_size=$(od -An -tu4 -j 596 -N 4 "$tmp" | tr -d '[:space:]') || {
+        rm -f "$tmp"
+        error "Failed to read GPT header!"
+        return 1
+      }
+
+      if [[ ! "$entry_lba" =~ ^[0-9]+$ ||
+            ! "$entry_count" =~ ^[0-9]+$ ||
+            ! "$entry_size" =~ ^[0-9]+$ ]]; then
+        rm -f "$tmp"
+        error "Invalid GPT header!"
+        return 1
+      fi
+
+      entry_units=$((entry_size / 128))
+
+      if (( entry_lba < 2 ||
+            entry_count < 1 ||
+            entry_count > 131072 ||
+            entry_size < 128 ||
+            entry_size > 4096 ||
+            entry_size % 128 != 0 ||
+            (entry_units & (entry_units - 1)) != 0 )); then
+        rm -f "$tmp"
+        error "Invalid GPT partition entry array!"
+        return 1
+      fi
+
+      table_size=$((entry_count * entry_size))
+
+      # Protect against corrupt images requesting an excessive read.
+      if (( table_size > 16777216 )); then
+        rm -f "$tmp"
+        error "GPT partition entry array is too large!"
+        return 1
+      fi
+
+      table_sectors=$(((table_size + 511) / 512))
+
+      if ! readQcow2Sectors \
+          "$file" "$entry_lba" "$table_sectors" "$tmp"; then
+        rm -f "$tmp"
+        error "Failed to read GPT partition entries!"
+        return 1
+      fi
+
+      # EFI System Partition GUID in GPT on-disk byte order.
+      if xxd -p -c 16 -l "$table_size" "$tmp" |
+          awk -v stride="$((entry_size / 16))" '
+            (NR - 1) % stride == 0 &&
+              tolower($0) == "28732ac11ff8d211ba4b00a0c93ec93b" {
+              found = 1
+            }
+            END {
+              exit !found
+            }
+          '; then
+
+        found="Y"
+
+      fi
+    fi
+  fi
+
+  rm -f "$tmp"
+
+  if [[ "$found" != "Y" ]]; then
+    BOOT_MODE="legacy"
+  fi
+
+  return 0
+}
+
+detectDiskMode() {
+
+  local file="$1"
+
+  case "${file,,}" in
+    *".qcow2" ) detectQcow2Mode "$file" ;;
+    * ) detectRawDiskMode "$file" ;;
+  esac
+}
+
+detectDataMode() {
+
+  local disk=""
+  DATA_FOUND="N"
+
+  if ! hasData; then
+    return 0
+  fi
+
+  DATA_FOUND="Y"
+
+  [ -n "$BOOT_MODE" ] && return 0
+
+  if ! disk=$(getDisk); then
+    error "Failed to locate data disk!"
+    return 1
+  fi
+
+  detectDiskMode "$disk"
+}
+
 detectType() {
 
   local file="$1"
@@ -138,24 +335,25 @@ detectType() {
   esac
 
   if [ -z "$BOOT_MODE" ]; then
-    case "${file,,}" in
-      *".iso" )
-        if isLegacyIso "$file"; then
-          BOOT_MODE="legacy"
-        else
-          case $? in
-            1 ) ;;          # UEFI, hybrid, or unknown
-            * ) return 1 ;; # Failed to inspect the ISO
-          esac
-        fi
-        ;;
-      *".img" | *".raw" )
-        detectDiskMode "$file" || return 1
-        ;;
-      *".qcow2" )
-        # fdisk cannot inspect qcow2 directly.
-        ;;
-    esac
+    if [[ "${file,,}" != *".iso" ]]; then
+
+      detectDiskMode "$file" || return 1
+
+    else
+
+      if isLegacyIso "$file"; then
+
+        BOOT_MODE="legacy"
+
+      else
+
+        case $? in
+          1 ) ;;          # UEFI, hybrid, or unknown
+          * ) return 1 ;; # Failed to inspect the ISO
+        esac
+
+      fi
+    fi
   fi
 
   bootFile "$file" && return 0
@@ -453,9 +651,11 @@ findArchiveImage() {
   return 0
 }
 
+detectDataBootMode || exit 63
+
 findBootFile && return 0
 
-if hasData; then
+if [[ "$DATA_FOUND" == "Y" ]]; then
   BOOT="none"
   return 0
 fi
@@ -476,15 +676,16 @@ if ! hasDisk; then
 
   if [ -d "$STORAGE" ]; then
 
+    detectDataBootMode || exit 63
+
     findBootFile && return 0
 
-    if hasData; then
+    if [[ "$DATA_FOUND" == "Y" ]]; then
       BOOT="none"
       return 0
     fi
 
   fi
-
 fi
 
 name=$(getURL "$BOOT" "name") || exit 34
