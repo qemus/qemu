@@ -238,12 +238,6 @@ waitForShutdown() {
     sendAcpiShutdown
     wait "$slp" || :
 
-    if (( SHUTDOWN_SKIP )); then
-      kill "$slp" 2>/dev/null || :
-      wait "$slp" 2>/dev/null || :
-      break
-    fi
-
     (( cnt++ ))
 
   done
@@ -274,7 +268,6 @@ graceful_shutdown() {
   fi
 
   set +e
-  SHUTDOWN_SKIP=0
   SHUTDOWN_SIGNAL=$code
 
   touch "$QEMU_END"
