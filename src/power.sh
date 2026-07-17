@@ -100,6 +100,7 @@ cleanupHelpers() {
 
 startConsole() {
 
+  local output="${1:-/dev/tty}"
   local cnt=0
   local pid=""
 
@@ -112,7 +113,7 @@ startConsole() {
 
   (
     trap '' INT QUIT
-    exec nc -lU "$CONSOLE_SOCKET" </dev/tty >/dev/tty
+    exec nc -lU "$CONSOLE_SOCKET" </dev/tty >"$output"
   ) &
 
   pid=$!
@@ -135,6 +136,13 @@ startConsole() {
     fi
 
   done
+
+  return 0
+}
+
+stopConsole() {
+
+  mKill "$CONSOLE_PID"
 
   return 0
 }
