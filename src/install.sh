@@ -70,47 +70,31 @@ bootFile() {
 detectType() {
 
   local file="$1"
-  local result=""
-  local hybrid=""
+  local lower="${file,,}"
 
   [ ! -s "$file" ] && return 1
 
-  case "${file,,}" in
+  case "$lower" in
     *".iso" | *".img" | *".raw" | *".qcow2" ) ;;
     * ) return 1 ;;
   esac
 
-  if [ -n "$BOOT_MODE" ] || [[ "${file,,}" == *".qcow2" ]]; then
-    # Do not need to detect type (or cannot with .qcow2)
-    bootFile "$file" && return 0
-    return 1
-  fi
+  if [ -z "$BOOT_MODE" ] && [[ "$lower" == *".iso" ]]; then
 
-  if [[ "${file,,}" == *".iso" ]]; then
+    if isLegacyIso "$file"; then
 
-    hybrid=$(head -c 512 "$file" | tail -c 2 | xxd -p)
+      BOOT_MODE="legacy"
 
-    if [[ "$hybrid" != "0000" ]]; then
+    else
 
-      result=$(isoinfo -f -i "$file" 2>/dev/null)
+      local rc=$?
 
-      if [ -z "$result" ]; then
-        error "Failed to read ISO file, invalid format!"
-        return 1
-      fi
-
-      if ! grep -qi "^/EFI" <<< "$result"; then
-        BOOT_MODE="legacy"
-      fi
-
-      bootFile "$file" && return 0
-      return 1
+      # Return code 1 means UEFI, hybrid, or no El Torito catalog.
+      # Return code 2 means the ISO could not be read.
+      (( rc == 2 )) && return 1
 
     fi
   fi
-
-  result=$(fdisk -l "$file" 2>/dev/null || true)
-  [[ "${result^^}" != *"EFI "* ]] && BOOT_MODE="legacy"
 
   bootFile "$file" && return 0
   return 1
