@@ -18,7 +18,7 @@ DEV_OPTS=""
 AUDIO_OPTS=""
 DEF_OPTS="-nodefaults"
 
-if enabled "$SHUTDOWN" && interactive; then
+if enabled "${SHUTDOWN:-}" && interactive; then
   SERIAL_OPTS="-chardev socket,id=console0,path=$CONSOLE_SOCKET,reconnect-ms=1000"
   SERIAL_OPTS+=" -serial chardev:console0"
 else
