@@ -18,6 +18,9 @@ WEB_PID="/run/nginx.pid"
 WSD_PID="$QEMU_DIR/websocketd.pid"
 AUX_PID="$QEMU_DIR/audio-websocketd.pid"
 
+WSD_LOG="/var/log/websocketd.log"
+AUX_LOG="/var/log/audio-socket.log"
+
 validateVncPort() {
 
   if (( VNC_PORT < 5900 )); then
@@ -31,7 +34,7 @@ validateVncPort() {
 prepareWebFiles() {
 
   cp -r /var/www/* "$QEMU_DIR" || return 1
-  rm -f "$WSD_PID" "$AUX_PID" "$WEB_PID" || return 1
+  rm -f "$WSD_PID" "$AUX_PID" "$WEB_PID" "$WSD_LOG" "$AUX_LOG" || return 1
 
   return 0
 }
@@ -101,11 +104,13 @@ startWebServer() {
 
 startWebsocketServer() {
 
-  local log="/var/log/websocketd.log"
-  rm -f "$log"
-
   # Start websocket server
-  websocketd --address 127.0.0.1 --port="$WSD_PORT" /run/socket.sh > "$log" 2>&1 &
+  websocketd \
+    --address 127.0.0.1 \
+    --port="$WSD_PORT" \
+    /run/socket.sh \
+    >"$WSD_LOG" 2>&1 &
+
   local pid=$!
 
   if ! echo "$pid" > "$WSD_PID"; then
@@ -117,7 +122,7 @@ startWebsocketServer() {
 
   if ! isAlive "$pid"; then
     rm -f "$WSD_PID"
-    [ -s "$log" ] && cat "$log" >&2
+    [ -s "$WSD_LOG" ] && cat "$WSD_LOG" >&2
     error "Failed to start websocket server!"
     return 1
   fi
@@ -127,16 +132,13 @@ startWebsocketServer() {
 
 startAudioServer() {
 
-  local log="/var/log/audio-websocket.log"
-  rm -f "$log"
-
   # Start audio websocket server
   websocketd \
     --address 127.0.0.1 \
     --port="$AUX_PORT" \
     --binary=true \
     nc -U "$AUDIO_SOCKET" \
-    > "$log" 2>&1 &
+    >"$AUX_LOG" 2>&1 &
 
   local pid=$!
 
@@ -149,7 +151,7 @@ startAudioServer() {
 
   if ! isAlive "$pid"; then
     rm -f "$AUX_PID"
-    [ -s "$log" ] && cat "$log" >&2
+    [ -s "$AUX_LOG" ] && cat "$AUX_LOG" >&2
     error "Failed to start audio websocket server!"
     return 1
   fi
