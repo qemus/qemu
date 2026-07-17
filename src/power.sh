@@ -7,8 +7,7 @@ set -Eeuo pipefail
 # Configure QEMU for graceful shutdown
 
 SHUTDOWN_SKIP=0
-SHUTDOWN_SIGNAL=""
-SHUTDOWN_WAITING=0
+SHUTDOWN_SIGNAL=0
 
 QEMU_END="$QEMU_DIR/qemu.end"
 CONSOLE_PID="$QEMU_DIR/console.pid"
@@ -237,13 +236,6 @@ waitForShutdown() {
     fi
 
     sendAcpiShutdown
-
-    if (( SHUTDOWN_SKIP )); then
-      kill "$slp" 2>/dev/null || :
-      wait "$slp" 2>/dev/null || :
-      break
-    fi
-
     wait "$slp" || :
 
     if (( SHUTDOWN_SKIP )); then
@@ -271,8 +263,7 @@ graceful_shutdown() {
 
   if [ -f "$QEMU_END" ]; then
 
-    if [[ "$sig" == "SIGINT" && "$SHUTDOWN_SIGNAL" == "SIGINT" ]] &&
-      (( SHUTDOWN_WAITING )); then
+    if (( code == 130 && SHUTDOWN_SIGNAL == code )); then
       SHUTDOWN_SKIP=1
       echo && info "Received SIGINT again, skipping shutdown wait..."
       return
@@ -284,7 +275,7 @@ graceful_shutdown() {
 
   set +e
   SHUTDOWN_SKIP=0
-  SHUTDOWN_SIGNAL="$sig"
+  SHUTDOWN_SIGNAL=$code
 
   touch "$QEMU_END"
   echo && info "Received $sig signal, sending ACPI shutdown signal..."
@@ -300,10 +291,7 @@ graceful_shutdown() {
   fi
 
   normalizeTimeout
-
-  SHUTDOWN_WAITING=1
   waitForShutdown "$pid"
-  SHUTDOWN_WAITING=0
 
   finish "$code"
 }
