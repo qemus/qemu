@@ -142,16 +142,13 @@ downloadFile() {
   local msg rc total size log
   local reason=""
   local progress=()
-  local dotbytes=10485760
+  local output=""
 
-  # Check if running with interactive TTY or redirected to docker log
+  # Use Wget's progress bar in a terminal and progress.sh in container logs.
   if [ -t 1 ]; then
-    progress=( --progress=bar:noscroll )
+    progress=( --show-progress --progress=bar:noscroll )
   else
-    if [[ "$expected" =~ ^[0-9]+$ ]] && (( expected > 0 )); then
-      dotbytes=$(( (expected + 199) / 200 ))
-    fi
-    progress=( --progress=dot --execute "dotbytes=$dotbytes" )
+    output="log"
   fi
 
   if [ -z "$name" ]; then
@@ -165,11 +162,11 @@ downloadFile() {
   html "$msg..."
   log=$(mktemp)
 
-  /run/progress.sh "$dest" "$expected" "$msg ([P])..." &
+  /run/progress.sh "$dest" "$expected" "$msg ([P])..." "$output" &
 
   {
     LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
-      --no-http-keep-alive --show-progress "${progress[@]}" --output-file="$log"
+      --no-http-keep-alive "${progress[@]}" --output-file="$log"
     rc=$?
   } || :
 
@@ -194,7 +191,8 @@ downloadFile() {
     size=$(formatBytes "$total") || return 1
 
     if [ "$total" -lt 100000 ]; then
-      error "Invalid image file: is only $size ?" && return 1
+      error "Invalid image file: is only $size ?"
+      return 1
     fi
 
     return 0
