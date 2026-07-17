@@ -67,6 +67,66 @@ bootFile() {
   return 0
 }
 
+detectDiskMode() {
+
+  local file="$1"
+  local result=""
+  local uefi=""
+
+  if ! result=$(LC_ALL=C sfdisk --json "$file" 2>/dev/null); then
+    error "Failed to read disk image, invalid format!"
+    return 1
+  fi
+
+  if ! uefi=$(jq -r '
+      any(.partitiontable.partitions[]?;
+        ((.type // "") | ascii_downcase) as $type |
+        $type == "ef" or
+        $type == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+      )
+    ' <<< "$result"); then
+    error "Failed to parse disk partition table!"
+    return 1
+  fi
+
+  [[ "$uefi" != "true" ]] && BOOT_MODE="legacy"
+
+  return 0
+}
+
+isLegacyIso() {
+
+  local file="$1"
+  local result=""
+
+  if ! result=$(LC_ALL=C xorriso \
+      -no_rc \
+      -indev "$file" \
+      -report_el_torito plain 2>/dev/null); then
+    error "Failed to read ISO file, invalid format!"
+    return 2
+  fi
+
+  awk '
+    $1 == "El" &&
+    $2 == "Torito" &&
+    $3 == "boot" &&
+    $4 == "img" &&
+    $5 == ":" {
+
+      if ($7 == "BIOS" && $8 == "y")
+        bios = 1
+
+      if ($7 == "UEFI" && $8 == "y")
+        uefi = 1
+    }
+
+    END {
+      exit !(bios && !uefi)
+    }
+  ' <<< "$result"
+}
+
 detectType() {
 
   local file="$1"
