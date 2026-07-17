@@ -6,12 +6,19 @@ set -Eeuo pipefail
 
 # Configure QEMU for graceful shutdown
 
+SHUTDOWN_SKIP=0
+SHUTDOWN_SIGNAL=""
+SHUTDOWN_WAITING=0
+
 QEMU_END="$QEMU_DIR/qemu.end"
+CONSOLE_PID="$QEMU_DIR/console.pid"
+CONSOLE_SOCKET="$QEMU_DIR/console.sock"
 
 _trap() {
 
   local func="$1"; shift
   local sig
+
   TRAP_PID=$BASHPID
 
   for sig; do
@@ -33,6 +40,8 @@ signalCode() {
     SIGTERM) echo 143 ;;
     *)       echo 0 ;;
   esac
+
+  return 0
 }
 
 displayReason() {
@@ -45,8 +54,10 @@ displayReason() {
     131 ) echo "SIGQUIT" ;;
     134 ) echo "SIGABRT" ;;
     143 ) echo "SIGTERM" ;;
-    * ) echo "$reason" ;;
+    * )   echo "$reason" ;;
   esac
+
+  return 0
 }
 
 readQemuPid() {
@@ -68,7 +79,7 @@ forceKillQemu() {
 
   ! readQemuPid pid && return 0
   ! isAlive "$pid" && return 0
-  
+
   display=$(displayReason "$reason")
   error "Forcefully terminating $(app), reason: $display..."
   { disown "$pid" || :; kill -9 -- "$pid" || :; } 2>/dev/null
@@ -79,12 +90,53 @@ forceKillQemu() {
 cleanupHelpers() {
 
   local pids=( "${TPM_PID:-}" "${WSD_PID:-}" "${AUX_PID:-}" \
-               "${AUDIO_PID:-}" "${WEB_PID:-}" "${PASST_PID:-}" \
-               "${DNSMASQ_PID:-}" "${BALLOONING_PID:-}" )
+               "${AUDIO_PID:-}" "${WEB_PID:-}" "${CONSOLE_PID:-}" \
+               "${PASST_PID:-}" "${DNSMASQ_PID:-}" "${BALLOONING_PID:-}" )
 
   mKill "${pids[@]}"
 
   closeNetwork
+  return 0
+}
+
+startConsole() {
+
+  local cnt=0
+  local pid=""
+
+  rm -f -- "$CONSOLE_SOCKET" "$CONSOLE_PID"
+
+  if ! stty -icanon -echo isig -ixon min 1 time 0 </dev/tty; then
+    error "Failed to configure serial console terminal!"
+    return 1
+  fi
+
+  (
+    trap '' INT QUIT
+    exec nc -lU "$CONSOLE_SOCKET" </dev/tty >/dev/tty
+  ) &
+
+  pid=$!
+  echo "$pid" > "$CONSOLE_PID"
+
+  while [ ! -S "$CONSOLE_SOCKET" ]; do
+
+    if ! isAlive "$pid"; then
+      rm -f -- "$CONSOLE_PID"
+      error "Serial console relay exited unexpectedly!"
+      return 1
+    fi
+
+    sleep 0.02
+    cnt=$((cnt + 1))
+
+    if (( cnt > 100 )); then
+      error "Failed to start serial console relay!"
+      return 1
+    fi
+
+  done
+
   return 0
 }
 
@@ -165,8 +217,8 @@ waitForShutdown() {
   if [[ "$name" == "QEMU" ]]; then
     name="the virtual machine"
   fi
-  
-  while (( cnt <= wait_until )); do
+
+  while (( cnt <= wait_until && SHUTDOWN_SKIP == 0 )); do
 
     sleep 1 &
     slp=$!
@@ -186,7 +238,20 @@ waitForShutdown() {
 
     sendAcpiShutdown
 
-    wait "$slp"
+    if (( SHUTDOWN_SKIP )); then
+      kill "$slp" 2>/dev/null || :
+      wait "$slp" 2>/dev/null || :
+      break
+    fi
+
+    wait "$slp" || :
+
+    if (( SHUTDOWN_SKIP )); then
+      kill "$slp" 2>/dev/null || :
+      wait "$slp" 2>/dev/null || :
+      break
+    fi
+
     (( cnt++ ))
 
   done
@@ -205,13 +270,24 @@ graceful_shutdown() {
   code=$(signalCode "$sig")
 
   if [ -f "$QEMU_END" ]; then
-    echo && info "Received $1 signal while already shutting down..."
+
+    if [[ "$sig" == "SIGINT" && "$SHUTDOWN_SIGNAL" == "SIGINT" ]] &&
+      (( SHUTDOWN_WAITING )); then
+      SHUTDOWN_SKIP=1
+      echo && info "Received SIGINT again, skipping shutdown wait..."
+      return
+    fi
+
+    echo && info "Received $sig signal while already shutting down..."
     return
   fi
 
   set +e
+  SHUTDOWN_SKIP=0
+  SHUTDOWN_SIGNAL="$sig"
+
   touch "$QEMU_END"
-  echo && info "Received $1 signal, sending ACPI shutdown signal..."
+  echo && info "Received $sig signal, sending ACPI shutdown signal..."
 
   if ! readQemuPid pid; then
     warn "QEMU PID file ($QEMU_PID) does not exist?"
@@ -224,12 +300,19 @@ graceful_shutdown() {
   fi
 
   normalizeTimeout
+
+  SHUTDOWN_WAITING=1
   waitForShutdown "$pid"
+  SHUTDOWN_WAITING=0
 
   finish "$code"
 }
 
 ! enabled "$SHUTDOWN" && return 0
+
+if interactive; then
+  _trap graceful_shutdown SIGINT
+fi
 
 _trap graceful_shutdown SIGTERM SIGHUP SIGABRT SIGQUIT
 
