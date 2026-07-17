@@ -581,8 +581,8 @@ case "${base,,}" in
 esac
 
 target_ext="img"
-target_fmt="${DISK_FMT:-}"
-[ -z "$target_fmt" ] && target_fmt="raw"
+target_fmt="${DISK_FMT:-raw}"
+target_fmt="${target_fmt,,}"
 [[ "$target_fmt" != "raw" ]] && target_ext="qcow2"
 
 case "${base,,}" in
