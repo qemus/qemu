@@ -11,4 +11,4 @@ permissions:
 jobs:
   review:
     name: review
-    uses: qemus/.github/.github/workflows/review.yml@master
+    uses: action-pack/.github/.github/workflows/review.yml@master
