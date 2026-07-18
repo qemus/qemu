@@ -327,10 +327,9 @@ natGuestIP() {
 
   local ip="$1"
   local start="" guest="" subnet=""
-  local second="" third="" fourth="" rc=""
+  local second="" third="" rc=""
 
   third=$(cut -d. -f3 <<< "$ip")
-  fourth=$(cut -d. -f4 <<< "$ip")
 
   if [[ "$ip" == "172.30."* ]]; then
     start="31"
@@ -338,11 +337,8 @@ natGuestIP() {
     start="30"
   fi
 
-  guest=$(guestIP "172.$start.$third.$fourth" 2)
-  fourth="${guest##*.}"
-
   for (( second=start; second<=254; second++ )); do
-    guest="172.$second.$third.$fourth"
+    guest=$(guestIP "172.$second.$third.0" 2)
     subnet=$(networkCIDR "$guest") || return 1
 
     if subnetInUse "$subnet"; then
@@ -357,7 +353,7 @@ natGuestIP() {
   done
 
   for (( second=30; second<start; second++ )); do
-    guest="172.$second.$third.$fourth"
+    guest=$(guestIP "172.$second.$third.0" 2)
     subnet=$(networkCIDR "$guest") || return 1
 
     if subnetInUse "$subnet"; then
@@ -1044,13 +1040,16 @@ checkExistingTables() {
   local own_rule="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
 
   rules=$(
-    iptables -t nat -S PREROUTING 2>/dev/null |
+    {
+      iptables -t nat -S PREROUTING 2>/dev/null || true
+      iptables -t nat -S OUTPUT 2>/dev/null || true
+    } |
       awk '$1 == "-A"' |
       grep -Ev -- "$own_rule" || true
   )
 
   conflicts=$(grep -E -- \
-    '^-A PREROUTING .*(-j DNAT|-j REDIRECT)( |$)' \
+    '^-A (PREROUTING|OUTPUT) .*(-j DNAT|-j REDIRECT)( |$)' \
     <<< "$rules" || true)
 
   if [ -n "$conflicts" ]; then
@@ -1084,6 +1083,7 @@ checkExistingTables() {
   fi
 
   showRules nat PREROUTING "NAT PREROUTING" "$rule_tag"
+  showRules nat OUTPUT "NAT OUTPUT" "$rule_tag"
   showRules filter FORWARD "filter FORWARD" "$rule_tag"
   showRules nat POSTROUTING "NAT POSTROUTING" "$rule_tag"
 
