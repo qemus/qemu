@@ -156,6 +156,7 @@ detectQcow2Mode() {
 
   local file="$1"
   local found="N"
+  local protective="N"
   local signature=""
   local tmp=""
   local type=""
@@ -210,10 +211,15 @@ detectQcow2Mode() {
         return 1
       fi
 
-      if [[ "$type" == "ef" ]]; then
-        found="Y"
-        break
-      fi
+      case "$type" in
+        "ef" )
+          found="Y"
+          break
+          ;;
+        "ee" )
+          protective="Y"
+          ;;
+      esac
 
     done
   fi
@@ -226,7 +232,15 @@ detectQcow2Mode() {
       return 1
     fi
 
-    if [[ "$signature" == "4546492050415254" ]]; then
+    if [[ "$signature" != "4546492050415254" ]]; then
+
+      if [[ "$protective" == "Y" ]]; then
+        rm -f "$tmp"
+        warn "Protective MBR found but the GPT header in \"$file\" is invalid, keeping UEFI mode."
+        return 0
+      fi
+
+    else
 
       entry_lba=$(od -An -tu8 -j 584 -N 8 "$tmp" | tr -d '[:space:]') || {
         rm -f "$tmp"
