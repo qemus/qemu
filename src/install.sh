@@ -303,27 +303,6 @@ detectDiskMode() {
   esac
 }
 
-detectDataMode() {
-
-  local disk=""
-  DATA_FOUND="N"
-
-  if ! hasData; then
-    return 0
-  fi
-
-  DATA_FOUND="Y"
-
-  [ -n "$BOOT_MODE" ] && return 0
-
-  if ! disk=$(getDisk); then
-    error "Failed to locate data disk!"
-    return 1
-  fi
-
-  detectDiskMode "$disk"
-}
-
 detectType() {
 
   local file="$1"
@@ -651,13 +630,23 @@ findArchiveImage() {
   return 0
 }
 
-detectDataBootMode || exit 63
-
 findBootFile && return 0
 
-if [[ "$DATA_FOUND" == "Y" ]]; then
+if hasData; then
+
+  if [ -z "$BOOT_MODE" ]; then
+
+    disk=$(getDisk) || {
+      error "Failed to locate data disk!"
+      exit 63
+    }
+
+    detectDiskMode "$disk" || exit 63
+  fi
+
   BOOT="none"
   return 0
+
 fi
 
 BOOT=$(strip "$BOOT")
@@ -676,13 +665,23 @@ if ! hasDisk; then
 
   if [ -d "$STORAGE" ]; then
 
-    detectDataBootMode || exit 63
-
     findBootFile && return 0
 
-    if [[ "$DATA_FOUND" == "Y" ]]; then
+    if hasData; then
+
+      if [ -z "$BOOT_MODE" ]; then
+
+        disk=$(getDisk) || {
+          error "Failed to locate data disk!"
+          exit 63
+        }
+
+        detectDiskMode "$disk" || exit 63
+      fi
+
       BOOT="none"
       return 0
+
     fi
 
   fi
