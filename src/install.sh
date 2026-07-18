@@ -71,7 +71,7 @@ detectRawDiskMode() {
 
   local file="$1"
   local result=""
-  local uefi=""
+  local mode=""
 
   if [ ! -r "$file" ]; then
     error "Failed to read disk image \"$file\"!"
@@ -84,18 +84,39 @@ detectRawDiskMode() {
     return 0
   fi
 
-  if ! uefi=$(jq -r '
-      any(.partitiontable.partitions[]?;
-        ((.type // "") | ascii_downcase) as $type |
-        $type == "ef" or
-        $type == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
-      )
+  if ! mode=$(jq -r '
+      [.partitiontable.partitions[]? |
+        ((.type // "") | ascii_downcase | sub("^0x"; ""))
+      ] as $types |
+
+      if any($types[];
+        . == "ef" or
+        . == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+      ) then
+        "uefi"
+      elif any($types[]; . == "ee") then
+        "protective"
+      else
+        "legacy"
+      end
     ' <<< "$result"); then
     error "Failed to parse disk partition table!"
     return 1
   fi
 
-  [[ "$uefi" != "true" ]] && BOOT_MODE="legacy"
+  case "$mode" in
+    "uefi" ) ;;
+
+    "protective" )
+      warn "Protective MBR found but no valid GPT partition table was detected in \"$file\", keeping UEFI mode." ;;
+
+    "legacy" )
+      BOOT_MODE="legacy" ;;
+
+    * )
+      error "Failed to determine boot mode from disk partition table!"
+      return 1 ;;
+  esac
 
   return 0
 }
