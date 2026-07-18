@@ -67,11 +67,343 @@ bootFile() {
   return 0
 }
 
-detectType() {
+detectRawDiskMode() {
 
   local file="$1"
   local result=""
-  local hybrid=""
+  local mode=""
+
+  if [ ! -r "$file" ]; then
+    error "Failed to read disk image \"$file\"!"
+    return 1
+  fi
+
+  if ! result=$(LC_ALL=C sfdisk --json "$file" 2>/dev/null); then
+    warn "No partition table detected in \"$file\", assuming legacy boot."
+    BOOT_MODE="legacy"
+    return 0
+  fi
+
+  if ! mode=$(jq -r '
+      [.partitiontable.partitions[]? |
+        ((.type // "") | ascii_downcase | sub("^0x"; ""))
+      ] as $types |
+
+      if any($types[];
+        . == "ef" or
+        . == "c12a7328-f81f-11d2-ba4b-00a0c93ec93b"
+      ) then
+        "uefi"
+      elif any($types[]; . == "ee") then
+        "protective"
+      else
+        "legacy"
+      end
+    ' <<< "$result"); then
+    error "Failed to parse disk partition table!"
+    return 1
+  fi
+
+  case "$mode" in
+    "uefi" ) ;;
+
+    "protective" )
+      warn "Protective MBR found but no valid GPT partition table was detected in \"$file\", keeping UEFI mode." ;;
+
+    "legacy" )
+      info "No EFI partition detected in \"$file\", using legacy boot."
+      BOOT_MODE="legacy" ;;
+
+    * )
+      error "Failed to determine boot mode from disk partition table!"
+      return 1 ;;
+  esac
+
+  return 0
+}
+
+isLegacyIso() {
+
+  local file="$1"
+  local result=""
+
+  if ! result=$(LC_ALL=C xorriso \
+      -no_rc \
+      -indev "$file" \
+      -report_el_torito plain \
+      -report_system_area plain 2>/dev/null); then
+    error "Failed to read ISO file, invalid format!"
+    return 2
+  fi
+
+  awk '
+    $1 == "El" &&
+    $2 == "Torito" &&
+    $3 == "boot" &&
+    $4 == "img" &&
+    $5 == ":" {
+
+      if ($7 == "BIOS" && $8 == "y")
+        bios = 1
+
+      if ($7 == "UEFI" && $8 == "y")
+        uefi = 1
+    }
+
+    $1 == "MBR" &&
+    $2 == "partition" &&
+    $3 == ":" &&
+    tolower($6) == "0xef" {
+      uefi = 1
+    }
+
+    $1 == "GPT" &&
+    $2 == "type" &&
+    $3 == "GUID" &&
+    $4 == ":" &&
+    tolower($6) == "28732ac11ff8d211ba4b00a0c93ec93b" {
+      uefi = 1
+    }
+
+    END {
+      if (bios && !uefi)
+        exit 0
+
+      if (uefi)
+        exit 1
+
+      exit 3
+    }
+  ' <<< "$result"
+}
+
+readQcow2Sectors() {
+
+  local file="$1"
+  local skip="$2"
+  local count="$3"
+  local output="$4"
+
+  rm -f "$output"
+
+  if ! qemu-img dd \
+      -f qcow2 \
+      -O raw \
+      bs=512 \
+      skip="$skip" \
+      count="$count" \
+      "if=$file" \
+      "of=$output" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  return 0
+}
+
+detectQcow2Mode() {
+
+  local file="$1"
+  local found="N"
+  local protective="N"
+  local signature=""
+  local tmp=""
+  local type=""
+  local offset=""
+  local actual_size=0
+
+  local entry_lba=""
+  local entry_count=""
+  local entry_size=""
+  local entry_units=0
+  local table_size=0
+  local table_sectors=0
+  local expected_size=0
+
+  if ! tmp=$(mktemp "$QEMU_DIR/boot-mode.XXXXXX"); then
+    error "Failed to create temporary boot detection file!"
+    return 1
+  fi
+
+  if ! readQcow2Sectors "$file" 0 2 "$tmp"; then
+    rm -f "$tmp"
+    error "Failed to inspect QCOW2 image!"
+    return 1
+  fi
+
+  if ! actual_size=$(stat -c%s -- "$tmp"); then
+    rm -f "$tmp"
+    error "Failed to determine QCOW2 inspection data size!"
+    return 1
+  fi
+
+  if (( actual_size < 1024 )); then
+    rm -f "$tmp"
+    error "QCOW2 image is too small to contain a partition table!"
+    return 1
+  fi
+
+  if ! signature=$(xxd -p -l 2 -s 510 "$tmp"); then
+    rm -f "$tmp"
+    error "Failed to inspect QCOW2 partition table!"
+    return 1
+  fi
+
+  # Check the four MBR partition type fields.
+  if [[ "$signature" == "55aa" ]]; then
+
+    for offset in 450 466 482 498; do
+
+      if ! type=$(xxd -p -l 1 -s "$offset" "$tmp"); then
+        rm -f "$tmp"
+        error "Failed to inspect QCOW2 partition table!"
+        return 1
+      fi
+
+      case "$type" in
+        "ef" )
+          found="Y"
+          break
+          ;;
+        "ee" )
+          protective="Y"
+          ;;
+      esac
+
+    done
+  fi
+
+  if [[ "$found" != "Y" ]]; then
+
+    if ! signature=$(xxd -p -l 8 -s 512 "$tmp"); then
+      rm -f "$tmp"
+      error "Failed to inspect QCOW2 partition table!"
+      return 1
+    fi
+
+    if [[ "$signature" != "4546492050415254" ]]; then
+
+      if [[ "$protective" == "Y" ]]; then
+        rm -f "$tmp"
+        warn "Protective MBR found but the GPT header in \"$file\" is invalid, keeping UEFI mode."
+        return 0
+      fi
+
+    else
+
+      entry_lba=$(od -An -tu8 -j 584 -N 8 "$tmp" | tr -d '[:space:]') || {
+        rm -f "$tmp"
+        error "Failed to read GPT header!"
+        return 1
+      }
+
+      entry_count=$(od -An -tu4 -j 592 -N 4 "$tmp" | tr -d '[:space:]') || {
+        rm -f "$tmp"
+        error "Failed to read GPT header!"
+        return 1
+      }
+
+      entry_size=$(od -An -tu4 -j 596 -N 4 "$tmp" | tr -d '[:space:]') || {
+        rm -f "$tmp"
+        error "Failed to read GPT header!"
+        return 1
+      }
+
+      if [[ ! "$entry_lba" =~ ^[0-9]+$ ||
+            ! "$entry_count" =~ ^[0-9]+$ ||
+            ! "$entry_size" =~ ^[0-9]+$ ]]; then
+        rm -f "$tmp"
+        error "Invalid GPT header!"
+        return 1
+      fi
+
+      entry_units=$((entry_size / 128))
+
+      if (( entry_lba < 2 ||
+            entry_count < 1 ||
+            entry_count > 131072 ||
+            entry_size < 128 ||
+            entry_size > 4096 ||
+            entry_size % 128 != 0 ||
+            (entry_units & (entry_units - 1)) != 0 )); then
+        rm -f "$tmp"
+        error "Invalid GPT partition entry array!"
+        return 1
+      fi
+
+      table_size=$((entry_count * entry_size))
+
+      # Protect against corrupt images requesting an excessive read.
+      if (( table_size > 16777216 )); then
+        rm -f "$tmp"
+        error "GPT partition entry array is too large!"
+        return 1
+      fi
+
+      table_sectors=$(((table_size + 511) / 512))
+      expected_size=$((table_sectors * 512))
+
+      if ! readQcow2Sectors \
+          "$file" "$entry_lba" "$table_sectors" "$tmp"; then
+        rm -f "$tmp"
+        error "Failed to read GPT partition entries!"
+        return 1
+      fi
+
+      if ! actual_size=$(stat -c%s -- "$tmp"); then
+        rm -f "$tmp"
+        error "Failed to determine GPT partition entry data size!"
+        return 1
+      fi
+
+      if (( actual_size < expected_size )); then
+        rm -f "$tmp"
+        error "Failed to read the complete GPT partition entry array!"
+        return 1
+      fi
+
+      # EFI System Partition GUID in GPT on-disk byte order.
+      if xxd -p -c 16 -l "$table_size" "$tmp" |
+          awk -v stride="$((entry_size / 16))" '
+            (NR - 1) % stride == 0 &&
+              tolower($0) == "28732ac11ff8d211ba4b00a0c93ec93b" {
+              found = 1
+            }
+            END {
+              exit !found
+            }
+          '; then
+
+        found="Y"
+
+      fi
+    fi
+  fi
+
+  rm -f "$tmp"
+
+  if [[ "$found" != "Y" ]]; then
+    info "No EFI partition detected in \"$file\", using legacy boot."
+    BOOT_MODE="legacy"
+  fi
+
+  return 0
+}
+
+detectDiskMode() {
+
+  local file="$1"
+
+  case "${file,,}" in
+    *".qcow2" ) detectQcow2Mode "$file" || return 1 ;;
+    * ) detectRawDiskMode "$file" || return 1 ;;
+  esac
+
+  return 0
+}
+
+detectType() {
+
+  local file="$1"
 
   [ ! -s "$file" ] && return 1
 
@@ -80,37 +412,31 @@ detectType() {
     * ) return 1 ;;
   esac
 
-  if [ -n "$BOOT_MODE" ] || [[ "${file,,}" == *".qcow2" ]]; then
-    # Do not need to detect type (or cannot with .qcow2)
-    bootFile "$file" && return 0
-    return 1
-  fi
+  if [ -z "$BOOT_MODE" ]; then
+    if [[ "${file,,}" != *".iso" ]]; then
 
-  if [[ "${file,,}" == *".iso" ]]; then
+      detectDiskMode "$file" || return 1
 
-    hybrid=$(head -c 512 "$file" | tail -c 2 | xxd -p)
+    else
 
-    if [[ "$hybrid" != "0000" ]]; then
+      if isLegacyIso "$file"; then
 
-      result=$(isoinfo -f -i "$file" 2>/dev/null)
-
-      if [ -z "$result" ]; then
-        error "Failed to read ISO file, invalid format!"
-        return 1
-      fi
-
-      if ! grep -qi "^/EFI" <<< "$result"; then
+        info "No UEFI boot entry detected in \"$file\", using legacy boot."
         BOOT_MODE="legacy"
+
+      else
+
+        local rc=$?
+
+        case "$rc" in
+          1 ) ;; # Confirmed UEFI support
+          3 ) warn "Could not determine the boot mode of \"$file\", keeping UEFI mode." ;;
+          * ) return 1 ;;
+        esac
+
       fi
-
-      bootFile "$file" && return 0
-      return 1
-
     fi
   fi
-
-  result=$(fdisk -l "$file" 2>/dev/null || true)
-  [[ "${result^^}" != *"EFI "* ]] && BOOT_MODE="legacy"
 
   bootFile "$file" && return 0
   return 1
@@ -345,11 +671,11 @@ findFile() {
   [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" -print -quit)
 
   if [ -d "$dir" ]; then
-    if hasData; then
-      BOOT="none"
-      return 0
-    fi
-    error "The bind $dir maps to a file that does not exist!" && exit 37
+
+    hasData && return 1
+
+    error "The bind $dir maps to a file that does not exist!"
+    exit 37
   fi
 
   file=$(find / -maxdepth 1 -type f -iname "$fname" -print -quit)
@@ -410,8 +736,20 @@ findArchiveImage() {
 findBootFile && return 0
 
 if hasData; then
+
+  if [ -z "$BOOT_MODE" ]; then
+
+    disk=$(getDisk) || {
+      error "Failed to locate data disk!"
+      exit 63
+    }
+
+    detectDiskMode "$disk" || exit 63
+  fi
+
   BOOT="none"
   return 0
+
 fi
 
 BOOT=$(strip "$BOOT")
@@ -433,12 +771,23 @@ if ! hasDisk; then
     findBootFile && return 0
 
     if hasData; then
+
+      if [ -z "$BOOT_MODE" ]; then
+
+        disk=$(getDisk) || {
+          error "Failed to locate data disk!"
+          exit 63
+        }
+
+        detectDiskMode "$disk" || exit 63
+      fi
+
       BOOT="none"
       return 0
+
     fi
 
   fi
-
 fi
 
 name=$(getURL "$BOOT" "name") || exit 34
