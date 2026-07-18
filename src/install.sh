@@ -73,9 +73,15 @@ detectRawDiskMode() {
   local result=""
   local uefi=""
 
-  if ! result=$(LC_ALL=C sfdisk --json "$file" 2>/dev/null); then
-    error "Failed to read disk image, invalid format!"
+  if [ ! -r "$file" ]; then
+    error "Failed to read disk image \"$file\"!"
     return 1
+  fi
+
+  if ! result=$(LC_ALL=C sfdisk --json "$file" 2>/dev/null); then
+    warn "No partition table detected in \"$file\", assuming legacy boot."
+    BOOT_MODE="legacy"
+    return 0
   fi
 
   if ! uefi=$(jq -r '
