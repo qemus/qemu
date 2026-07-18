@@ -6,31 +6,36 @@ set -Eeuo pipefail
 : "${GPU:="N"}"         # GPU passthrough
 : "${VGA:="virtio"}"    # VGA adaptor
 : "${DISPLAY:="web"}"   # Display type
+: "${LOSSY:="N"}"       # Lossy VNC compression
 : "${RENDERNODE:="/dev/dri/renderD128"}"  # Render node
 
 # Sanitize variables
 VGA=$(strip "$VGA")
+LOSSY=$(strip "$LOSSY")
 DISPLAY=$(strip "$DISPLAY")
 RENDERNODE=$(strip "$RENDERNODE")
 
 port=$(( VNC_PORT - 5900 ))
 [[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
 
+LOSSY_OPT=""
+enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
+
 case "${DISPLAY,,}" in
   "vnc" )
-    DISPLAY_OPTS="-display vnc=:$port -vga $VGA"
+    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} -vga ${VGA}"
     ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:$port,websocket=$WSS_PORT -vga $VGA"
+    DISPLAY_OPTS="-display vnc=:${port},websocket=${WSS_PORT}${LOSSY_OPT} -vga ${VGA}"
     ;;
   "disabled" )
-    DISPLAY_OPTS="-display none -vga $VGA"
+    DISPLAY_OPTS="-display none -vga ${VGA}"
     ;;
   "none" )
     DISPLAY_OPTS="-display none -vga none"
     ;;
   *)
-    DISPLAY_OPTS="-display $DISPLAY -vga $VGA"
+    DISPLAY_OPTS="-display ${DISPLAY} -vga ${VGA}"
     ;;
 esac
 
@@ -46,8 +51,8 @@ enabled "$DEBUG" && echo "$msg"
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
 
-[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :$port"
-[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :$port,websocket=$WSS_PORT"
+[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :${port}${LOSSY_OPT}"
+[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :${port},websocket=${WSS_PORT}${LOSSY_OPT}"
 
 [ ! -d /dev/dri ] && mkdir -m 755 /dev/dri
 
