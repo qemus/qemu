@@ -111,6 +111,7 @@ detectRawDiskMode() {
       warn "Protective MBR found but no valid GPT partition table was detected in \"$file\", keeping UEFI mode." ;;
 
     "legacy" )
+      info "No EFI partition detected in \"$file\", using legacy boot."
       BOOT_MODE="legacy" ;;
 
     * )
@@ -375,6 +376,7 @@ detectQcow2Mode() {
   rm -f "$tmp"
 
   if [[ "$found" != "Y" ]]; then
+    info "No EFI partition detected in \"$file\", using legacy boot."
     BOOT_MODE="legacy"
   fi
 
@@ -412,6 +414,7 @@ detectType() {
 
       if isLegacyIso "$file"; then
 
+        info "No UEFI boot entry detected in \"$file\", using legacy boot."
         BOOT_MODE="legacy"
 
       else
