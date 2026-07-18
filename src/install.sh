@@ -142,14 +142,18 @@ readQcow2Sectors() {
 
   rm -f "$output"
 
-  qemu-img dd \
-    -f qcow2 \
-    -O raw \
-    bs=512 \
-    skip="$skip" \
-    count="$count" \
-    "if=$file" \
-    "of=$output" >/dev/null 2>&1
+  if ! qemu-img dd \
+      -f qcow2 \
+      -O raw \
+      bs=512 \
+      skip="$skip" \
+      count="$count" \
+      "if=$file" \
+      "of=$output" >/dev/null 2>&1; then
+    return 1
+  fi
+
+  return 0
 }
 
 detectQcow2Mode() {
@@ -345,9 +349,11 @@ detectDiskMode() {
   local file="$1"
 
   case "${file,,}" in
-    *".qcow2" ) detectQcow2Mode "$file" ;;
-    * ) detectRawDiskMode "$file" ;;
+    *".qcow2" ) detectQcow2Mode "$file" || return 1 ;;
+    * ) detectRawDiskMode "$file" || return 1 ;;
   esac
+
+  return 0
 }
 
 detectType() {
