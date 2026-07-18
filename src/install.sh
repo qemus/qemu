@@ -160,6 +160,7 @@ detectQcow2Mode() {
   local tmp=""
   local type=""
   local offset=""
+  local actual_size=0
 
   local entry_lba=""
   local entry_count=""
@@ -167,6 +168,7 @@ detectQcow2Mode() {
   local entry_units=0
   local table_size=0
   local table_sectors=0
+  local expected_size=0
 
   if ! tmp=$(mktemp "$QEMU_DIR/boot-mode.XXXXXX"); then
     error "Failed to create temporary boot detection file!"
@@ -176,6 +178,18 @@ detectQcow2Mode() {
   if ! readQcow2Sectors "$file" 0 2 "$tmp"; then
     rm -f "$tmp"
     error "Failed to inspect QCOW2 image!"
+    return 1
+  fi
+
+  if ! actual_size=$(stat -c%s -- "$tmp"); then
+    rm -f "$tmp"
+    error "Failed to determine QCOW2 inspection data size!"
+    return 1
+  fi
+
+  if (( actual_size < 1024 )); then
+    rm -f "$tmp"
+    error "QCOW2 image is too small to contain a partition table!"
     return 1
   fi
 
@@ -264,11 +278,24 @@ detectQcow2Mode() {
       fi
 
       table_sectors=$(((table_size + 511) / 512))
+      expected_size=$((table_sectors * 512))
 
       if ! readQcow2Sectors \
           "$file" "$entry_lba" "$table_sectors" "$tmp"; then
         rm -f "$tmp"
         error "Failed to read GPT partition entries!"
+        return 1
+      fi
+
+      if ! actual_size=$(stat -c%s -- "$tmp"); then
+        rm -f "$tmp"
+        error "Failed to determine GPT partition entry data size!"
+        return 1
+      fi
+
+      if (( actual_size < expected_size )); then
+        rm -f "$tmp"
+        error "Failed to read the complete GPT partition entry array!"
         return 1
       fi
 
