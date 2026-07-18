@@ -129,7 +129,8 @@ isLegacyIso() {
   if ! result=$(LC_ALL=C xorriso \
       -no_rc \
       -indev "$file" \
-      -report_el_torito plain 2>/dev/null); then
+      -report_el_torito plain \
+      -report_system_area plain 2>/dev/null); then
     error "Failed to read ISO file, invalid format!"
     return 2
   fi
@@ -146,6 +147,21 @@ isLegacyIso() {
 
       if ($7 == "UEFI" && $8 == "y")
         uefi = 1
+    }
+
+    $1 == "MBR" &&
+    $2 == "partition" &&
+    $3 == ":" &&
+    tolower($6) == "0xef" {
+      uefi = 1
+    }
+
+    $1 == "GPT" &&
+    $2 == "type" &&
+    $3 == "GUID" &&
+    $4 == ":" &&
+    tolower($6) == "28732ac11ff8d211ba4b00a0c93ec93b" {
+      uefi = 1
     }
 
     END {
