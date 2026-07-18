@@ -720,10 +720,6 @@ findArchiveImage() {
   return 0
 }
 
-if [[ "${PLATFORM,,}" == "arm64" && -z "$BOOT_MODE" ]]; then
-  BOOT_MODE="uefi"
-fi
-
 findBootFile && return 0
 
 if hasData; then
