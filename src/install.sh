@@ -166,7 +166,13 @@ isLegacyIso() {
     }
 
     END {
-      exit !(bios && !uefi)
+      if (bios && !uefi)
+        exit 0
+
+      if (uefi)
+        exit 1
+
+      exit 3
     }
   ' <<< "$result"
 }
@@ -398,6 +404,7 @@ detectDiskMode() {
 detectType() {
 
   local file="$1"
+
   [ ! -s "$file" ] && return 1
 
   case "${file,,}" in
@@ -419,9 +426,12 @@ detectType() {
 
       else
 
-        case $? in
-          1 ) ;;          # UEFI, hybrid, or unknown
-          * ) return 1 ;; # Failed to inspect the ISO
+        local rc=$?
+
+        case "$rc" in
+          1 ) ;; # Confirmed UEFI support
+          3 ) warn "Could not determine the boot mode of \"$file\", keeping UEFI mode." ;;
+          * ) return 1 ;;
         esac
 
       fi
