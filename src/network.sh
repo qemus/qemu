@@ -1230,6 +1230,17 @@ applyTables() {
     return 1
   fi
 
+  # Process locally generated traffic addressed to the container uplink.
+  if ! runTableRule "$silent" table_error \
+    iptables -t nat -A OUTPUT \
+    -d "$UPLINK" \
+    -m addrtype --dst-type LOCAL \
+    -m comment --comment "$rule_tag" \
+    -j "$dnat_chain"; then
+    tableError "$silent" "$table_error"
+    return 1
+  fi
+
   # Hack for guest VMs complaining about "bad udp checksums in 5 packets".
   runTableRule "Y" table_error \
     iptables -t mangle -A POSTROUTING \
@@ -1382,12 +1393,34 @@ clearTables() {
   return 0
 }
 
+hasTaggedRules() {
+
+  local save="$1"
+  local rules=""
+  local dnat_chain="QEMU_DNAT"
+  local rule_tag="$dnat_chain"
+  local own_rule="--comment[[:space:]]+\"?$rule_tag\"?([[:space:]]|\$)"
+  local tagged_rule="^:${dnat_chain}[[:space:]]|$own_rule"
+
+  # Return 2 when the backend cannot be inspected.
+  if ! rules=$("$save" 2>/dev/null); then
+    return 2
+  fi
+
+  if grep -Eq -- "$tagged_rule" <<< "$rules"; then
+    return 0
+  fi
+
+  return 1
+}
+
 configureTables() {
 
   local ip="$1"
   local subnet="$2"
   local preferred=""
-  local alternate="" rc=0
+  local alternate=""
+  local alternate_save=""
   local preferred_clean="N"
   local alternate_dirty="N"
 
@@ -1405,6 +1438,50 @@ configureTables() {
       warn "unsupported IP tables backend: $preferred"
       return 1 ;;
   esac
+
+  # Inspect the alternate backend without changing the active alternative.
+  alternate_save=$(command -v "iptables-$alternate-save" 2>/dev/null || true)
+
+  if [ -n "$alternate_save" ]; then
+
+    if hasTaggedRules "$alternate_save"; then
+
+      # Only switch backends when stale QEMU rules were positively found.
+      if ! setTables "$alternate"; then
+        enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+        warn "failed to select the $alternate IP tables backend for cleanup!"
+        return 1
+      fi
+
+      if ! clearTables; then
+        alternate_dirty="Y"
+      fi
+
+      # Always restore the originally selected backend after cleanup.
+      if ! setTables "$preferred"; then
+        enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+        warn "failed to restore the preferred $preferred IP tables backend!"
+        return 1
+      fi
+
+      if enabled "$alternate_dirty"; then
+        enabled "$ROOTLESS" && ! enabled "$DEBUG" && return 1
+        warn "failed to clean up the existing $alternate IP tables configuration!"
+        return 1
+      fi
+
+    else
+
+      local rc=$?
+
+      # An unavailable alternate backend does not affect normal startup.
+      if (( rc == 2 )) && enabled "$DEBUG"; then
+        warn "failed to inspect the $alternate IP tables backend!"
+      fi
+
+    fi
+
+  fi
 
   # Try the preferred backend first.
   if clearTables; then
@@ -1426,7 +1503,7 @@ configureTables() {
 
   else
 
-    rc=$?
+    local rc=$?
 
     # The preferred backend was accessible, but its rules could not be removed.
     # Do not switch while partial or stale rules may still be active.
@@ -1473,7 +1550,7 @@ configureTables() {
 
     else
 
-      rc=$?
+      local rc=$?
 
       # Only mark the alternate backend dirty when it was accessible but cleanup failed.
       if (( rc == 1 )); then
