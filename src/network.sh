@@ -1759,7 +1759,7 @@ compat() {
   local err="failed to configure IP alias for backwards compatibility."
 
   [[ "$samba" == "$gateway" ]] && return 0
-  [[ "${BOOT_MODE:-}" != "windows"* ]] && return 0
+  [[ "${APP,,}" != "windows" ]] && return 0
 
   if (( ${#interface} > 8 )); then
     label="c"
