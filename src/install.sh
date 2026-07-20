@@ -467,17 +467,32 @@ downloadFile() {
   local connections="${5:-1}"
   local dest="$STORAGE/$base"
   local msg rc total size log
-  local reason="" output=""
-  local interval=536870912
-  local chunk_size="512M"
-  local progress=()
+  local reason=""
+  local progress=() output=""
+  local interval=268435456
+  local max_chunk=268435456
+  local min_chunk=16777216
+  local chunk_size="$max_chunk"
   local progress_mode="apparent"
 
-  (( connections > 1 )) && progress_mode="allocated"
+  if (( connections > 1 )); then
+    progress_mode="allocated"
+
+    if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
+      chunk_size=$(((expected + connections - 1) / connections))
+
+      (( chunk_size > max_chunk )) && chunk_size="$max_chunk"
+      (( chunk_size < min_chunk )) && chunk_size="$min_chunk"
+    fi
+  fi
 
   # Use the downloader's progress bar in a terminal and progress.sh in container logs.
   if [ -t 1 ]; then
-    progress=( --show-progress --progress=bar:noscroll )
+    if (( connections > 1 )); then
+      progress=( --progress=bar:force:noscroll )
+    else
+      progress=( --show-progress --progress=bar:noscroll )
+    fi
   else
     output="log"
   fi
