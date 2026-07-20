@@ -26,6 +26,7 @@ RUN <<EOF
     7zip \
     curl \
     ovmf \
+    wget2 \
     fdisk \
     nginx \
     swtpm \
