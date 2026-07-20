@@ -543,7 +543,8 @@ downloadFile() {
     if [[ "$terminal" == "Y" ]]; then
 
       tee "$log" < "$fifo" > >(
-        sed -u -E 's/[[:space:]]*\[Files:.*\]/\x1b[2K/' >&2
+        sed -u -E \
+          's/Files:[[:space:]]*[0-9]+[[:space:]]*Bytes:/Total:/g' >&2
       ) &
       tee_pid=$!
 
