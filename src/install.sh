@@ -578,7 +578,9 @@ downloadFile() {
   if (( connections > 1 && rc == 7 )); then
     rm -f "$log"
     kill -INT "$BASHPID"
-    return 130
+
+    # Defensive fallback in case SIGINT is ignored or trapped.
+    exit 130
   fi
 
   if (( rc != 0 )); then
@@ -644,32 +646,22 @@ downloadWithRetries() {
   local name="$3"
   local dest="$STORAGE/$base"
 
-  rm -f "$dest"
+  rm -f "$dest" "$dest.aria2"
 
   # Try the configured number of connections first.
   downloadFile "$url" "$base" "$name" 0 "$CONNECTIONS" && return 0
 
-  local rc=$?
-  if (( rc == 130 )); then
-    rm -f "$dest"
-    return 130
-  fi
-
   delay 5
 
-  # A multi-connection partial file may contain non-sequential ranges and
-  # cannot safely be resumed by Wget.
+  # A multi-connection partial file cannot safely be resumed by Wget.
   if (( CONNECTIONS > 1 )); then
-    rm -f "$dest"
+    rm -f "$dest" "$dest.aria2"
   fi
 
   # Retry with the original single-connection Wget behavior.
   downloadFile "$url" "$base" "$name" 0 1 && return 0
 
-  local rc=$?
-  rm -f "$dest"
-
-  (( rc == 130 )) && return 130
+  rm -f "$dest" "$dest.aria2"
   return 1
 }
 
@@ -943,12 +935,7 @@ find "$STORAGE" -maxdepth 1 -type f -iname 'qemu.*' -delete
 
 base=$(getBase "$BOOT")
 
-downloadWithRetries "$BOOT" "$base" "$name" || {
-  rc=$?
-
-  (( rc == 130 )) && exit 130
-  exit 60
-}
+downloadWithRetries "$BOOT" "$base" "$name" || exit 60
 
 case "${base,,}" in
 
