@@ -497,7 +497,7 @@ downloadFile() {
     if (( connections > 1 )); then
       aria=(
         --stderr=true
-        --summary-interval=1
+        --summary-interval=0
         --download-result=hide
         --console-log-level=warn
       )
