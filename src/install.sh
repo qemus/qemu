@@ -469,11 +469,17 @@ downloadFile() {
   local msg rc total size log
   local reason=""
   local progress=() output=""
-  local interval=268435456
-  local max_chunk=268435456
+  local default_chunk=268435456
+  local default_interval=419430400
   local min_chunk=16777216
-  local chunk_size="$max_chunk"
+  local chunk_size="$default_chunk"
+  local interval="$default_interval"
   local progress_mode="apparent"
+
+  # Produce approximately ten progress updates when the size is known.
+  if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
+    interval=$(((expected + 9) / 10))
+  fi
 
   if (( connections > 1 )); then
     progress_mode="allocated"
@@ -481,7 +487,7 @@ downloadFile() {
     if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
       chunk_size=$(((expected + connections - 1) / connections))
 
-      (( chunk_size > max_chunk )) && chunk_size="$max_chunk"
+      (( chunk_size > default_chunk )) && chunk_size="$default_chunk"
       (( chunk_size < min_chunk )) && chunk_size="$min_chunk"
     fi
   fi
