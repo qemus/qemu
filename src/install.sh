@@ -470,7 +470,7 @@ downloadFile() {
   local reason=""
   local progress=() output=""
   local default_chunk=268435456
-  local default_interval=419430400
+  local default_interval=536870912
   local min_chunk=16777216
   local chunk_size="$default_chunk"
   local interval="$default_interval"
