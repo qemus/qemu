@@ -517,6 +517,7 @@ downloadFile() {
 
   html "$msg..."
   log=$(mktemp)
+  enabled "$DEBUG" && echo "Downloading: $url"
 
   if (( connections > 1 )) && [[ "$terminal" == "Y" ]]; then
     pipe_dir=$(mktemp -d)
