@@ -23,6 +23,7 @@ enabled "${TRACE:-}" && set -o functrace && trap 'echo "# $BASH_COMMAND" >&2' DE
 : "${BOOT_MODE:=""}"       # Boot system with UEFI
 : "${BOOT_INDEX:="9"}"     # Boot index of CD drive
 : "${STORAGE:="/storage"}" # Storage folder location
+: "${CONNECTIONS:="4"}"    # Download connection count
 
 detectEngine() {
 
