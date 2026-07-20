@@ -474,9 +474,10 @@ downloadFile() {
   local chunk_size="$default_chunk"
   local interval="$default_interval"
   local progress_mode="apparent"
-  local terminal="N" interrupted="N"
+  local terminal="N"
   local pipe_dir="" fifo="" reason=""
-  local old_int="" pid=0 tee_pid=0
+  local old_int="" old_term=""
+  local signal=0 pid=0 tee_pid=0
 
   # Produce approximately ten progress updates when the size is known.
   if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
@@ -525,6 +526,19 @@ downloadFile() {
     mkfifo "$fifo"
   fi
 
+  old_int=$(trap -p INT)
+  old_term=$(trap -p TERM)
+
+  trap '
+    signal=130
+    (( pid > 0 )) && kill -TERM "$pid" 2>/dev/null || :
+  ' INT
+
+  trap '
+    signal=143
+    (( pid > 0 )) && kill -TERM "$pid" 2>/dev/null || :
+  ' TERM
+
   /run/progress.sh \
     "$dest" \
     "$expected" \
@@ -532,13 +546,6 @@ downloadFile() {
     "$output" \
     "$interval" \
     "$progress_mode" &
-
-  old_int=$(trap -p INT)
-
-  trap '
-    interrupted="Y"
-    (( pid > 0 )) && kill -TERM "$pid" 2>/dev/null || :
-  ' INT
 
   if (( connections > 1 )); then
     if [[ "$terminal" == "Y" ]]; then
@@ -565,23 +572,41 @@ downloadFile() {
   fi
 
   pid=$!
+
+  # Cover a signal received immediately before the downloader PID was assigned.
+  if (( signal != 0 )); then
+    kill -TERM "$pid" 2>/dev/null || :
+  fi
+
   rc=0
   wait "$pid" || rc=$?
+
+  # A trapped signal can interrupt wait before the downloader has fully exited.
+  if (( signal != 0 )); then
+    wait "$pid" 2>/dev/null || :
+  fi
 
   if (( tee_pid > 0 )); then
     wait "$tee_pid" 2>/dev/null || :
   fi
 
-  trap - INT
+  trap - INT TERM
   [ -n "$old_int" ] && eval "$old_int"
+  [ -n "$old_term" ] && eval "$old_term"
 
   fKill "progress.sh"
 
   [ -n "$pipe_dir" ] && rm -rf "$pipe_dir"
 
-  if [[ "$interrupted" == "Y" ]] || (( rc == 130 || rc == 143 )); then
+  if (( signal == 0 )); then
+    case "$rc" in
+      130 | 143) signal="$rc" ;;
+    esac
+  fi
+
+  if (( signal != 0 )); then
     rm -f "$log" "$dest"
-    return 130
+    return "$signal"
   fi
 
   if (( rc != 0 )); then
