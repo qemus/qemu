@@ -38,13 +38,13 @@ fi
 if ! interactive; then
   "${cmd[@]}" ${ARGS:+ $ARGS} &
 else
-  startConsole
-  setsid -w "${cmd[@]}" ${ARGS:+ $ARGS} </dev/null &
+  startQemu "${cmd[@]}" ${ARGS:+ $ARGS}
 fi
 
 pid=$!
-rc=0
+QEMU_RUNNER_PID="$pid"
 
+rc=0
 wait "$pid" || rc=$?
 [ -f "$QEMU_END" ] && exit "$rc"
 
