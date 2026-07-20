@@ -556,4 +556,117 @@ addPackage() {
   return 0
 }
 
+updateAriaProgress() {
+
+  local line="$1"
+  local path="$2"
+  local bytes tmp
+
+  [ -z "$path" ] && return 0
+
+  if [[ "$line" == *" CN:"* &&
+      "$line" =~ \#[[:xdigit:]]+[[:space:]]+([0-9]+)B/[0-9]+B ]]; then
+    bytes="${BASH_REMATCH[1]}"
+    tmp="$path.tmp"
+
+    if ! printf '%s\n' "$bytes" > "$tmp" ||
+        ! mv -f -- "$tmp" "$path"; then
+      rm -f -- "$tmp"
+    fi
+  fi
+
+  return 0
+}
+
+showAriaLine() {
+
+  local line="$1"
+  local current total speed eta token replacement colored space
+  local current_size total_size speed_size
+
+  [[ "$line" == *" CN:"* ]] || return 1
+
+  if [[ "$line" =~ ([[:space:]])([0-9]+)B/([0-9]+)B ]]; then
+    token="${BASH_REMATCH[0]}"
+    space="${BASH_REMATCH[1]}"
+    current="${BASH_REMATCH[2]}"
+    total="${BASH_REMATCH[3]}"
+
+    current_size=$(formatBytes "$current") || current_size="${current}B"
+    total_size=$(formatBytes "$total") || total_size="${total}B"
+
+    replacement="$space$current_size/$total_size"
+    line="${line/"$token"/"$replacement"}"
+  fi
+
+  if [[ "$line" =~ (DL:)([0-9]+)B ]]; then
+    token="${BASH_REMATCH[0]}"
+    speed="${BASH_REMATCH[2]}"
+    speed_size=$(formatBytes "$speed") || speed_size="${speed}B"
+    replacement=$'DL:\033[32m'"$speed_size"$'\033[0m'
+    line="${line/"$token"/"$replacement"}"
+  fi
+
+  if [[ "$line" =~ (ETA:)([^]]+) ]]; then
+    token="${BASH_REMATCH[0]}"
+    eta="${BASH_REMATCH[2]}"
+    replacement=$'ETA:\033[33m'"$eta"$'\033[0m'
+    line="${line/"$token"/"$replacement"}"
+  fi
+
+  colored=$(sed -E \
+    -e $'s/^\\[/\033[35m[\033[0m/' \
+    -e $'s/\\(([0-9]+%)\\)/\033[36m(\\1)\033[0m/' \
+    -e $'s/]$/\033[35m]\033[0m/' \
+    <<< "$line") || return 1
+
+  printf '\r\033[K%s' "$colored" >&2
+  return 0
+}
+
+handleAriaLine() {
+
+  local line="$1"
+  local counter="$2"
+  local display="$3"
+
+  updateAriaProgress "$line" "$counter"
+
+  [[ "$display" == "Y" ]] || return 1
+  showAriaLine "$line"
+}
+
+filterAriaOutput() {
+
+  local counter="${1:-}"
+  local display="${2:-N}"
+  local char
+  local line=""
+  local shown="N"
+
+  # Keep the filter alive while aria2 handles an interrupt gracefully.
+  trap '' INT TERM
+
+  while IFS= read -r -N 1 char; do
+    case "$char" in
+      $'\r' | $'\n' )
+        if handleAriaLine "$line" "$counter" "$display"; then
+          shown="Y"
+        fi
+
+        line="" ;;
+      * )
+        line+="$char" ;;
+    esac
+  done
+
+  # Process a final unterminated console update.
+  if handleAriaLine "$line" "$counter" "$display"; then
+    shown="Y"
+  fi
+
+  [[ "$shown" == "Y" ]] && printf '\n' >&2
+  return 0
+}
+
 return 0
