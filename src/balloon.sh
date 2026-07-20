@@ -14,8 +14,10 @@ rm -f "$BALLOONING_PID" "$BALLOONING_SOCKET"
 # See the docs/ballooning.md documentation for behavior, configuration, tuning options, and important caveats.
 
 waitForQemuPid() {
-  # Wait for qemu PID file to be created
-  while [ ! -f "$QEMU_PID" ]; do
+
+  # Wait until QEMU has published a non-empty PID file.
+  while [ ! -s "$QEMU_PID" ]; do
+    [ -f "$QEMU_END" ] && return 1
     sleep 1
   done
 
@@ -58,7 +60,7 @@ startBalloonMonitor() {
 
 balloon() {
 
-  waitForQemuPid
+  waitForQemuPid || return 0
   buildBalloonArgs
   startBalloonMonitor
 

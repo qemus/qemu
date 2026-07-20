@@ -12,6 +12,7 @@ SHUTDOWN_SIGNAL=0
 QEMU_END="$QEMU_DIR/qemu.end"
 CONSOLE_PID="$QEMU_DIR/console.pid"
 CONSOLE_SOCKET="$QEMU_DIR/console.sock"
+QEMU_START_PID="$QEMU_DIR/qemu.start.pid"
 
 _trap() {
 
@@ -21,6 +22,8 @@ _trap() {
   TRAP_PID=$BASHPID
 
   for sig; do
+    # Capture the local callback and signal while registering the trap.
+    # shellcheck disable=SC2064
     trap "$func $sig" "$sig"
   done
 
@@ -62,19 +65,36 @@ displayReason() {
 readQemuPid() {
 
   local -n _pid="$1"
+  local file
 
-  if [ ! -s "$QEMU_PID" ] || ! read -r _pid <"$QEMU_PID"; then
-    return 1
-  fi
+  for file in "$QEMU_START_PID" "$QEMU_PID"; do
+    if [ -s "$file" ] && read -r _pid < "$file"; then
+      return 0
+    fi
+  done
 
+  return 1
+}
+
+waitQemuPid() {
+
+  local -n _pid="$1"
+  local cnt=0 value=""
+
+  while ! readQemuPid value; do
+    sleep 0.02
+    cnt=$((cnt + 1))
+    (( cnt >= 50 )) && return 1
+  done
+
+  _pid="$value"
   return 0
 }
 
 forceKillQemu() {
 
   local reason="$1"
-  local pid=""
-  local display
+  local pid="" display
 
   ! readQemuPid pid && return 0
   ! isAlive "$pid" && return 0
@@ -101,8 +121,7 @@ cleanupHelpers() {
 startConsole() {
 
   local output="${1:-/dev/tty}"
-  local cnt=0
-  local pid=""
+  local cnt=0 pid=""
 
   rm -f -- "$CONSOLE_SOCKET" "$CONSOLE_PID"
 
@@ -147,10 +166,35 @@ stopConsole() {
   return 0
 }
 
+startQemu() {
+
+  rm -f -- "$QEMU_START_PID"
+
+  (
+    trap '' INT QUIT
+
+    # shellcheck disable=SC2016
+    exec setsid -f -w sh -c '
+      file=$1
+      shift
+
+      "$@" &
+      pid=$!
+      printf "%s\n" "$pid" > "$file" || exit 1
+
+      rc=0
+      wait "$pid" 2>/dev/null || rc=$?
+      exit "$rc"
+    ' sh "$QEMU_START_PID" "$@"
+  ) </dev/null &
+
+  return 0
+}
+
 finish() {
 
-  local reason=$1
-  local failed=0
+  local reason=$1 failed=0
+  local pidfile="$QEMU_PID"
 
   if [ ! -f "$QEMU_END" ] && (( reason != 0 )); then
     failed=1
@@ -161,7 +205,9 @@ finish() {
   forceKillQemu "$reason"
   cleanupHelpers
 
-  if ! waitPidFile "$QEMU_PID" 10; then
+  [ -s "$QEMU_START_PID" ] && pidfile="$QEMU_START_PID"
+
+  if ! waitPidFile "$pidfile" 10; then
     warn "Timed out while waiting for $(app) to exit!"
   fi
 
@@ -180,7 +226,6 @@ normalizeTimeout() {
 
   local term_grace=3      # seconds before loop ends to send SIGTERM
   local cleanup_grace=3   # seconds reserved after the loop for cleanup
-  local min
 
   TIMEOUT=$(strip "$TIMEOUT")
   if [[ ! "$TIMEOUT" =~ ^[0-9]+$ ]]; then
@@ -195,7 +240,7 @@ normalizeTimeout() {
     cleanup_grace=4
   fi
 
-  min=$((term_grace + cleanup_grace + 1))
+  local min=$((term_grace + cleanup_grace + 1))
   (( TIMEOUT < min )) && (( TIMEOUT = min ))
 
   wait_until=$((TIMEOUT - cleanup_grace))
@@ -216,10 +261,9 @@ sendAcpiShutdown() {
 
 waitForShutdown() {
 
-  local cnt=0
   local pid="$1"
   local name="$APP"
-  local slp
+  local slp cnt=0
 
   if [[ "$name" == "QEMU" ]]; then
     name="the virtual machine"
@@ -234,7 +278,7 @@ waitForShutdown() {
     ! isAlive "$pid" && break
 
     # Workaround for stale/zombie QEMU pid file
-    [ ! -s "$QEMU_PID" ] && break
+    [ ! -s "$QEMU_START_PID" ] && [ ! -s "$QEMU_PID" ] && break
 
     if (( cnt == sigterm_at )); then
       info "${name^} is still running, sending SIGTERM... ($cnt/$wait_until)"
@@ -256,8 +300,7 @@ waitForShutdown() {
 graceful_shutdown() {
 
   local sig="$1"
-  local pid=""
-  local code=0
+  local pid="" code=0
 
   [[ $BASHPID != "$TRAP_PID" ]] && return
 
@@ -282,8 +325,10 @@ graceful_shutdown() {
   echo && info "Received $sig signal, sending ACPI shutdown signal..."
 
   if ! readQemuPid pid; then
-    warn "QEMU PID file ($QEMU_PID) does not exist?"
-    finish "$code"
+    if ! interactive || ! waitQemuPid pid; then
+      warn "QEMU PID file does not exist?"
+      finish "$code"
+    fi
   fi
 
   if [ -z "$pid" ] || ! isAlive "$pid"; then
