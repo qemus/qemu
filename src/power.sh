@@ -171,6 +171,7 @@ startQemu() {
   (
     trap '' INT QUIT
 
+    # shellcheck disable=SC2016
     exec setsid -f -w sh -c '
       file=$1
       shift
