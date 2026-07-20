@@ -475,6 +475,7 @@ downloadFile() {
   local chunk_size="$default_chunk"
   local interval="$default_interval"
   local progress_mode="apparent"
+  local terminal="N"
 
   # Produce approximately ten progress updates when the size is known.
   if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
@@ -494,10 +495,14 @@ downloadFile() {
 
   # Use the downloader's progress display in a terminal and progress.sh in container logs.
   if [ -t 2 ]; then
+    terminal="Y"
+
     if (( connections > 1 )); then
       aria=(
         --stderr=true
         --summary-interval=0
+        --show-console-readout=true
+        --truncate-console-readout=true
         --download-result=hide
         --console-log-level=warn
       )
@@ -541,6 +546,7 @@ downloadFile() {
     {
       LC_ALL=C aria2c \
         --no-conf=true \
+        --gid=0000010000000000 \
         --dir="$dir" \
         --out="$file" \
         --split="$connections" \
@@ -562,6 +568,10 @@ downloadFile() {
         -- "$url"
 
       rc=$?
+
+      # Aria2 redraws its progress with carriage returns and may not finish
+      # the final console readout with a newline.
+      [[ "$terminal" == "Y" ]] && printf '\n' >&2
     } || :
 
   else
@@ -577,16 +587,35 @@ downloadFile() {
 
   fKill "progress.sh"
 
+  # Aria2 uses status 7 for an unfinished download after INT or TERM.
+  if (( connections > 1 && rc == 7 )); then
+    rm -f "$log"
+    return 130
+  fi
+
   if (( rc != 0 )); then
     if (( connections > 1 )); then
 
-      reason=$(sed -nE \
-        's/^.*\[ERROR\][[:space:]]*//p' \
-        "$log" | tail -n 1)
+      case "$rc" in
+        2) reason="The connection timed out" ;;
+        3 | 4) reason="The requested file was not found" ;;
+        5) reason="The download speed was too slow" ;;
+        6) reason="A network error occurred" ;;
+        8) reason="The server does not support resuming the download" ;;
+        9) reason="There is not enough free disk space" ;;
+        28) reason="Aria2 received an invalid option" ;;
+        29) reason="The server is temporarily overloaded or unavailable" ;;
+        32) reason="Checksum validation failed" ;;
+        *)
+          reason=$(sed -nE \
+            's/^.*\[ERROR\][[:space:]]*//p' \
+            "$log" | tail -n 1)
 
-      if [ -z "$reason" ]; then
-        reason=$(awk 'NF { line=$0 } END { print line }' "$log")
-      fi
+          if [ -z "$reason" ]; then
+            reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+          fi
+          ;;
+      esac
 
     else
 
