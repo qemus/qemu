@@ -62,11 +62,9 @@ printSizeProgress() {
   local size
 
   while (( bytes >= next_bytes )); do
-    size=$(numfmt --to=iec-i --suffix=B "$next_bytes") ||
+    size=$(numfmt --to=iec --suffix=B "$next_bytes" |
+      sed -r 's/([A-Z])/ \1/') ||
       size="${next_bytes} bytes"
-
-    size="${size/.0MiB/MiB}"
-    size="${size/.0GiB/GiB}"
 
     if [[ "$printed" == "Y" ]]; then
       printf ' → %s' "$size"
@@ -117,29 +115,39 @@ while true; do
   bytes=$(getBytes "$path" "$mode")
 
   if (( bytes > 4096 )); then
-    if [ -z "$total" ] || [[ "$total" == "0" ]] || (( bytes > total )); then
-      size=$(numfmt --to=iec-i --suffix=B "$bytes") ||
-        size="${bytes} bytes"
 
-      size="${size/.0MiB/MiB}"
-      size="${size/.0GiB/GiB}"
+    write_html="Y"
+
+    if [ -z "$total" ] || [[ "$total" == "0" ]] || (( bytes > total )); then
+      size=$(numfmt --to=iec --suffix=B "$bytes" |
+        sed -r 's/([A-Z])/ \1/') ||
+        size="${bytes} bytes"
 
       if [[ "$output" == "log" ]]; then
         printSizeProgress "$bytes"
       fi
     else
+      # Truncate to one decimal so progress is never reported early.
       progress=$((bytes * 1000 / total))
       (( progress > 1000 )) && progress=1000
 
       percent=$((progress / 10))
-      printf -v size '%d.%d%%' "$((progress / 10))" "$((progress % 10))"
+
+      printf -v size '%d.%d%%' \
+        "$((progress / 10))" \
+        "$((progress % 10))"
 
       if [[ "$output" == "log" ]]; then
         printPercentProgress "$percent"
       fi
+
+      # Do not update the web viewer until at least 0.1% is reached.
+      (( progress == 0 )) && write_html="N"
     fi
 
-    [[ "$size" != "0.0%" ]] && echo "${body//(\[P\])/($size)}" > "$info"
+    if [[ "$write_html" == "Y" ]]; then
+      echo "${body//(\[P\])/($size)}" > "$info"
+    fi
   fi
 
   sleep 1 & wait $!
