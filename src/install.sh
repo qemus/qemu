@@ -461,8 +461,7 @@ delay() {
 filterAriaOutput() {
 
   local char
-  local prefix=""
-  local mode="detect"
+  local line=""
   local shown="N"
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
@@ -471,34 +470,24 @@ filterAriaOutput() {
   while IFS= read -r -N 1 char; do
     case "$char" in
       $'\r' | $'\n' )
-        prefix=""
-        mode="detect"
+        if [[ "$line" == *" CN:"* ]]; then
+          printf '\r\033[K%s' "$line" >&2
+          shown="Y"
+        fi
+
+        line=""
         ;;
       * )
-        case "$mode" in
-          "pass" )
-            printf '%s' "$char" >&2
-            ;;
-          "drop" ) ;;
-          "detect" )
-            prefix+="$char"
-
-            case "$prefix" in
-              "[#" )
-                printf '\r\033[K%s' "$prefix" >&2
-                mode="pass"
-                shown="Y"
-                ;;
-              "[" ) ;;
-              * )
-                mode="drop"
-                ;;
-            esac
-            ;;
-        esac
+        line+="$char"
         ;;
     esac
   done
+
+  # Process a final unterminated console update.
+  if [[ "$line" == *" CN:"* ]]; then
+    printf '\r\033[K%s' "$line" >&2
+    shown="Y"
+  fi
 
   [[ "$shown" == "Y" ]] && printf '\n' >&2
   return 0
@@ -538,7 +527,6 @@ downloadFile() {
         --show-console-readout=true
         --truncate-console-readout=true
         --download-result=hide
-        --enable-color=false
         --console-log-level=error
       )
     else
