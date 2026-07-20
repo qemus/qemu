@@ -42,9 +42,8 @@ else
 fi
 
 pid=$!
-QEMU_RUNNER_PID="$pid"
-
 rc=0
+
 wait "$pid" || rc=$?
 [ -f "$QEMU_END" ] && exit "$rc"
 
