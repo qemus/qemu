@@ -467,14 +467,16 @@ downloadFile() {
   local connections="${5:-1}"
   local dest="$STORAGE/$base"
   local msg rc total size log
-  local reason=""
   local progress=() output=""
+  local min_chunk=16777216
   local default_chunk=268435456
   local default_interval=536870912
-  local min_chunk=16777216
   local chunk_size="$default_chunk"
   local interval="$default_interval"
   local progress_mode="apparent"
+  local terminal="N" interrupted="N"
+  local pipe_dir="" fifo="" reason=""
+  local old_int="" pid=0 tee_pid=0
 
   # Produce approximately ten progress updates when the size is known.
   if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
@@ -494,6 +496,8 @@ downloadFile() {
 
   # Use the downloader's progress bar in a terminal and progress.sh in container logs.
   if [ -t 2 ]; then
+    terminal="Y"
+
     if (( connections > 1 )); then
       progress=( --force-progress --progress=bar:noscroll )
     else
@@ -514,6 +518,12 @@ downloadFile() {
   html "$msg..."
   log=$(mktemp)
 
+  if (( connections > 1 )) && [[ "$terminal" == "Y" ]]; then
+    pipe_dir=$(mktemp -d)
+    fifo="$pipe_dir/wget2.stderr"
+    mkfifo "$fifo"
+  fi
+
   /run/progress.sh \
     "$dest" \
     "$expected" \
@@ -522,33 +532,72 @@ downloadFile() {
     "$interval" \
     "$progress_mode" &
 
-  {
-    if (( connections > 1 )); then
+  old_int=$(trap -p INT)
+
+  trap '
+    interrupted="Y"
+    (( pid > 0 )) && kill -TERM "$pid" 2>/dev/null || :
+  ' INT
+
+  if (( connections > 1 )); then
+    if [[ "$terminal" == "Y" ]]; then
+
+      tee "$log" < "$fifo" >&2 &
+      tee_pid=$!
+
       LC_ALL=C wget2 "$url" -O "$dest" --no-verbose --timeout=30 \
         --chunk-size="$chunk_size" --max-threads="$connections" \
-        "${progress[@]}" --output-file="$log"
-    else
-      LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
-        --no-http-keep-alive "${progress[@]}" --output-file="$log"
-    fi
+        "${progress[@]}" 2> "$fifo" &
 
-    rc=$?
-  } || :
+    else
+
+      LC_ALL=C wget2 "$url" -O "$dest" --no-verbose --timeout=30 \
+        --chunk-size="$chunk_size" --max-threads="$connections" \
+        --output-file="$log" &
+
+    fi
+  else
+
+    LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
+      --no-http-keep-alive "${progress[@]}" --output-file="$log" &
+
+  fi
+
+  pid=$!
+  rc=0
+  wait "$pid" || rc=$?
+
+  if (( tee_pid > 0 )); then
+    wait "$tee_pid" 2>/dev/null || :
+  fi
+
+  trap - INT
+  [ -n "$old_int" ] && eval "$old_int"
 
   fKill "progress.sh"
+
+  [ -n "$pipe_dir" ] && rm -rf "$pipe_dir"
+
+  if [[ "$interrupted" == "Y" ]] || (( rc == 130 || rc == 143 )); then
+    rm -f "$log" "$dest"
+    return 130
+  fi
 
   if (( rc != 0 )); then
     if (( connections > 1 )); then
 
-      reason=$(sed -n \
-        -e 's/^wget2: //p' \
-        -e 's/^ERROR: //p' \
-        -e 's/^ERROR //p' \
-        -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
-        "$log" | tail -n 1)
+      # In a terminal, Wget2 already displayed its diagnostics through tee.
+      if [[ "$terminal" != "Y" ]]; then
+        reason=$(sed -n \
+          -e 's/^wget2: //p' \
+          -e 's/^ERROR: //p' \
+          -e 's/^ERROR //p' \
+          -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
+          "$log" | tail -n 1)
 
-      if [ -z "$reason" ]; then
-        reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+        if [ -z "$reason" ]; then
+          reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+        fi
       fi
 
     else
@@ -579,6 +628,11 @@ downloadFile() {
     return 0
   fi
 
+  # Interactive Wget2 already displayed its error above the animated bar.
+  if (( connections > 1 )) && [[ "$terminal" == "Y" ]]; then
+    return 1
+  fi
+
   msg="Failed to download $url"
 
   if (( rc == 3 )); then
@@ -604,6 +658,12 @@ downloadWithRetries() {
   # Try the configured number of connections first.
   downloadFile "$url" "$base" "$name" 0 "$CONNECTIONS" && return 0
 
+  local rc=$?
+  if (( rc == 130 )); then
+    rm -f "$dest"
+    return 130
+  fi
+
   delay 5
 
   # A multi-connection partial file may contain non-sequential ranges and
@@ -615,7 +675,10 @@ downloadWithRetries() {
   # Retry with the original single-connection Wget behavior.
   downloadFile "$url" "$base" "$name" 0 1 && return 0
 
+  local rc=$?
   rm -f "$dest"
+
+  (( rc == 130 )) && return 130
   return 1
 }
 
@@ -889,9 +952,12 @@ find "$STORAGE" -maxdepth 1 -type f -iname 'qemu.*' -delete
 
 base=$(getBase "$BOOT")
 
-if ! downloadWithRetries "$BOOT" "$base" "$name"; then
+downloadWithRetries "$BOOT" "$base" "$name" || {
+  rc=$?
+
+  (( rc == 130 )) && exit 130
   exit 60
-fi
+}
 
 case "${base,,}" in
 
