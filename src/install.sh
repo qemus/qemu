@@ -567,16 +567,8 @@ downloadFile() {
     return 1
   fi
 
-  if (( connections > 1 )) && [ -t 2 ]; then
-    if ! exec {aria_fd}> >(filterAriaOutput); then
-      rm -f -- "$log"
-      error "Failed to create aria2 output filter!"
-      return 1
-    fi
-
-    filter_pid=$!
-  fi
-
+  # Start progress.sh before opening the aria2 output pipe so it cannot
+  # inherit the pipe's write descriptor and prevent the filter from exiting.
   /run/progress.sh \
     "$dest" \
     "$expected" \
@@ -584,6 +576,17 @@ downloadFile() {
     "$output" \
     "$interval" \
     "$progress_mode" &
+
+  if (( connections > 1 )) && [ -t 2 ]; then
+    if ! exec {aria_fd}> >(filterAriaOutput); then
+      fKill "progress.sh"
+      rm -f -- "$log"
+      error "Failed to create aria2 output filter!"
+      return 1
+    fi
+
+    filter_pid=$!
+  fi
 
   rc=0
 
@@ -608,6 +611,7 @@ downloadFile() {
         --max-tries=1 \
         --connect-timeout=30 \
         --timeout=30 \
+        --async-dns=false \
         --follow-metalink=false \
         --follow-torrent=false \
         --log="$log" \
@@ -620,7 +624,6 @@ downloadFile() {
 
     if [ -n "$filter_pid" ]; then
       exec {aria_fd}>&-
-      wait "$filter_pid" 2>/dev/null || :
     fi
 
   else
@@ -635,6 +638,10 @@ downloadFile() {
   fi
 
   fKill "progress.sh"
+
+  if [ -n "$filter_pid" ]; then
+    wait "$filter_pid" 2>/dev/null || :
+  fi
 
   # Unlike Wget, aria2 handles INT and TERM itself and returns status 7.
   # Raise INT again so the current script terminates instead of retrying.
