@@ -542,20 +542,7 @@ downloadFile() {
   if (( connections > 1 )); then
     if [[ "$terminal" == "Y" ]]; then
 
-      tee "$log" < "$fifo" > >(
-        awk '
-          BEGIN {
-            RS = "\r"
-            ORS = ""
-          }
-
-          {
-            gsub(/Files:[^]]*Bytes:/, "Total:")
-            printf "%s\r", $0
-            fflush()
-          }
-        ' >&2
-      ) &
+      tee "$log" < "$fifo" >&2 &
       tee_pid=$!
 
       LC_ALL=C wget2 "$url" -O "$dest" --no-verbose --timeout=30 \
