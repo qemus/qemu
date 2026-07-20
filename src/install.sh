@@ -540,7 +540,7 @@ downloadFile() {
 
     {
       LC_ALL=C aria2c \
-        --conf-path=/dev/null \
+        --no-conf=true \
         --dir="$dir" \
         --out="$file" \
         --split="$connections" \
