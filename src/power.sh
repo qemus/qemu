@@ -167,7 +167,6 @@ stopConsole() {
 startQemu() {
 
   rm -f -- "$QEMU_START_PID"
-  startConsole
 
   (
     trap '' INT QUIT
