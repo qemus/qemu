@@ -469,13 +469,9 @@ downloadFile() {
   local msg rc total size log
   local dir file reason=""
   local progress=() aria=() output=""
-  local min_chunk=16777216
-  local default_chunk=268435456
   local default_interval=536870912
-  local chunk_size="$default_chunk"
   local interval="$default_interval"
   local progress_mode="apparent"
-  local terminal="N"
 
   # Produce approximately ten progress updates when the size is known.
   if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
@@ -484,19 +480,10 @@ downloadFile() {
 
   if (( connections > 1 )); then
     progress_mode="allocated"
-
-    if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
-      chunk_size=$(((expected + connections - 1) / connections))
-
-      (( chunk_size > default_chunk )) && chunk_size="$default_chunk"
-      (( chunk_size < min_chunk )) && chunk_size="$min_chunk"
-    fi
   fi
 
   # Use the downloader's progress display in a terminal and progress.sh in container logs.
   if [ -t 2 ]; then
-    terminal="Y"
-
     if (( connections > 1 )); then
       aria=(
         --stderr=true
@@ -546,12 +533,11 @@ downloadFile() {
     {
       LC_ALL=C aria2c \
         --no-conf=true \
-        --gid=0000010000000000 \
+        --gid=c0ffeec0ffeec0ff \
         --dir="$dir" \
         --out="$file" \
         --split="$connections" \
         --max-connection-per-server="$connections" \
-        --min-split-size="$chunk_size" \
         --file-allocation=none \
         --continue=true \
         --always-resume=false \
@@ -563,15 +549,15 @@ downloadFile() {
         --follow-metalink=false \
         --follow-torrent=false \
         --log="$log" \
-        --log-level=notice \
+        --log-level=error \
         "${aria[@]}" \
         -- "$url"
 
       rc=$?
 
-      # Aria2 redraws its progress with carriage returns and may not finish
+      # Aria2 redraws its progress using carriage returns and may not finish
       # the final console readout with a newline.
-      [[ "$terminal" == "Y" ]] && printf '\n' >&2
+      [ -t 2 ] && printf '\n' >&2
     } || :
 
   else
@@ -587,35 +573,25 @@ downloadFile() {
 
   fKill "progress.sh"
 
-  # Aria2 uses status 7 for an unfinished download after INT or TERM.
+  # Unlike Wget, aria2 handles INT and TERM itself and returns status 7.
+  # Raise INT again so the current script terminates instead of retrying.
   if (( connections > 1 && rc == 7 )); then
     rm -f "$log"
+    kill -INT "$BASHPID"
     return 130
   fi
 
   if (( rc != 0 )); then
     if (( connections > 1 )); then
 
-      case "$rc" in
-        2) reason="The connection timed out" ;;
-        3 | 4) reason="The requested file was not found" ;;
-        5) reason="The download speed was too slow" ;;
-        6) reason="A network error occurred" ;;
-        8) reason="The server does not support resuming the download" ;;
-        9) reason="There is not enough free disk space" ;;
-        28) reason="Aria2 received an invalid option" ;;
-        29) reason="The server is temporarily overloaded or unavailable" ;;
-        32) reason="Checksum validation failed" ;;
-        *)
-          reason=$(sed -nE \
-            's/^.*\[ERROR\][[:space:]]*//p' \
-            "$log" | tail -n 1)
+      reason=$(sed -nE \
+        -e 's/^[[:space:]]*->[[:space:]]*(\[[^]]+\][[:space:]]*)?(errorCode=[0-9]+[[:space:]]*)?//p' \
+        -e 's/^.*\[ERROR\][[:space:]]*//p' \
+        "$log" | tail -n 1)
 
-          if [ -z "$reason" ]; then
-            reason=$(awk 'NF { line=$0 } END { print line }' "$log")
-          fi
-          ;;
-      esac
+      if [ -z "$reason" ]; then
+        reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+      fi
 
     else
 
@@ -650,9 +626,7 @@ downloadFile() {
 
   msg="Failed to download $url"
 
-  if (( connections > 1 && rc == 9 )) ||
-    (( connections == 1 && rc == 3 )); then
-
+  if (( connections == 1 && rc == 3 )); then
     error "$msg because the file could not be written (disk full?)."
   elif [ -n "$reason" ]; then
     error "$msg: ${reason%.}."
