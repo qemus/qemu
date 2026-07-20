@@ -26,12 +26,12 @@ RUN <<EOF
     7zip \
     curl \
     ovmf \
-    wget2 \
     fdisk \
     nginx \
     swtpm \
     procps \
     ipcalc \
+    aria2c \
     ethtool \
     iptables \
     iproute2 \
