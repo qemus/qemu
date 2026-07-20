@@ -27,11 +27,11 @@ RUN <<EOF
     curl \
     ovmf \
     fdisk \
+    aria2 \
     nginx \
     swtpm \
     procps \
     ipcalc \
-    aria2c \
     ethtool \
     iptables \
     iproute2 \
