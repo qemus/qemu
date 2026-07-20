@@ -223,7 +223,6 @@ startQemu() {
 finish() {
 
   local reason=$1 failed=0
-  local pidfile="$QEMU_PID"
 
   if [ ! -f "$QEMU_END" ] && (( reason != 0 )); then
     failed=1
@@ -234,9 +233,7 @@ finish() {
   forceKillQemu "$reason"
   cleanupHelpers
 
-  [ -s "$QEMU_START_PID" ] && pidfile="$QEMU_START_PID"
-
-  if ! waitPidFile "$pidfile" 10; then
+  if ! waitQemuExit 10; then
     warn "Timed out while waiting for $(app) to exit!"
   fi
 
