@@ -467,17 +467,14 @@ downloadFile() {
   local connections="${5:-1}"
   local dest="$STORAGE/$base"
   local msg rc total size log
-  local progress=() output=""
+  local dir file reason=""
+  local progress=() aria=() output=""
   local min_chunk=16777216
   local default_chunk=268435456
   local default_interval=536870912
   local chunk_size="$default_chunk"
   local interval="$default_interval"
   local progress_mode="apparent"
-  local terminal="N"
-  local pipe_dir="" fifo="" reason=""
-  local old_int="" old_term=""
-  local signal=0 pid=0 tee_pid=0
 
   # Produce approximately ten progress updates when the size is known.
   if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
@@ -495,17 +492,24 @@ downloadFile() {
     fi
   fi
 
-  # Use the downloader's progress bar in a terminal and progress.sh in container logs.
+  # Use the downloader's progress display in a terminal and progress.sh in container logs.
   if [ -t 2 ]; then
-    terminal="Y"
-
     if (( connections > 1 )); then
-      progress=( --force-progress --progress=bar:noscroll )
+      aria=(
+        --stderr=true
+        --summary-interval=1
+        --download-result=hide
+        --console-log-level=warn
+      )
     else
       progress=( --show-progress --progress=bar:noscroll )
     fi
   else
     output="log"
+
+    if (( connections > 1 )); then
+      aria=( --quiet=true )
+    fi
   fi
 
   if [ -z "$name" ]; then
@@ -518,26 +522,6 @@ downloadFile() {
 
   html "$msg..."
   log=$(mktemp)
-  enabled "$DEBUG" && echo "Downloading: $url"
-
-  if (( connections > 1 )) && [[ "$terminal" == "Y" ]]; then
-    pipe_dir=$(mktemp -d)
-    fifo="$pipe_dir/wget2.stderr"
-    mkfifo "$fifo"
-  fi
-
-  old_int=$(trap -p INT)
-  old_term=$(trap -p TERM)
-
-  trap '
-    signal=130
-    (( pid > 0 )) && kill -TERM "$pid" 2>/dev/null || :
-  ' INT
-
-  trap '
-    signal=143
-    (( pid > 0 )) && kill -TERM "$pid" 2>/dev/null || :
-  ' TERM
 
   /run/progress.sh \
     "$dest" \
@@ -547,83 +531,61 @@ downloadFile() {
     "$interval" \
     "$progress_mode" &
 
+  rc=0
+
   if (( connections > 1 )); then
-    if [[ "$terminal" == "Y" ]]; then
 
-      tee "$log" < "$fifo" >&2 &
-      tee_pid=$!
+    dir=$(dirname -- "$dest")
+    file=$(basename -- "$dest")
 
-      LC_ALL=C wget2 "$url" -O "$dest" --no-verbose --timeout=30 \
-        --chunk-size="$chunk_size" --max-threads="$connections" \
-        "${progress[@]}" 2> "$fifo" &
+    {
+      LC_ALL=C aria2c \
+        --conf-path=/dev/null \
+        --dir="$dir" \
+        --out="$file" \
+        --split="$connections" \
+        --max-connection-per-server="$connections" \
+        --min-split-size="$chunk_size" \
+        --file-allocation=none \
+        --continue=true \
+        --always-resume=false \
+        --allow-overwrite=true \
+        --auto-file-renaming=false \
+        --max-tries=1 \
+        --connect-timeout=30 \
+        --timeout=30 \
+        --follow-metalink=false \
+        --follow-torrent=false \
+        --log="$log" \
+        --log-level=notice \
+        "${aria[@]}" \
+        -- "$url"
 
-    else
+      rc=$?
+    } || :
 
-      LC_ALL=C wget2 "$url" -O "$dest" --no-verbose --timeout=30 \
-        --chunk-size="$chunk_size" --max-threads="$connections" \
-        --output-file="$log" &
-
-    fi
   else
 
-    LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
-      --no-http-keep-alive "${progress[@]}" --output-file="$log" &
+    {
+      LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
+        --no-http-keep-alive "${progress[@]}" --output-file="$log"
+
+      rc=$?
+    } || :
 
   fi
-
-  pid=$!
-
-  # Cover a signal received immediately before the downloader PID was assigned.
-  if (( signal != 0 )); then
-    kill -TERM "$pid" 2>/dev/null || :
-  fi
-
-  rc=0
-  wait "$pid" || rc=$?
-
-  # A trapped signal can interrupt wait before the downloader has fully exited.
-  if (( signal != 0 )); then
-    wait "$pid" 2>/dev/null || :
-  fi
-
-  if (( tee_pid > 0 )); then
-    wait "$tee_pid" 2>/dev/null || :
-  fi
-
-  trap - INT TERM
-  [ -n "$old_int" ] && eval "$old_int"
-  [ -n "$old_term" ] && eval "$old_term"
 
   fKill "progress.sh"
-
-  [ -n "$pipe_dir" ] && rm -rf "$pipe_dir"
-
-  if (( signal == 0 )); then
-    case "$rc" in
-      130 | 143) signal="$rc" ;;
-    esac
-  fi
-
-  if (( signal != 0 )); then
-    rm -f "$log" "$dest"
-    return "$signal"
-  fi
 
   if (( rc != 0 )); then
     if (( connections > 1 )); then
 
-      # In a terminal, Wget2 already displayed its diagnostics through tee.
-      if [[ "$terminal" != "Y" ]]; then
-        reason=$(sed -n \
-          -e 's/^wget2: //p' \
-          -e 's/^ERROR: //p' \
-          -e 's/^ERROR //p' \
-          -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
-          "$log" | tail -n 1)
+      reason=$(sed -nE \
+        's/^.*\[ERROR\][[:space:]]*//p' \
+        "$log" | tail -n 1)
 
-        if [ -z "$reason" ]; then
-          reason=$(awk 'NF { line=$0 } END { print line }' "$log")
-        fi
+      if [ -z "$reason" ]; then
+        reason=$(awk 'NF { line=$0 } END { print line }' "$log")
       fi
 
     else
@@ -638,6 +600,9 @@ downloadFile() {
   rm -f "$log"
 
   if (( rc == 0 )) && [ -f "$dest" ]; then
+
+    # Aria2 normally removes its control file after completion.
+    rm -f "$dest.aria2"
 
     if ! total=$(stat -c%s "$dest"); then
       error "Failed to determine downloaded file size: $dest"
@@ -654,14 +619,11 @@ downloadFile() {
     return 0
   fi
 
-  # Interactive Wget2 already displayed its error above the animated bar.
-  if (( connections > 1 )) && [[ "$terminal" == "Y" ]]; then
-    return 1
-  fi
-
   msg="Failed to download $url"
 
-  if (( rc == 3 )); then
+  if (( connections > 1 && rc == 9 )) ||
+    (( connections == 1 && rc == 3 )); then
+
     error "$msg because the file could not be written (disk full?)."
   elif [ -n "$reason" ]; then
     error "$msg: ${reason%.}."
