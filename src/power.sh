@@ -76,6 +76,35 @@ readQemuPid() {
   return 1
 }
 
+qemuPidFile() {
+
+  local -n _file="$1"
+
+  _file="$QEMU_PID"
+  [ -s "$QEMU_START_PID" ] && _file="$QEMU_START_PID"
+
+  return 0
+}
+
+terminateQemu() {
+
+  local file=""
+
+  qemuPidFile file
+  sKill "$file"
+
+  return 0
+}
+
+waitQemuExit() {
+
+  local timeout="${1:-10}"
+  local file=""
+
+  qemuPidFile file
+  waitPidFile "$file" "$timeout"
+}
+
 waitQemuPid() {
 
   local -n _pid="$1"
