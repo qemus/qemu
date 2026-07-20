@@ -9,6 +9,7 @@ An empty default means the variable is unset and its value is determined automat
 | Variable | Default | Description |
 |---|---|---|
 | `BOOT` | `alpine` | Image to boot, such as `alpine`, `ubuntu`, `debian`, or a direct URL to an ISO or disk image. |
+| `CONNECTIONS` | `4` | Number of connections used for image downloads. |
 
 ## 🧠 CPU and Memory
 

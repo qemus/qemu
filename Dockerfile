@@ -24,9 +24,9 @@ RUN <<EOF
     tini \
     wget \
     7zip \
-    curl \
     ovmf \
-    wget2 \
+    curl \
+    aria2 \
     fdisk \
     nginx \
     swtpm \
