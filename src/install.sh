@@ -542,7 +542,9 @@ downloadFile() {
   if (( connections > 1 )); then
     if [[ "$terminal" == "Y" ]]; then
 
-      tee "$log" < "$fifo" >&2 &
+      tee "$log" < "$fifo" > >(
+        sed -u -E 's/[[:space:]]*\[Files:.*\]/\x1b[2K/' >&2
+      ) &
       tee_pid=$!
 
       LC_ALL=C wget2 "$url" -O "$dest" --no-verbose --timeout=30 \
