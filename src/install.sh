@@ -463,6 +463,7 @@ filterAriaOutput() {
   local char
   local line=""
   local shown="N"
+  local colored=""
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
   trap '' INT TERM
@@ -471,7 +472,16 @@ filterAriaOutput() {
     case "$char" in
       $'\r' | $'\n' )
         if [[ "$line" == *" CN:"* ]]; then
-          printf '\r\033[K%s' "$line" >&2
+
+          colored=$(sed -E \
+            -e $'s/^\\[/\033[35m[\033[0m/' \
+            -e $'s/([0-9]+%)/\033[36m\\1\033[0m/' \
+            -e $'s/(DL:[^ ]+)/\033[32m\\1\033[0m/' \
+            -e $'s/(ETA:[^]]+)/\033[33m\\1\033[0m/' \
+            -e $'s/]$/\033[35m]\033[0m/' \
+            <<< "$line")
+
+          printf '\r\033[K%s' "$colored" >&2
           shown="Y"
         fi
 
@@ -485,7 +495,16 @@ filterAriaOutput() {
 
   # Process a final unterminated console update.
   if [[ "$line" == *" CN:"* ]]; then
-    printf '\r\033[K%s' "$line" >&2
+
+    colored=$(sed -E \
+      -e $'s/^\\[/\033[35m[\033[0m/' \
+      -e $'s/([0-9]+%)/\033[36m\\1\033[0m/' \
+      -e $'s/(DL:[^ ]+)/\033[32m\\1\033[0m/' \
+      -e $'s/(ETA:[^]]+)/\033[33m\\1\033[0m/' \
+      -e $'s/]$/\033[35m]\033[0m/' \
+      <<< "$line")
+
+    printf '\r\033[K%s' "$colored" >&2
     shown="Y"
   fi
 
