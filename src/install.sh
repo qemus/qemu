@@ -536,7 +536,7 @@ downloadFile() {
   fi
 
   # Use the downloader's progress display in a terminal and progress.sh in container logs.
-  if [ -t 2 ]; then
+  if [ -t 0 ] && [ -t 2 ]; then
     if (( connections > 1 )); then
       aria=(
         --stderr=true
@@ -582,7 +582,7 @@ downloadFile() {
     "$interval" \
     "$progress_mode" &
 
-  if (( connections > 1 )) && [ -t 2 ]; then
+  if (( connections > 1 )) && [ -t 0 ] && [ -t 2 ]; then
     if ! exec {aria_fd}> >(filterAriaOutput); then
       fKill "progress.sh"
       rm -f -- "$log"
