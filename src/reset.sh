@@ -279,10 +279,11 @@ checkKvm() {
 
 # Sanitize variables
 STORAGE=$(strip "$STORAGE")
-MACHINE=$(strip "$MACHINE")
+MACHINE=$(strip "${MACHINE,,}")
 DISK_SIZE=$(strip "$DISK_SIZE")
-BOOT_MODE=$(strip "${BOOT_MODE,,}")
 BOOT_INDEX=$(strip "$BOOT_INDEX")
+BOOT_MODE=$(strip "${BOOT_MODE,,}")
+CONNECTIONS=$(strip "$CONNECTIONS")
 
 # Helper variables
 ROOTLESS="N"
