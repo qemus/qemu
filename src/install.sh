@@ -493,9 +493,9 @@ downloadFile() {
   fi
 
   # Use the downloader's progress bar in a terminal and progress.sh in container logs.
-  if [ -t 1 ]; then
+  if [ -t 2 ]; then
     if (( connections > 1 )); then
-      progress=( --progress=bar:force:noscroll )
+      progress=( --force-progress --progress=bar:noscroll )
     else
       progress=( --show-progress --progress=bar:noscroll )
     fi
