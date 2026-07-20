@@ -24,10 +24,10 @@ RUN <<EOF
     tini \
     wget \
     7zip \
-    curl \
     ovmf \
-    fdisk \
+    curl \
     aria2 \
+    fdisk \
     nginx \
     swtpm \
     procps \
