@@ -38,6 +38,7 @@ fi
 if ! interactive; then
   "${cmd[@]}" ${ARGS:+ $ARGS} &
 else
+  startConsole
   startQemu "${cmd[@]}" ${ARGS:+ $ARGS}
 fi
 
