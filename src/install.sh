@@ -464,13 +464,18 @@ downloadFile() {
   local base="$2"
   local name="$3"
   local expected="${4:-0}"
+  local connections="${5:-1}"
   local dest="$STORAGE/$base"
   local msg rc total size log
-  local reason=""
+  local reason="" output=""
+  local interval=536870912
+  local chunk_size="512M"
   local progress=()
-  local output=""
+  local progress_mode="apparent"
 
-  # Use Wget's progress bar in a terminal and progress.sh in container logs.
+  (( connections > 1 )) && progress_mode="allocated"
+
+  # Use the downloader's progress bar in a terminal and progress.sh in container logs.
   if [ -t 1 ]; then
     progress=( --show-progress --progress=bar:noscroll )
   else
@@ -488,21 +493,50 @@ downloadFile() {
   html "$msg..."
   log=$(mktemp)
 
-  /run/progress.sh "$dest" "$expected" "$msg ([P])..." "$output" &
+  /run/progress.sh \
+    "$dest" \
+    "$expected" \
+    "$msg ([P])..." \
+    "$output" \
+    "$interval" \
+    "$progress_mode" &
 
   {
-    LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
-      --no-http-keep-alive "${progress[@]}" --output-file="$log"
+    if (( connections > 1 )); then
+      LC_ALL=C wget2 "$url" -O "$dest" --no-verbose --timeout=30 \
+        --chunk-size="$chunk_size" --max-threads="$connections" \
+        "${progress[@]}" --output-file="$log"
+    else
+      LC_ALL=C wget "$url" -O "$dest" --continue --no-verbose --timeout=30 \
+        --no-http-keep-alive "${progress[@]}" --output-file="$log"
+    fi
+
     rc=$?
   } || :
 
   fKill "progress.sh"
 
   if (( rc != 0 )); then
-    reason=$(sed -n \
-      -e 's/^wget: //p' \
-      -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
-      "$log" | tail -n 1)
+    if (( connections > 1 )); then
+
+      reason=$(sed -n \
+        -e 's/^wget2: //p' \
+        -e 's/^ERROR: //p' \
+        -e 's/^ERROR //p' \
+        -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
+        "$log" | tail -n 1)
+
+      if [ -z "$reason" ]; then
+        reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+      fi
+
+    else
+
+      reason=$(sed -n \
+        -e 's/^wget: //p' \
+        -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
+        "$log" | tail -n 1)
+    fi
   fi
 
   rm -f "$log"
@@ -542,16 +576,25 @@ downloadWithRetries() {
   local url="$1"
   local base="$2"
   local name="$3"
+  local dest="$STORAGE/$base"
 
-  rm -f "$STORAGE/$base"
+  rm -f "$dest"
 
-  downloadFile "$url" "$base" "$name" && return 0
+  # Try the configured number of connections first.
+  downloadFile "$url" "$base" "$name" 0 "$CONNECTIONS" && return 0
+
   delay 5
-  downloadFile "$url" "$base" "$name" && return 0
-  delay 10
-  downloadFile "$url" "$base" "$name" && return 0
 
-  rm -f "$STORAGE/$base"
+  # A multi-connection partial file may contain non-sequential ranges and
+  # cannot safely be resumed by Wget.
+  if (( CONNECTIONS > 1 )); then
+    rm -f "$dest"
+  fi
+
+  # Retry with the original single-connection Wget behavior.
+  downloadFile "$url" "$base" "$name" 0 1 && return 0
+
+  rm -f "$dest"
   return 1
 }
 
