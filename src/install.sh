@@ -458,6 +458,52 @@ delay() {
   return 0
 }
 
+filterAriaOutput() {
+
+  local char
+  local prefix=""
+  local mode="detect"
+  local shown="N"
+
+  # Keep the filter alive while aria2 handles an interrupt gracefully.
+  trap '' INT TERM
+
+  while IFS= read -r -N 1 char; do
+    case "$char" in
+      $'\r' | $'\n' )
+        prefix=""
+        mode="detect"
+        ;;
+      * )
+        case "$mode" in
+          "pass" )
+            printf '%s' "$char" >&2
+            ;;
+          "drop" ) ;;
+          "detect" )
+            prefix+="$char"
+
+            case "$prefix" in
+              "[#" )
+                printf '\r\033[K%s' "$prefix" >&2
+                mode="pass"
+                shown="Y"
+                ;;
+              "[" ) ;;
+              * )
+                mode="drop"
+                ;;
+            esac
+            ;;
+        esac
+        ;;
+    esac
+  done
+
+  [[ "$shown" == "Y" ]] && printf '\n' >&2
+  return 0
+}
+
 downloadFile() {
 
   local url="$1"
@@ -466,12 +512,13 @@ downloadFile() {
   local expected="${4:-0}"
   local connections="${5:-1}"
   local dest="$STORAGE/$base"
-  local msg rc total size log
-  local dir file reason=""
-  local progress=() aria=() output=""
+  local progress=() aria=()
+  local msg rc total size log dir
+  local file="" reason="" output=""
   local default_interval=536870912
   local interval="$default_interval"
   local progress_mode="apparent"
+  local aria_fd=2 filter_pid=""
 
   # Produce approximately ten progress updates when the size is known.
   if [[ "$expected" =~ ^[1-9][0-9]*$ ]]; then
@@ -491,7 +538,8 @@ downloadFile() {
         --show-console-readout=true
         --truncate-console-readout=true
         --download-result=hide
-        --console-log-level=warn
+        --enable-color=false
+        --console-log-level=error
       )
     else
       progress=( --show-progress --progress=bar:noscroll )
@@ -513,7 +561,21 @@ downloadFile() {
   fi
 
   html "$msg..."
-  log=$(mktemp)
+
+  if ! log=$(mktemp); then
+    error "Failed to create temporary download log!"
+    return 1
+  fi
+
+  if (( connections > 1 )) && [ -t 2 ]; then
+    if ! exec {aria_fd}> >(filterAriaOutput); then
+      rm -f -- "$log"
+      error "Failed to create aria2 output filter!"
+      return 1
+    fi
+
+    filter_pid=$!
+  fi
 
   /run/progress.sh \
     "$dest" \
@@ -551,14 +613,15 @@ downloadFile() {
         --log="$log" \
         --log-level=error \
         "${aria[@]}" \
-        -- "$url"
+        -- "$url" 2>&"$aria_fd"
 
       rc=$?
-
-      # Aria2 redraws its progress using carriage returns and may not finish
-      # the final console readout with a newline.
-      [ -t 2 ] && printf '\n' >&2
     } || :
+
+    if [ -n "$filter_pid" ]; then
+      exec {aria_fd}>&-
+      wait "$filter_pid" 2>/dev/null || :
+    fi
 
   else
 
@@ -576,7 +639,7 @@ downloadFile() {
   # Unlike Wget, aria2 handles INT and TERM itself and returns status 7.
   # Raise INT again so the current script terminates instead of retrying.
   if (( connections > 1 && rc == 7 )); then
-    rm -f "$log"
+    rm -f -- "$log"
     kill -INT "$BASHPID"
 
     # Defensive fallback in case SIGINT is ignored or trapped.
@@ -587,12 +650,15 @@ downloadFile() {
     if (( connections > 1 )); then
 
       reason=$(sed -nE \
-        -e 's/^[[:space:]]*->[[:space:]]*(\[[^]]+\][[:space:]]*)?(errorCode=[0-9]+[[:space:]]*)?//p' \
-        -e 's/^.*\[ERROR\][[:space:]]*//p' \
+        -e 's/^[[:space:]]*->[[:space:]]*(\[[^]]+\][[:space:]]*)?(errorCode=[0-9]+[[:space:]]*)?(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
+        -e 's/^.*\[ERROR\][[:space:]]*(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
         "$log" | tail -n 1)
 
       if [ -z "$reason" ]; then
         reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+        reason=$(sed -E \
+          's/^(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//' \
+          <<< "$reason")
       fi
 
     else
@@ -604,12 +670,17 @@ downloadFile() {
     fi
   fi
 
-  rm -f "$log"
+  if (( rc != 0 )) && enabled "${DEBUG:-N}" && [ -s "$log" ]; then
+    printf '\n' >&2
+    cat "$log" >&2
+  fi
+
+  rm -f -- "$log"
 
   if (( rc == 0 )) && [ -f "$dest" ]; then
 
     # Aria2 normally removes its control file after completion.
-    rm -f "$dest.aria2"
+    rm -f -- "$dest.aria2"
 
     if ! total=$(stat -c%s "$dest"); then
       error "Failed to determine downloaded file size: $dest"
@@ -620,6 +691,11 @@ downloadFile() {
 
     if [ "$total" -lt 100000 ]; then
       error "Invalid image file: is only $size ?"
+
+      if ! rm -f -- "$dest" "$dest.aria2"; then
+        error "Failed to remove invalid download \"$dest\"!"
+      fi
+
       return 1
     fi
 
@@ -639,29 +715,40 @@ downloadFile() {
   return 1
 }
 
-downloadWithRetries() {
+downloadRetry() {
 
   local url="$1"
   local base="$2"
   local name="$3"
   local dest="$STORAGE/$base"
 
-  rm -f "$dest" "$dest.aria2"
+  # Always start without stale partial or aria2 control files.
+  if ! rm -f -- "$dest" "$dest.aria2"; then
+    error "Failed to remove previous download \"$dest\"!"
+    return 1
+  fi
 
   # Try the configured number of connections first.
   downloadFile "$url" "$base" "$name" 0 "$CONNECTIONS" && return 0
 
   delay 5
 
-  # A multi-connection partial file cannot safely be resumed by Wget.
+  # A multi-connection partial file may contain non-sequential ranges and
+  # cannot safely be resumed by Wget.
   if (( CONNECTIONS > 1 )); then
-    rm -f "$dest" "$dest.aria2"
+    if ! rm -f -- "$dest" "$dest.aria2"; then
+      error "Failed to remove partial download \"$dest\"!"
+      return 1
+    fi
   fi
 
   # Retry with the original single-connection Wget behavior.
   downloadFile "$url" "$base" "$name" 0 1 && return 0
 
-  rm -f "$dest" "$dest.aria2"
+  if ! rm -f -- "$dest" "$dest.aria2"; then
+    error "Failed to remove failed download \"$dest\"!"
+  fi
+
   return 1
 }
 
@@ -922,8 +1009,17 @@ if [[ "$BOOT" != *"."* ]]; then
   exit 64
 fi
 
-if [[ "${BOOT,,}" != "http"* ]]; then
-  error "Invalid BOOT value specified, \"$BOOT\" is not a valid URL!" && exit 64
+case "${BOOT,,}" in
+  http://* | https://* ) ;;
+  * )
+    error "Invalid BOOT value specified, \"$BOOT\" is not a valid URL!"
+    exit 64 ;;
+esac
+
+if [[ ! "${CONNECTIONS:-}" =~ ^[1-9][0-9]*$ ]] ||
+    (( CONNECTIONS > 16 )); then
+  error "The CONNECTIONS value must be between 1 and 16!"
+  exit 64
 fi
 
 if ! makeDir "$STORAGE"; then
@@ -935,7 +1031,7 @@ find "$STORAGE" -maxdepth 1 -type f -iname 'qemu.*' -delete
 
 base=$(getBase "$BOOT")
 
-downloadWithRetries "$BOOT" "$base" "$name" || exit 60
+downloadRetry "$BOOT" "$base" "$name" || exit 60
 
 case "${base,,}" in
 
