@@ -75,7 +75,7 @@ printSizeProgress() {
     fi
 
     printed="Y"
-    next_bytes=$((next_bytes + 536870912))
+    next_bytes=$((next_bytes + step_bytes))
   done
 
   return 0
@@ -94,11 +94,17 @@ path="$1"
 total="$2"
 body=$(escape "$3")
 output="${4:-}"
-mode="${5:-apparent}"
+step_bytes="${5:-536870912}"
+mode="${6:-apparent}"
+
+if [[ ! "$step_bytes" =~ ^[1-9][0-9]*$ ]]; then
+  echo "Invalid progress interval: $step_bytes" >&2
+  exit 2
+fi
 
 printed="N"
 next_percent=10
-next_bytes=536870912
+next_bytes="$step_bytes"
 
 trap finishLogProgress EXIT
 
@@ -109,10 +115,6 @@ fi
 while true; do
 
   bytes=$(getBytes "$path" "$mode")
-
-  if [[ "$mode" == "allocated" ]] && (( total > 0 && bytes >= total )); then
-    bytes=$((total - 1))
-  fi
 
   if (( bytes > 4096 )); then
     if [ -z "$total" ] || [[ "$total" == "0" ]] || (( bytes > total )); then
