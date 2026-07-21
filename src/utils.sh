@@ -567,6 +567,22 @@ getAgent() {
   return 0
 }
 
+delay() {
+
+  local i
+  local seconds="$1"
+  local msg="Retrying failed download in X seconds..."
+
+  info "${msg/X/$seconds}"
+
+  for i in $(seq "$seconds" -1 1); do
+    html "${msg/X/$i}"
+    sleep 1
+  done
+
+  return 0
+}
+
 updateAriaProgress() {
 
   local line="$1"
