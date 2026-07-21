@@ -682,4 +682,346 @@ filterAriaOutput() {
   return 0
 }
 
+checkDownloadSpace() {
+
+  local dest="$1"
+  local expected="${2:-0}"
+  local dir available used capacity
+  local expected_size capacity_size
+
+  [[ "$expected" =~ ^[1-9][0-9]*$ ]] || return 0
+
+  dir=$(dirname -- "$dest")
+
+  if [ ! -d "$dir" ]; then
+    error "Failed to check free space because directory \"$dir\" does not exist!"
+    return 1
+  fi
+
+  available=$(df --output=avail -B1 -- "$dir" 2>/dev/null |
+    awk 'NR == 2 { print $1 }') || available=""
+
+  if [[ ! "$available" =~ ^[0-9]+$ ]]; then
+    error "Failed to check free space in $dir!"
+    return 1
+  fi
+
+  used=0
+
+  # Existing blocks can be reused when the destination is resumed or replaced.
+  if [ -f "$dest" ]; then
+    used=$(du -sB1 -- "$dest" 2>/dev/null |
+      awk 'NR == 1 { print $1 }') || used=""
+
+    if [[ ! "$used" =~ ^[0-9]+$ ]]; then
+      error "Failed to determine the allocated size of \"$dest\"!"
+      return 1
+    fi
+  fi
+
+  capacity=$((available + used))
+
+  if (( expected > capacity )); then
+    expected_size=$(formatBytes "$expected") ||
+      expected_size="$expected bytes"
+
+    capacity_size=$(formatBytes "$capacity") ||
+      capacity_size="$capacity bytes"
+
+    error "Not enough free space to download file, $expected_size required but only $capacity_size available!"
+    return 1
+  fi
+
+  return 0
+}
+
+downloadToFile() {
+
+  if (( $# < 3 )); then
+    error "downloadToFile requires a URL, destination and message."
+    return 2
+  fi
+
+  local url="$1"
+  local dest="$2"
+  local message="$3"
+  local expected="${4:-0}"
+  local connections="${5:-1}"
+  local resume="${6:-Y}"
+  local request=()
+
+  if (( $# > 6 )); then
+    shift 6
+    request=("$@")
+  fi
+
+  local progress=()
+  local wget_resume=()
+  local aria_display="N"
+  local aria_resume="false"
+  local progress_path="$dest"
+  local progress_mode="apparent"
+  local default_interval=536870912
+  local interval="$default_interval"
+  local filter_pid="" progress_pid=""
+  local aria_fd="" counter="" log="" 
+  local dir file option rc=0 
+  local agent="" custom_agent="N"
+  local output="" failure="" reason=""
+
+  if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
+    error "Invalid connection count: $connections"
+    return 2
+  fi
+
+  if [[ ! "$expected" =~ ^[0-9]+$ ]]; then
+    expected=0
+  fi
+
+  dir=$(dirname -- "$dest")
+
+  if [ ! -d "$dir" ]; then
+    error "Download destination directory \"$dir\" does not exist!"
+    return 1
+  fi
+
+  if ! checkDownloadSpace "$dest" "$expected"; then
+    return 1
+  fi
+
+  if (( expected > 0 )); then
+    interval=$(((expected + 9) / 10))
+  fi
+
+  if enabled "$resume"; then
+    wget_resume=( --continue )
+    aria_resume="true"
+  fi
+
+  # Allow callers such as macOS recovery to provide a protocol-specific
+  # user agent while applying the normal browser agent everywhere else.
+  for option in "${request[@]}"; do
+    case "$option" in
+      --user-agent | --user-agent=* | -U | -U* )
+        custom_agent="Y"
+        break ;;
+    esac
+  done
+
+  if [[ "$custom_agent" != "Y" ]]; then
+    if ! agent=$(getAgent) || [ -z "$agent" ]; then
+      error "Failed to generate a download user agent!"
+      return 1
+    fi
+
+    request=( --user-agent "$agent" "${request[@]}" )
+  fi
+
+  if (( connections > 1 )); then
+    if ! command -v aria2c >/dev/null; then
+      error "aria2c is required when using multiple download connections."
+      return 1
+    fi
+  elif ! command -v wget >/dev/null; then
+    error "The wget command was not found."
+    return 1
+  fi
+
+  # Use the downloader's progress display in a terminal
+  # and progress.sh in container logs and the web viewer.
+  if [ -t 0 ] && [ -t 2 ]; then
+    if (( connections > 1 )); then
+      aria_display="Y"
+    else
+      progress=( --show-progress --progress=bar:noscroll )
+    fi
+  else
+    output="log"
+  fi
+
+  if ! log=$(mktemp); then
+    error "Failed to create temporary download log!"
+    return 1
+  fi
+
+  if (( connections > 1 )); then
+
+    if ! counter=$(mktemp); then
+      rm -f -- "$log"
+      error "Failed to create temporary progress counter!"
+      return 1
+    fi
+
+    if ! printf '0\n' > "$counter"; then
+      rm -f -- "$log" "$counter"
+      error "Failed to initialize temporary progress counter!"
+      return 1
+    fi
+
+    progress_path="$counter"
+    progress_mode="counter"
+  fi
+
+  html "$message..."
+
+  # Start progress.sh before opening the aria output pipe so it cannot
+  # inherit the pipe's write descriptor and prevent the filter from exiting.
+  /run/progress.sh \
+    "$progress_path" \
+    "$expected" \
+    "$message ([P])..." \
+    "$output" \
+    "$interval" \
+    "$progress_mode" &
+
+  progress_pid=$!
+
+  if (( connections > 1 )); then
+    if ! exec {aria_fd}> >(filterAriaOutput "$counter" "$aria_display"); then
+
+      kill -TERM "$progress_pid" 2>/dev/null || :
+      wait "$progress_pid" 2>/dev/null || :
+
+      rm -f -- "$log" "$counter" "$counter.tmp"
+
+      error "Failed to create aria2 output filter!"
+      return 1
+    fi
+
+    filter_pid=$!
+  fi
+
+  enabled "${DEBUG:-N}" && echo "Downloading: $url"
+
+  if (( connections > 1 )); then
+
+    file=$(basename -- "$dest")
+
+    {
+      LC_ALL=C aria2c \
+        --no-conf=true \
+        --dir="$dir" \
+        --out="$file" \
+        --split="$connections" \
+        --max-connection-per-server="$connections" \
+        --file-allocation=none \
+        --continue="$aria_resume" \
+        --always-resume=false \
+        --allow-overwrite=true \
+        --auto-file-renaming=false \
+        --max-tries=2 \
+        --connect-timeout=30 \
+        --timeout=30 \
+        --async-dns=false \
+        --follow-metalink=false \
+        --follow-torrent=false \
+        --stderr=true \
+        --summary-interval=0 \
+        --show-console-readout=true \
+        --truncate-console-readout=true \
+        --download-result=hide \
+        --console-log-level=error \
+        --enable-color=false \
+        --human-readable=false \
+        --log="$log" \
+        --log-level=error \
+        "${request[@]}" \
+        -- "$url" 2>&"$aria_fd"
+
+      rc=$?
+    } || :
+
+    exec {aria_fd}>&-
+    wait "$filter_pid" 2>/dev/null || :
+
+  else
+
+    {
+      LC_ALL=C wget \
+        --output-document="$dest" \
+        "${wget_resume[@]}" \
+        --no-verbose \
+        --timeout=30 \
+        --no-http-keep-alive \
+        "${progress[@]}" \
+        --output-file="$log" \
+        "${request[@]}" \
+        -- "$url"
+
+      rc=$?
+    } || :
+  fi
+
+  kill -TERM "$progress_pid" 2>/dev/null || :
+  wait "$progress_pid" 2>/dev/null || :
+
+  if [ -n "$counter" ]; then
+    rm -f -- "$counter" "$counter.tmp"
+  fi
+
+  # Unlike Wget, aria handles INT and TERM itself and returns status 7.
+  # Raise INT again so an outer retry wrapper does not retry cancellation.
+  if (( connections > 1 && rc == 7 )); then
+    rm -f -- "$log"
+
+    kill -INT "$BASHPID"
+
+    # Defensive fallback in case SIGINT is ignored or trapped.
+    exit 130
+  fi
+
+  if (( rc != 0 )); then
+
+    if (( connections > 1 )); then
+      reason=$(sed -nE \
+        -e 's/^[[:space:]]*->[[:space:]]*(\[[^]]+\][[:space:]]*)?(errorCode=[0-9]+[[:space:]]*)?(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
+        -e 's/^.*\[ERROR\][[:space:]]*(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
+        "$log" | tail -n 1)
+
+      if [ -z "$reason" ]; then
+        reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+
+        reason=$(sed -E \
+          's/^(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//' \
+          <<< "$reason")
+      fi
+  
+    else
+
+      reason=$(sed -n \
+        -e 's/^wget: //p' \
+        -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
+        "$log" | tail -n 1)
+  
+    fi
+  fi
+
+  if (( rc != 0 )) && enabled "${DEBUG:-N}" && [ -s "$log" ]; then
+    printf '\n' >&2
+    cat "$log" >&2
+  fi
+
+  rm -f -- "$log"
+
+  if (( rc == 0 )) && [ -f "$dest" ]; then
+    # Aria normally removes this itself after successful completion.
+    rm -f -- "$dest.aria2"
+    return 0
+  fi
+
+  failure="Failed to download $url"
+
+  if (( connections == 1 && rc == 3 )); then
+    error "$failure because the file could not be written (disk full?)."
+  elif [ -n "$reason" ]; then
+    error "$failure: ${reason%.}."
+  elif (( rc == 0 )); then
+    error "$failure because no output file was created."
+  else
+    error "$failure with exit status $rc."
+  fi
+
+  return 1
+}
+
 return 0
