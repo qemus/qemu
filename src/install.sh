@@ -481,7 +481,13 @@ downloadFile() {
   size=$(formatBytes "$total") || return 1
 
   if (( total < 100000 )); then
+
     error "Invalid image file: is only $size ?"
+
+    if ! rm -f -- "$dest" "$dest.aria2"; then
+      warn "failed to remove invalid download \"$dest\"!"
+    fi
+
     return 1
   fi
 
