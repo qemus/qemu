@@ -509,7 +509,8 @@ convertImage() {
 
     if (( src_size > space )); then
       space_gb=$(formatBytes "$space")
-      error "Not enough free space to convert image in $dir, it has only $space_gb available..." && return 1
+      error "Not enough free space to convert image in $dir, it has only $space_gb available..."
+      return 1
     fi
   fi
 
@@ -525,7 +526,11 @@ convertImage() {
     disk_param="preallocation=falloc"
   fi
 
-  fs=$(stat -f -c %T "$dir")
+  if ! fs=$(stat -f -c %T "$dir"); then
+    error "Failed to determine filesystem type of $dir."
+    return 1
+  fi
+
   [[ "${fs,,}" == "btrfs" ]] && disk_param+=",nocow=on"
 
   if [[ "$dst_fmt" != "raw" ]]; then
@@ -538,14 +543,21 @@ convertImage() {
   # shellcheck disable=SC2086
   if ! qemu-img convert -f "$source_fmt" $conv_flags -o "$disk_param" -O "$dst_fmt" -- "$source_file" "$tmp_file"; then
     rm -f "$tmp_file"
-    error "Failed to convert image in $dir, is there enough space available?" && return 1
+    error "Failed to convert image in $dir, is there enough space available?"
+    return 1
   fi
 
   if [[ "$dst_fmt" == "raw" ]]; then
     if [ -n "$ALLOCATE" ] && ! disabled "$ALLOCATE"; then
       # Work around qemu-img bug
-      cur_size=$(stat -c%s "$tmp_file")
-      cur_gb=$(formatBytes "$cur_size")
+      if ! cur_size=$(stat -c%s "$tmp_file"); then
+        error "Failed to determine size of converted image $tmp_file."
+        rm -f "$tmp_file"
+        return 1
+      fi
+      if ! cur_gb=$(formatBytes "$cur_size"); then
+        cur_gb="$cur_size bytes"
+      fi
       if ! fallocate -l "$cur_size" "$tmp_file" &>/dev/null; then
         if ! fallocate -l -x "$cur_size" "$tmp_file"; then
           error "Failed to allocate $cur_gb for image!"
