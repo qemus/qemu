@@ -632,7 +632,11 @@ addDisk () {
   space=$(normalizeSize "$diskSpace" "$diskDesc" "$dir")
   dataSize=$(numfmt --from=iec "$space")
 
-  fs=$(stat -f -c %T "$dir")
+  if ! fs=$(stat -f -c %T "$dir"); then
+    error "Failed to determine filesystem type of \"$dir\" !"
+    return 1
+  fi
+
   checkFS "$fs" "$diskFile" "$diskDesc" || exit $?
 
   if ! supportsDirect "$fs"; then
