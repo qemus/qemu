@@ -292,6 +292,7 @@ ENGINE="Docker"
 PROCESS="${APP,,}"
 PROCESS="${PROCESS// /-}"
 
+# Detect runtime
 detectEngine
 detectRootless
 
@@ -357,5 +358,18 @@ rm -rf "$STORAGE/tmp"
 
 # Cleanup files
 rm -f "$QEMU_DIR"/{qemu.*,*.{pid,sock,pipe}}
+
+# Helper processes terminated during shutdown
+HELPER_PIDS=(
+  TPM_PID
+  WSD_PID
+  AUX_PID
+  WEB_PID
+  AUDIO_PID
+  PASST_PID
+  DNSMASQ_PID
+  CONSOLE_PID
+  BALLOONING_PID
+)
 
 return 0
