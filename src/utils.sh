@@ -1327,4 +1327,75 @@ downloadToFile() {
   return 1
 }
 
+downloadRetry() {
+
+  if (( $# < 4 )); then
+    error "downloadRetry requires a destination, connection count, delay and description."
+    return 2
+  fi
+
+  local dest="$1"
+  local connections="$2"
+  local seconds="$3"
+  local description="$4"
+  shift 4
+
+  local rc=0
+
+  if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
+    error "Invalid connection count: $connections"
+    return 2
+  fi
+
+  if [[ ! "$seconds" =~ ^[0-9]+$ ]]; then
+    error "Invalid retry delay: $seconds"
+    return 2
+  fi
+
+  # Always start without stale partial or aria control files.
+  if ! rm -f -- "$dest" "$dest.aria2"; then
+    error "Failed to remove previous download \"$dest\"!"
+    return 2
+  fi
+
+  # Try the configured number of connections first.
+  if downloadFile "$@" "$connections"; then
+    return 0
+  else
+    rc=$?
+  fi
+
+  # Status 2 indicates a failure that retrying cannot resolve.
+  if (( rc == 2 )); then
+    rm -f -- "$dest" "$dest.aria2"
+    return 2
+  fi
+
+  delay "$seconds"
+
+  # A multi-connection partial file can contain non-sequential ranges and
+  # cannot safely be resumed by Wget.
+  if (( connections > 1 )); then
+    if ! rm -f -- "$dest" "$dest.aria2"; then
+      error "Failed to remove partial download \"$dest\"!"
+      return 2
+    fi
+  fi
+
+  info "Retrying $description with a single connection..."
+
+  # Retry using single-connection Wget.
+  if downloadFile "$@" "1"; then
+    return 0
+  else
+    rc=$?
+  fi
+
+  if ! rm -f -- "$dest" "$dest.aria2"; then
+    error "Failed to remove failed download \"$dest\"!"
+  fi
+
+  return "$rc"
+}
+
 return 0
