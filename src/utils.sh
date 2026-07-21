@@ -1327,10 +1327,52 @@ downloadToFile() {
   return 1
 }
 
+validateDownloadMinimum() {
+
+  local dest="$1"
+  local minimum="${2:-0}"
+  local actual actual_size minimum_size
+
+  if [[ ! "$minimum" =~ ^[0-9]+$ ]]; then
+    error "Invalid minimum download size: $minimum"
+    return 2
+  fi
+
+  (( minimum == 0 )) && return 0
+
+  if ! actual=$(stat -c%s -- "$dest" 2>/dev/null); then
+
+    error "Failed to determine downloaded file size: $dest"
+
+  elif (( actual < minimum )); then
+
+    actual_size=$(formatBytes "$actual") ||
+      actual_size="$actual bytes"
+
+    minimum_size=$(formatBytes "$minimum") ||
+      minimum_size="$minimum bytes"
+
+    error "Downloaded file is only $actual_size, but at least $minimum_size was expected."
+
+  else
+
+    return 0
+
+  fi
+
+  # The failed result must not be resumed during the next attempt.
+  if ! rm -f -- "$dest" "$dest.aria2"; then
+    error "Failed to remove invalid download \"$dest\"!"
+    return 2
+  fi
+
+  return 1
+}
+
 downloadRetry() {
 
-  if (( $# < 4 )); then
-    error "downloadRetry requires a destination, connection count, delay and description."
+  if (( $# < 5 )); then
+    error "downloadRetry requires a destination, connection count, delay, description and minimum size."
     return 2
   fi
 
@@ -1338,17 +1380,24 @@ downloadRetry() {
   local connections="$2"
   local seconds="$3"
   local description="$4"
-  shift 4
+  local minimum="$5"
+  shift 5
 
   local rc=0
 
-  if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
-    error "Invalid connection count: $connections"
+  if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]] ||
+      (( connections > 16 )); then
+    error "The CONNECTIONS value must be between 1 and 16!"
     return 2
   fi
 
   if [[ ! "$seconds" =~ ^[0-9]+$ ]]; then
     error "Invalid retry delay: $seconds"
+    return 2
+  fi
+
+  if [[ ! "$minimum" =~ ^[0-9]+$ ]]; then
+    error "Invalid minimum download size: $minimum"
     return 2
   fi
 
@@ -1360,9 +1409,17 @@ downloadRetry() {
 
   # Try the configured number of connections first.
   if downloadFile "$@" "$connections"; then
-    return 0
+
+    if validateDownloadMinimum "$dest" "$minimum"; then
+      return 0
+    else
+      rc=$?
+    fi
+
   else
+
     rc=$?
+
   fi
 
   # Status 2 indicates a failure that retrying cannot resolve.
@@ -1373,8 +1430,8 @@ downloadRetry() {
 
   delay "$seconds"
 
-  # A multi-connection partial file can contain non-sequential ranges and
-  # cannot safely be resumed by Wget.
+  # A multi-connection partial file can contain non-sequential
+  # ranges and cannot safely be resumed by Wget.
   if (( connections > 1 )); then
     if ! rm -f -- "$dest" "$dest.aria2"; then
       error "Failed to remove partial download \"$dest\"!"
@@ -1386,9 +1443,17 @@ downloadRetry() {
 
   # Retry using single-connection Wget.
   if downloadFile "$@" "1"; then
-    return 0
+
+    if validateDownloadMinimum "$dest" "$minimum"; then
+      return 0
+    else
+      rc=$?
+    fi
+
   else
+
     rc=$?
+
   fi
 
   if ! rm -f -- "$dest" "$dest.aria2"; then
