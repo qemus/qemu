@@ -450,7 +450,7 @@ downloadFile() {
   local expected="${4:-0}"
   local connections="${5:-1}"
   local dest="$STORAGE/$base"
-  local msg total size rc=0
+  local msg total size
 
   if [ -z "$name" ]; then
     msg="Downloading image"
@@ -470,7 +470,7 @@ downloadFile() {
     return 0
   fi
 
-  rc=$?
+  local rc=$?
   (( rc != 0 )) && return "$rc"
 
   if ! total=$(stat -c%s -- "$dest"); then
