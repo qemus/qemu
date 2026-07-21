@@ -460,15 +460,18 @@ downloadFile() {
     info "Downloading $name..."
   fi
 
-  if ! downloadToFile \
+  if downloadToFile \
       "$url" \
       "$dest" \
       "$msg" \
       "$expected" \
       "$connections" \
       "Y"; then
-    return 1
+    return 0
   fi
+
+  local rc=$?
+  (( rc != 0 )) && return "$rc"
 
   if ! total=$(stat -c%s -- "$dest"); then
     error "Failed to determine downloaded file size: $dest"
@@ -478,53 +481,17 @@ downloadFile() {
   size=$(formatBytes "$total") || return 1
 
   if (( total < 100000 )); then
+
     error "Invalid image file: is only $size ?"
 
     if ! rm -f -- "$dest" "$dest.aria2"; then
-      error "Failed to remove invalid download \"$dest\"!"
+      warn "failed to remove invalid download \"$dest\"!"
     fi
 
     return 1
   fi
 
   return 0
-}
-
-downloadRetry() {
-
-  local url="$1"
-  local base="$2"
-  local name="$3"
-  local dest="$STORAGE/$base"
-
-  # Always start without stale partial or aria2 control files.
-  if ! rm -f -- "$dest" "$dest.aria2"; then
-    error "Failed to remove previous download \"$dest\"!"
-    return 1
-  fi
-
-  # Try the configured number of connections first.
-  downloadFile "$url" "$base" "$name" 0 "$CONNECTIONS" && return 0
-
-  delay 5
-
-  # A multi-connection partial file may contain non-sequential
-  # ranges and cannot safely be resumed by Wget.
-  if (( CONNECTIONS > 1 )); then
-    if ! rm -f -- "$dest" "$dest.aria2"; then
-      error "Failed to remove partial download \"$dest\"!"
-      return 1
-    fi
-  fi
-
-  # Retry with the original single-connection Wget behavior.
-  downloadFile "$url" "$base" "$name" 0 1 && return 0
-
-  if ! rm -f -- "$dest" "$dest.aria2"; then
-    error "Failed to remove failed download \"$dest\"!"
-  fi
-
-  return 1
 }
 
 convertImage() {
@@ -806,7 +773,15 @@ find "$STORAGE" -maxdepth 1 -type f -iname 'qemu.*' -delete
 
 base=$(getBase "$BOOT")
 
-downloadRetry "$BOOT" "$base" "$name" || exit 60
+downloadRetry \
+  "$STORAGE/$base" \
+  "$CONNECTIONS" \
+  "5" \
+  "${name:-$base}" \
+  "$BOOT" \
+  "$base" \
+  "$name" \
+  "0" || exit 60
 
 case "${base,,}" in
 
