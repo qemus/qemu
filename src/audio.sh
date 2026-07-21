@@ -92,8 +92,15 @@ startAudioRelay() {
     return 1
   }
 
-  rm -f "$AUDIO_FIFO" "$AUDIO_SOCKET" "$AUDIO_LOG"
-  mkfifo -m 0600 "$AUDIO_FIFO"
+  if ! rm -f -- "$AUDIO_FIFO" "$AUDIO_SOCKET" "$AUDIO_LOG"; then
+    error "Failed to clean up previous audio relay files!"
+    return 1
+  fi
+
+  if ! mkfifo -m 0600 "$AUDIO_FIFO"; then
+    error "Failed to create audio FIFO \"$AUDIO_FIFO\" !"
+    return 1
+  fi
 
   python3 "$AUDIO_RELAY" "$AUDIO_FIFO" "$AUDIO_SOCKET" \
     >"$AUDIO_LOG" 2>&1 &
