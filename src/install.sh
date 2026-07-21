@@ -753,6 +753,7 @@ downloadRetry \
   "$CONNECTIONS" \
   "5" \
   "${name:-$base}" \
+  "100000" \
   "$BOOT" \
   "$base" \
   "$name" \
