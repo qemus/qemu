@@ -870,80 +870,98 @@ delay() {
   return 0
 }
 
-formatAriaBytes() {
-
-  local bytes="$1"
-  local size
-
-  size=$(numfmt \
-    --to=iec-i \
-    --format='%.1f' \
-    --suffix=B \
-    "$bytes" 2>/dev/null) ||
-    size="${bytes}B"
-
-  printf '%s' "$size"
-  return 0
-}
-
-processAriaLine() {
+updateAriaProgress() {
 
   local line="$1"
   local status_file="$2"
   local status_tmp="$3"
-  local show="$4"
-  local gid completed total
-  local percent connections
-  local display tail colored
-  local prefix speed suffix
+  local completed total
 
-  if [[ "$line" =~ ^\[\#([[:xdigit:]]+)[[:space:]]+([0-9]+)B/([0-9]+)B(\(([0-9]+)%\))?[[:space:]]+CN:([0-9]+)(.*)\]$ ]]; then
-    gid="${BASH_REMATCH[1]}"
-    completed="${BASH_REMATCH[2]}"
-    total="${BASH_REMATCH[3]}"
-    percent="${BASH_REMATCH[5]}"
-    connections="${BASH_REMATCH[6]}"
-    tail="${BASH_REMATCH[7]}"
+  [ -z "$status_file" ] && return 0
 
-    if printf '%s %s\n' "$completed" "$total" > "$status_tmp"; then
-      mv -f -- "$status_tmp" "$status_file" || :
+  if [[ "$line" == *" CN:"* &&
+      "$line" =~ \#[[:xdigit:]]+[[:space:]]+([0-9]+)B/([0-9]+)B ]]; then
+    completed="${BASH_REMATCH[1]}"
+    total="${BASH_REMATCH[2]}"
+
+    if ! printf '%s %s\n' "$completed" "$total" > "$status_tmp" ||
+        ! mv -f -- "$status_tmp" "$status_file"; then
+      rm -f -- "$status_tmp"
     fi
-
-    [[ "$show" != "Y" ]] && return 1
-
-    if [[ "$tail" =~ ^([[:space:]]DL:)([0-9]+)B(.*)$ ]]; then
-      prefix="${BASH_REMATCH[1]}"
-      speed="${BASH_REMATCH[2]}"
-      suffix="${BASH_REMATCH[3]}"
-      tail="${prefix}$(formatAriaBytes "$speed")${suffix}"
-    fi
-
-    display="[#${gid} $(formatAriaBytes "$completed")/$(formatAriaBytes "$total")"
-    [ -n "$percent" ] && display+="(${percent}%)"
-    display+=" CN:${connections}${tail}]"
-  else
-    [[ "$show" != "Y" || "$line" != *" CN:"* ]] && return 1
-    display="$line"
   fi
 
-  colored=$(sed -E \
-    -e $'s/^\\[/\033[35m[\033[0m/' \
-    -e $'s/\\(([0-9]+%)\\)/\033[36m(\\1)\033[0m/' \
-    -e $'s/( DL:)([^ ]+)/\\1\033[32m\\2\033[0m/' \
-    -e $'s/( ETA:)([^]]+)/\\1\033[33m\\2\033[0m/' \
-    -e $'s/]$/\033[35m]\033[0m/' \
-    <<< "$display")
-
-  printf '\r\033[K%s' "$colored" >&2
   return 0
+}
+
+showAriaLine() {
+
+  local line="$1"
+  local current total progress percent speed eta
+  local current_size total_size speed_size output
+
+  [[ "$line" == *" CN:"* ]] || return 1
+
+  if [[ ! "$line" =~ \#[[:xdigit:]]+[[:space:]]+([0-9]+)B/([0-9]+)B ]]; then
+    return 1
+  fi
+
+  current="${BASH_REMATCH[1]}"
+  total="${BASH_REMATCH[2]}"
+
+  current_size=$(formatBytes "$current") || current_size="${current}B"
+  total_size=$(formatBytes "$total") || total_size="${total}B"
+
+  if (( total > 0 )); then
+    progress=$((current * 1000 / total))
+    (( progress > 1000 )) && progress=1000
+
+    printf -v percent '%d.%d' \
+      "$((progress / 10))" \
+      "$((progress % 10))"
+  else
+    percent="0.0"
+  fi
+
+  output=$'\033[35m[ \033[0m'
+  output+=$'\033[36m'"${percent}%"$'\033[0m'
+  output+=" | $current_size / $total_size"
+
+  if [[ "$line" =~ DL:([0-9]+)B ]]; then
+    speed="${BASH_REMATCH[1]}"
+    speed_size=$(formatBytes "$speed") || speed_size="${speed}B"
+    output+=$' | \033[32m'"$speed_size/s"$'\033[0m'
+  fi
+
+  if [[ "$line" =~ ETA:([^]]+) ]]; then
+    eta="${BASH_REMATCH[1]}"
+    output+=$' | \033[33mETA '"$eta"$'\033[0m'
+  fi
+
+  output+=$'\033[35m ]\033[0m'
+
+  printf '\r\033[K%s' "$output" >&2
+  return 0
+}
+
+handleAriaLine() {
+
+  local line="$1"
+  local status_file="$2"
+  local status_tmp="$3"
+  local display="$4"
+
+  updateAriaProgress "$line" "$status_file" "$status_tmp"
+
+  [[ "$display" == "Y" ]] || return 1
+  showAriaLine "$line"
 }
 
 filterAriaOutput() {
 
   local status_file="$1"
-  local show="${2:-N}"
+  local display="${2:-N}"
   local status_tmp="${status_file}.${BASHPID}"
-  local char cleanup_cmd line="" shown="N"
+  local cleanup_cmd char line="" shown="N"
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
   trap '' INT TERM
@@ -956,11 +974,11 @@ filterAriaOutput() {
   while IFS= read -r -N 1 char; do
     case "$char" in
       $'\r' | $'\n' )
-        if processAriaLine \
+        if handleAriaLine \
             "$line" \
             "$status_file" \
             "$status_tmp" \
-            "$show"; then
+            "$display"; then
           shown="Y"
         fi
 
@@ -970,12 +988,13 @@ filterAriaOutput() {
     esac
   done
 
+  # Process a final unterminated console update.
   if [[ -n "$line" ]] &&
-      processAriaLine \
+      handleAriaLine \
         "$line" \
         "$status_file" \
         "$status_tmp" \
-        "$show"; then
+        "$display"; then
     shown="Y"
   fi
 
