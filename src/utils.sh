@@ -130,11 +130,15 @@ forceKillQemu() {
 
 cleanupHelpers() {
 
-  local pids=( "${TPM_PID:-}" "${WSD_PID:-}" "${AUX_PID:-}" \
-               "${AUDIO_PID:-}" "${WEB_PID:-}" "${CONSOLE_PID:-}" \
-               "${PASST_PID:-}" "${DNSMASQ_PID:-}" "${BALLOONING_PID:-}" \
-               "$@" )
+  local var value
+  local pids=()
 
+  for var in "${HELPER_PIDS[@]}"; do
+    value="${!var:-}"
+    [ -n "$value" ] && pids+=( "$value" )
+  done
+
+  pids+=( "$@" )
   mKill "${pids[@]}"
 
   closeNetwork
