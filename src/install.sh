@@ -476,14 +476,14 @@ downloadFile() {
 
   if ! total=$(stat -c%s -- "$dest"); then
     error "Failed to determine downloaded file size: $dest"
-    return 2
+    return 1
   fi
 
-  size=$(formatBytes "$total") || return 2
+  size=$(formatBytes "$total") || return 1
 
   if (( total < 100000 )); then
     error "Invalid image file: is only $size ?"
-    return 2
+    return 1
   fi
 
   return 0
