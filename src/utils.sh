@@ -943,11 +943,15 @@ filterAriaOutput() {
   local status_file="$1"
   local show="${2:-N}"
   local status_tmp="${status_file}.${BASHPID}"
-  local char line="" shown="N"
+  local char cleanup_cmd line="" shown="N"
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
   trap '' INT TERM
-  trap 'rm -f -- "$status_tmp"' EXIT
+
+  # Expand the local path now so the EXIT trap does not reference
+  # status_tmp after the function's local scope has ended.
+  printf -v cleanup_cmd 'rm -f -- %q' "$status_tmp"
+  trap "$cleanup_cmd" EXIT
 
   while IFS= read -r -N 1 char; do
     case "$char" in
@@ -1180,7 +1184,7 @@ downloadToFile() {
       kill -TERM "$progress_pid" 2>/dev/null || :
       wait "$progress_pid" 2>/dev/null || :
 
-      rm -f -- "$log" "$status" "$status.tmp"
+      rm -f -- "$log" "$status"
 
       error "Failed to create aria2 output filter!"
       return 2
@@ -1253,9 +1257,7 @@ downloadToFile() {
   kill -TERM "$progress_pid" 2>/dev/null || :
   wait "$progress_pid" 2>/dev/null || :
 
-  if [ -n "$status" ]; then
-    rm -f -- "$status" "$status.tmp"
-  fi
+  [ -n "$status" ] && rm -f -- "$status"
 
   # Unlike Wget, aria handles INT and TERM itself and returns status 7.
   # Raise INT again so an outer retry wrapper does not retry cancellation.
