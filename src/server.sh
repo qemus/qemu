@@ -86,9 +86,15 @@ configureWebPorts() {
 
 configureIpv6Listen() {
 
-  # shellcheck disable=SC2143
   if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]]; then
-    sed -i "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
+
+    if ! sed -i \
+      "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" \
+      /etc/nginx/sites-enabled/web.conf; then
+      error "Failed to configure IPv6 webserver listener!"
+      return 1
+    fi
+
   fi
 
   return 0
