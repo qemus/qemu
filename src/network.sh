@@ -674,8 +674,7 @@ getPasst() {
 
 configureVTAP() {
 
-  local msg=""
-  local rc
+  local msg="" rc=0 dev
 
   enabled "$DEBUG" && echo "Configuring MACVTAP networking..."
 
@@ -721,14 +720,34 @@ configureVTAP() {
   done
 
   local TAP_NR TAP_PATH MAJOR MINOR
-  TAP_NR=$(</sys/class/net/"$TAP"/ifindex)
-  TAP_PATH="/dev/tap${TAP_NR}"
+
+  if ! dev=$(cat /sys/devices/virtual/net/"$TAP"/tap*/dev); then
+    error "Failed to determine device numbers for MACVTAP interface \"$TAP\" !"
+    return 1
+  fi
+
+  IFS=: read -r MAJOR MINOR <<< "$dev"
+
+  if [[ ! "$MAJOR" =~ ^[0-9]+$ || ! "$MINOR" =~ ^[0-9]+$ ]]; then
+    error "Failed to parse device numbers for MACVTAP interface \"$TAP\" !"
+    return 1
+  fi
+
+  if (( MAJOR < 1 )); then
+    error "Cannot find: sys/devices/virtual/net/$TAP"
+    return 1
+  fi
+
+  if ! TAP_NR=$(<"/sys/class/net/$TAP/ifindex"); then
+    error "Failed to determine interface index of MACVTAP interface \"$TAP\" !"
+    return 1
+  fi
 
   # Create dev file (there is no udev in container: need to be done manually)
-  IFS=: read -r MAJOR MINOR < <(cat /sys/devices/virtual/net/"$TAP"/tap*/dev)
-  (( MAJOR < 1)) && error "Cannot find: sys/devices/virtual/net/$TAP" && return 1
+  TAP_PATH="/dev/tap${TAP_NR}"
 
-  [[ ! -e "$TAP_PATH" && -e "/dev0/${TAP_PATH##*/}" ]] && ln -s "/dev0/${TAP_PATH##*/}" "$TAP_PATH"
+  [[ ! -e "$TAP_PATH" && -e "/dev0/${TAP_PATH##*/}" ]] &&
+    ln -s "/dev0/${TAP_PATH##*/}" "$TAP_PATH"
 
   if [[ ! -e "$TAP_PATH" ]]; then
     { mknod "$TAP_PATH" c "$MAJOR" "$MINOR"; rc=$?; } || :
