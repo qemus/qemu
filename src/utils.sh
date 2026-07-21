@@ -961,15 +961,13 @@ filterAriaOutput() {
   local status_file="$1"
   local display="${2:-N}"
   local status_tmp="${status_file}.${BASHPID}"
-  local cleanup_cmd char line="" shown="N"
+  local char line="" shown="N"
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
   trap '' INT TERM
 
-  # Expand the local path now so the EXIT trap does not reference
-  # status_tmp after the function's local scope has ended.
-  printf -v cleanup_cmd 'rm -f -- %q' "$status_tmp"
-  trap "$cleanup_cmd" EXIT
+  # RETURN runs while status_tmp is still in the function's local scope.
+  trap 'rm -f -- "$status_tmp"; trap - RETURN' RETURN
 
   while IFS= read -r -N 1 char; do
     case "$char" in
