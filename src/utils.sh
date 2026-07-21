@@ -1385,8 +1385,9 @@ downloadRetry() {
 
   local rc=0
 
-  if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
-    error "Invalid connection count: $connections"
+  if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]] ||
+      (( connections > 16 )); then
+    error "The CONNECTIONS value must be between 1 and 16!"
     return 2
   fi
 
