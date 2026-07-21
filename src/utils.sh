@@ -904,7 +904,7 @@ downloadToFile() {
         --out="$file" \
         --split="$connections" \
         --max-connection-per-server="$connections" \
-        --file-allocation=falloc
+        --file-allocation=falloc \
         --continue="$aria_resume" \
         --always-resume=false \
         --allow-overwrite=true \
