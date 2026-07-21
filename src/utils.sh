@@ -618,22 +618,22 @@ showAriaLine() {
     percent="0.0"
   fi
 
-  output=$'\033[35m[\033[0m'
+  output=$'\033[35m[ \033[0m'
   output+=$'\033[36m'"${percent}%"$'\033[0m'
-  output+=" $current_size / $total_size"
+  output+=" | $current_size / $total_size"
 
   if [[ "$line" =~ DL:([0-9]+)B ]]; then
     speed="${BASH_REMATCH[1]}"
     speed_size=$(formatBytes "$speed") || speed_size="${speed}B"
-    output+=$' \033[32m'"$speed_size/s"$'\033[0m'
+    output+=$' | \033[32m'"$speed_size/s"$'\033[0m'
   fi
 
   if [[ "$line" =~ ETA:([^]]+) ]]; then
     eta="${BASH_REMATCH[1]}"
-    output+=$' \033[33mETA '"$eta"$'\033[0m'
+    output+=$' | \033[33mETA '"$eta"$'\033[0m'
   fi
 
-  output+=$'\033[35m]\033[0m'
+  output+=$'\033[35m ]\033[0m'
 
   printf '\r\033[K%s' "$output" >&2
   return 0
