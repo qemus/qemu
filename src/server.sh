@@ -56,8 +56,15 @@ configureAuthentication() {
   [ -n "${PASS:-}" ] && pass="$PASS"
 
   # Set password
-  echo "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd
-  sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
+  if ! printf '%s\n' "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd; then
+    error "Failed to create web authentication file!"
+    return 1
+  fi
+
+  if ! sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf; then
+    error "Failed to enable web authentication!"
+    return 1
+  fi
 
   return 0
 }
