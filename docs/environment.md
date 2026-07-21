@@ -8,7 +8,7 @@ An empty default means the variable is unset and its value is determined automat
 
 | Variable | Default | Description |
 |---|---|---|
-| `BOOT` | `alpine` | Image to boot, such as `alpine`, `ubuntu`, `debian`, or a direct URL to an ISO or disk image. |
+| `BOOT` | `alpine` | Image name, or a direct URL to an ISO or disk image. |
 | `CONNECTIONS` | `4` | Number of connections used for image downloads. |
 
 ## 🧠 CPU and Memory
@@ -45,14 +45,14 @@ An empty default means the variable is unset and its value is determined automat
 | Variable | Default | Description |
 |---|---|---|
 | `NETWORK` |  | Network mode, such as `nat`, `user`, or `N` to disable networking. |
-| `DHCP` | `N` | Enables macvtap networking so the VM receives an address from the external LAN through DHCP. |
-| `HOST` | `QEMU` | Hostname assigned to the guest. |
+| `DHCP` | `N` | Enables macvtap networking so the VM receives a DHCP address. |
+| `HOST` |  | Hostname assigned to the machine on the network. |
 | `IP` |  | Overrides the automatically selected guest IPv4 address. |
 | `MAC` |  | Guest network adapter MAC address. |
 | `ADAPTER` | `virtio-net-pci` | QEMU network adapter model. |
 | `DEV` | `eth0` | Container network interface used as the uplink. |
 | `MTU` |  | MTU assigned to the guest network interface. |
-| `MASK` | `255.255.255.0` | IPv4 netmask. |
+| `MASK` | `255.255.255.0` | IPv4 netmask for guest network. |
 | `TAP` | `qemu` | TAP or macvtap interface name. |
 | `BRIDGE` | `docker` | Bridge name used for NAT networking. |
 | `HOST_PORTS` |  | Ports excluded from guest forwarding. |
