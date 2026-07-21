@@ -873,19 +873,20 @@ delay() {
 updateAriaProgress() {
 
   local line="$1"
-  local path="$2"
-  local bytes tmp
+  local status_file="$2"
+  local status_tmp="$3"
+  local completed total
 
-  [ -z "$path" ] && return 0
+  [ -z "$status_file" ] && return 0
 
   if [[ "$line" == *" CN:"* &&
-      "$line" =~ \#[[:xdigit:]]+[[:space:]]+([0-9]+)B/[0-9]+B ]]; then
-    bytes="${BASH_REMATCH[1]}"
-    tmp="$path.tmp"
+      "$line" =~ \#[[:xdigit:]]+[[:space:]]+([0-9]+)B/([0-9]+)B ]]; then
+    completed="${BASH_REMATCH[1]}"
+    total="${BASH_REMATCH[2]}"
 
-    if ! printf '%s\n' "$bytes" > "$tmp" ||
-        ! mv -f -- "$tmp" "$path"; then
-      rm -f -- "$tmp"
+    if ! printf '%s %s\n' "$completed" "$total" > "$status_tmp" ||
+        ! mv -f -- "$status_tmp" "$status_file"; then
+      rm -f -- "$status_tmp"
     fi
   fi
 
@@ -945,10 +946,11 @@ showAriaLine() {
 handleAriaLine() {
 
   local line="$1"
-  local counter="$2"
-  local display="$3"
+  local status_file="$2"
+  local status_tmp="$3"
+  local display="$4"
 
-  updateAriaProgress "$line" "$counter"
+  updateAriaProgress "$line" "$status_file" "$status_tmp"
 
   [[ "$display" == "Y" ]] || return 1
   showAriaLine "$line"
@@ -956,17 +958,25 @@ handleAriaLine() {
 
 filterAriaOutput() {
 
-  local counter="${1:-}"
+  local status_file="$1"
   local display="${2:-N}"
+  local status_tmp="${status_file}.${BASHPID}"
   local char line="" shown="N"
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
   trap '' INT TERM
 
+  # RETURN runs while status_tmp is still in the function's local scope.
+  trap 'rm -f -- "$status_tmp"; trap - RETURN' RETURN
+
   while IFS= read -r -N 1 char; do
     case "$char" in
       $'\r' | $'\n' )
-        if handleAriaLine "$line" "$counter" "$display"; then
+        if handleAriaLine \
+            "$line" \
+            "$status_file" \
+            "$status_tmp" \
+            "$display"; then
           shown="Y"
         fi
 
@@ -977,7 +987,12 @@ filterAriaOutput() {
   done
 
   # Process a final unterminated console update.
-  if handleAriaLine "$line" "$counter" "$display"; then
+  if [[ -n "$line" ]] &&
+      handleAriaLine \
+        "$line" \
+        "$status_file" \
+        "$status_tmp" \
+        "$display"; then
     shown="Y"
   fi
 
@@ -1067,7 +1082,7 @@ downloadToFile() {
   local default_interval=536870912
   local interval="$default_interval"
   local filter_pid="" progress_pid=""
-  local aria_fd="" counter="" log=""
+  local aria_fd="" status="" log=""
   local dir file option rc=0
   local agent="" custom_agent="N"
   local output="" failure="" reason=""
@@ -1142,26 +1157,26 @@ downloadToFile() {
     output="log"
   fi
 
-  if ! log=$(mktemp); then
+  if ! log=$(mktemp -p "$QEMU_DIR"); then
     error "Failed to create temporary download log!"
     return 2
   fi
 
   if (( connections > 1 )); then
 
-    if ! counter=$(mktemp); then
+    if ! status=$(mktemp -p "$QEMU_DIR"); then
       rm -f -- "$log"
-      error "Failed to create temporary progress counter!"
+      error "Failed to create temporary aria2 progress status!"
       return 2
     fi
 
-    if ! printf '0\n' > "$counter"; then
-      rm -f -- "$log" "$counter"
-      error "Failed to initialize temporary progress counter!"
+    if ! printf '0 0\n' > "$status"; then
+      rm -f -- "$log" "$status"
+      error "Failed to initialize temporary aria2 progress status!"
       return 2
     fi
 
-    progress_path="$counter"
+    progress_path="$status"
     progress_mode="counter"
   fi
 
@@ -1175,17 +1190,18 @@ downloadToFile() {
     "$message ([P])..." \
     "$output" \
     "$interval" \
-    "$progress_mode" &
+    "$progress_mode" \
+    "$status" &
 
   progress_pid=$!
 
   if (( connections > 1 )); then
-    if ! exec {aria_fd}> >(filterAriaOutput "$counter" "$aria_display"); then
+    if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
 
       kill -TERM "$progress_pid" 2>/dev/null || :
       wait "$progress_pid" 2>/dev/null || :
 
-      rm -f -- "$log" "$counter" "$counter.tmp"
+      rm -f -- "$log" "$status"
 
       error "Failed to create aria2 output filter!"
       return 2
@@ -1258,9 +1274,7 @@ downloadToFile() {
   kill -TERM "$progress_pid" 2>/dev/null || :
   wait "$progress_pid" 2>/dev/null || :
 
-  if [ -n "$counter" ]; then
-    rm -f -- "$counter" "$counter.tmp"
-  fi
+  [ -n "$status" ] && rm -f -- "$status"
 
   # Unlike Wget, aria handles INT and TERM itself and returns status 7.
   # Raise INT again so an outer retry wrapper does not retry cancellation.

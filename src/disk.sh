@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 # Docker environment variables
 
-: "${DISK_IO:="native"}"          # I/O Mode, can be set to 'native', 'threads' or 'io_uring'
+: "${DISK_IO:=""}"                # I/O Mode, can be set to 'native', 'threads' or 'io_uring'
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
 : "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
@@ -522,12 +522,12 @@ createDevice () {
       ;;
     "blk" | "virtio-blk" )
       result+=",if=none \
-      -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$diskAddress,iothread=io2${bootIndex}${diskSerial}${diskSectors}"
+      -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$diskAddress${IOTHREAD_OPT}${bootIndex}${diskSerial}${diskSectors}"
       echo "$result"
       ;;
     "scsi" | "virtio-scsi" )
       result+=",if=none \
-      -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress,iothread=io2,hotplug=off \
+      -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress${IOTHREAD_OPT},hotplug=off \
       -device scsi-hd,drive=${diskId},bus=${diskId}b.0,channel=0,scsi-id=0,lun=0,rotation_rate=$DISK_ROTATION${bootIndex}${diskSerial}${diskSectors}"
       echo "$result"
       ;;
@@ -574,12 +574,12 @@ addMedia () {
       ;;
     "blk" | "virtio-blk" )
       result+=",if=none \
-      -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$diskAddress,iothread=io2${bootIndex}"
+      -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$diskAddress${IOTHREAD_OPT}${bootIndex}"
       echo "$result"
       ;;
     "scsi" | "virtio-scsi" )
       result+=",if=none \
-      -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress,iothread=io2,hotplug=off \
+      -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress${IOTHREAD_OPT},hotplug=off \
       -device scsi-cd,drive=${diskId},bus=${diskId}b.0${bootIndex}"
       echo "$result"
       ;;
@@ -591,6 +591,8 @@ addMedia () {
 finishDisks () {
 
   local type
+
+  [ -z "$IOTHREAD_OPT" ] && return 0
 
   for type in "${DISK_TYPE,,}" "${MEDIA_TYPE,,}"; do
     case "$type" in
@@ -759,6 +761,17 @@ if ! enabled "$DISK_DISABLE"; then
   msg="Initializing disks..."
   enabled "$DEBUG" && echo "$msg"
 fi
+
+if [ -z "$DISK_IO" ]; then
+  if [[ "${BOOT_MODE,,}" == "windows_legacy" ]]; then
+    DISK_IO="threads"
+  else
+    DISK_IO="native"
+  fi
+fi
+
+IOTHREAD_OPT=",iothread=io2"
+[[ "${BOOT_MODE,,}" == "windows_legacy" ]] && IOTHREAD_OPT=""
 
 if [[ "${DISK_IO,,}" == "native" && "${DISK_CACHE,,}" != "none" && "${DISK_CACHE,,}" != "directsync" ]]; then
   warn "DISK_IO=native requires direct I/O caching, using DISK_IO=threads with DISK_CACHE=$DISK_CACHE."

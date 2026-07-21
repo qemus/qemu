@@ -48,6 +48,24 @@ getBytes() {
   return 0
 }
 
+getStatus() {
+
+  local file="$1"
+  local bytes total extra=""
+
+  [ -r "$file" ] || return 1
+  read -r bytes total extra < "$file" || return 1
+
+  if [[ ! "$bytes" =~ ^[0-9]+$ ||
+        ! "$total" =~ ^[0-9]+$ ||
+        -n "$extra" ]]; then
+    return 1
+  fi
+
+  printf '%s %s\n' "$bytes" "$total"
+  return 0
+}
+
 formatSize() {
 
   local bytes="$1"
@@ -132,6 +150,7 @@ body=$(escape "$3")
 output="${4:-}"
 step_bytes="${5:-536870912}"
 mode="${6:-apparent}"
+status_file="${7:-}"
 
 if [[ -n "$total" && ! "$total" =~ ^(0|[1-9][0-9]*)$ ]]; then
   printf 'Invalid total size: %s\n' "$total" >&2
@@ -178,12 +197,32 @@ fi
 while true; do
 
   bytes=$(getBytes "$path" "$mode")
+  effective_total="$total"
+
+  if [ -n "$status_file" ] && status=$(getStatus "$status_file"); then
+    read -r status_bytes status_total <<< "$status"
+    bytes="$status_bytes"
+
+    if (( status_total > 0 )); then
+      effective_total="$status_total"
+    fi
+  fi
+
+  # A real total may become available shortly after aria2 starts.
+  if [[ "$log_mode" == "size" &&
+        "$printed" == "N" &&
+        -n "$effective_total" &&
+        "$effective_total" != "0" ]]; then
+    log_mode="percent"
+  fi
 
   if (( bytes > 4096 )); then
 
     write_html="Y"
 
-    if [ -z "$total" ] || [[ "$total" == "0" ]] || (( bytes > total )); then
+    if [ -z "$effective_total" ] ||
+        [[ "$effective_total" == "0" ]] ||
+        (( bytes > effective_total )); then
       size=$(formatSize "$bytes")
 
       if [[ "$output" == "log" ]]; then
@@ -197,7 +236,7 @@ while true; do
       fi
     else
       # Truncate to one decimal so progress is never reported early.
-      progress=$((bytes * 1000 / total))
+      progress=$((bytes * 1000 / effective_total))
       (( progress > 1000 )) && progress=1000
 
       percent=$((progress / 10))
