@@ -892,7 +892,8 @@ processAriaLine() {
   local status_file="$2"
   local status_tmp="$3"
   local show="$4"
-  local gid completed total percent connections
+  local gid completed total
+  local percent connections
   local display tail colored
   local prefix speed suffix
 
@@ -942,8 +943,7 @@ filterAriaOutput() {
   local status_file="$1"
   local show="${2:-N}"
   local status_tmp="${status_file}.${BASHPID}"
-  local char line=""
-  local shown="N"
+  local char line="" shown="N"
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
   trap '' INT TERM
@@ -960,11 +960,9 @@ filterAriaOutput() {
           shown="Y"
         fi
 
-        line=""
-        ;;
+        line="" ;;
       * )
-        line+="$char"
-        ;;
+        line+="$char" ;;
     esac
   done
 
@@ -1063,7 +1061,7 @@ downloadToFile() {
   local default_interval=536870912
   local interval="$default_interval"
   local filter_pid="" progress_pid=""
-  local aria_fd="" counter="" log=""
+  local aria_fd="" status="" log=""
   local dir file option rc=0
   local agent="" custom_agent="N"
   local output="" failure="" reason=""
@@ -1138,26 +1136,26 @@ downloadToFile() {
     output="log"
   fi
 
-  if ! log=$(mktemp); then
+  if ! log=$(mktemp -p "$QEMU_DIR"); then
     error "Failed to create temporary download log!"
     return 2
   fi
 
   if (( connections > 1 )); then
 
-    if ! counter=$(mktemp); then
+    if ! status=$(mktemp -p "$QEMU_DIR"); then
       rm -f -- "$log"
-      error "Failed to create temporary progress counter!"
+      error "Failed to create temporary aria2 progress status!"
       return 2
     fi
 
-    if ! printf '0\n' > "$counter"; then
-      rm -f -- "$log" "$counter"
-      error "Failed to initialize temporary progress counter!"
+    if ! printf '0 0\n' > "$status"; then
+      rm -f -- "$log" "$status"
+      error "Failed to initialize temporary aria2 progress status!"
       return 2
     fi
 
-    progress_path="$counter"
+    progress_path="$status"
     progress_mode="counter"
   fi
 
@@ -1171,17 +1169,18 @@ downloadToFile() {
     "$message ([P])..." \
     "$output" \
     "$interval" \
-    "$progress_mode" &
+    "$progress_mode" \
+    "$status" &
 
   progress_pid=$!
 
   if (( connections > 1 )); then
-    if ! exec {aria_fd}> >(filterAriaOutput "$counter" "$aria_display"); then
+    if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
 
       kill -TERM "$progress_pid" 2>/dev/null || :
       wait "$progress_pid" 2>/dev/null || :
 
-      rm -f -- "$log" "$counter" "$counter.tmp"
+      rm -f -- "$log" "$status" "$status.tmp"
 
       error "Failed to create aria2 output filter!"
       return 2
@@ -1254,8 +1253,8 @@ downloadToFile() {
   kill -TERM "$progress_pid" 2>/dev/null || :
   wait "$progress_pid" 2>/dev/null || :
 
-  if [ -n "$counter" ]; then
-    rm -f -- "$counter" "$counter.tmp"
+  if [ -n "$status" ]; then
+    rm -f -- "$status" "$status.tmp"
   fi
 
   # Unlike Wget, aria handles INT and TERM itself and returns status 7.
