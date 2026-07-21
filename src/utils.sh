@@ -581,46 +581,50 @@ updateAriaProgress() {
 showAriaLine() {
 
   local line="$1"
-  local current total speed eta token replacement colored space
-  local current_size total_size speed_size
+  local current total progress percent speed eta
+  local current_size total_size speed_size output
 
   [[ "$line" == *" CN:"* ]] || return 1
 
-  if [[ "$line" =~ ([[:space:]])([0-9]+)B/([0-9]+)B ]]; then
-    token="${BASH_REMATCH[0]}"
-    space="${BASH_REMATCH[1]}"
-    current="${BASH_REMATCH[2]}"
-    total="${BASH_REMATCH[3]}"
-
-    current_size=$(formatBytes "$current") || current_size="${current}B"
-    total_size=$(formatBytes "$total") || total_size="${total}B"
-
-    replacement="$space$current_size/$total_size"
-    line="${line/"$token"/"$replacement"}"
+  if [[ ! "$line" =~ \#[[:xdigit:]]+[[:space:]]+([0-9]+)B/([0-9]+)B ]]; then
+    return 1
   fi
 
-  if [[ "$line" =~ (DL:)([0-9]+)B ]]; then
-    token="${BASH_REMATCH[0]}"
-    speed="${BASH_REMATCH[2]}"
+  current="${BASH_REMATCH[1]}"
+  total="${BASH_REMATCH[2]}"
+
+  current_size=$(formatBytes "$current") || current_size="${current}B"
+  total_size=$(formatBytes "$total") || total_size="${total}B"
+
+  if (( total > 0 )); then
+    progress=$((current * 1000 / total))
+    (( progress > 1000 )) && progress=1000
+
+    printf -v percent '%d.%d' \
+      "$((progress / 10))" \
+      "$((progress % 10))"
+  else
+    percent="0.0"
+  fi
+
+  output=$'\033[35m[\033[0m'
+  output+=$'\033[36m'"${percent}%"$'\033[0m'
+  output+=" $current_size / $total_size"
+
+  if [[ "$line" =~ DL:([0-9]+)B ]]; then
+    speed="${BASH_REMATCH[1]}"
     speed_size=$(formatBytes "$speed") || speed_size="${speed}B"
-    replacement=$'DL:\033[32m'"$speed_size"$'\033[0m'
-    line="${line/"$token"/"$replacement"}"
+    output+=$' \033[32m'"$speed_size/s"$'\033[0m'
   fi
 
-  if [[ "$line" =~ (ETA:)([^]]+) ]]; then
-    token="${BASH_REMATCH[0]}"
-    eta="${BASH_REMATCH[2]}"
-    replacement=$'ETA:\033[33m'"$eta"$'\033[0m'
-    line="${line/"$token"/"$replacement"}"
+  if [[ "$line" =~ ETA:([^]]+) ]]; then
+    eta="${BASH_REMATCH[1]}"
+    output+=$' \033[33mETA '"$eta"$'\033[0m'
   fi
 
-  colored=$(sed -E \
-    -e $'s/^\\[/\033[35m[\033[0m/' \
-    -e $'s/\\(([0-9]+%)\\)/\033[36m(\\1)\033[0m/' \
-    -e $'s/]$/\033[35m]\033[0m/' \
-    <<< "$line") || return 1
+  output+=$'\033[35m]\033[0m'
 
-  printf '\r\033[K%s' "$colored" >&2
+  printf '\r\033[K%s' "$output" >&2
   return 0
 }
 
@@ -640,9 +644,7 @@ filterAriaOutput() {
 
   local counter="${1:-}"
   local display="${2:-N}"
-  local char
-  local line=""
-  local shown="N"
+  local char line="" shown="N"
 
   # Keep the filter alive while aria2 handles an interrupt gracefully.
   trap '' INT TERM
