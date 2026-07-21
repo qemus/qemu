@@ -31,17 +31,25 @@ installAudioPlugin() {
     return 1
   }
 
-  cp -f "$AUDIO_PLUGIN" "$NOVNC/audio-plugin.js"
+  if ! cp -f "$AUDIO_PLUGIN" "$NOVNC/audio-plugin.js"; then
+    error "Failed to install audio plugin!"
+    return 1
+  fi
 
   if ! grep -Fq 'src="audio-plugin.js"' "$NOVNC_HTML"; then
-    sed -i 's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' "$NOVNC_HTML"
+    if ! sed -i \
+      's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' \
+      "$NOVNC_HTML"; then
+      error "Failed to add audio plugin to noVNC page!"
+      return 1
+    fi
   fi
 
   if grep -Fq 'id="noVNC_setting_audio"' "$NOVNC_HTML"; then
     return 0
   fi
 
-  python3 - "$NOVNC_HTML" <<'PY'
+  if ! python3 - "$NOVNC_HTML" <<'PY'
 from pathlib import Path
 import sys
 
@@ -69,6 +77,10 @@ if marker not in content:
 
 path.write_text(content.replace(marker, replacement, 1))
 PY
+  then
+    error "Failed to add audio controls to noVNC page!"
+    return 1
+  fi
 
   return 0
 }
