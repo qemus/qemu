@@ -467,12 +467,11 @@ downloadFile() {
       "$expected" \
       "$connections" \
       "Y"; then
-    rc=0
-  else
-    rc=$?
+    return 0
   fi
 
-  (( rc == 0 )) || return "$rc"
+  rc=$?
+  (( rc != 0 )) && return "$rc"
 
   if ! total=$(stat -c%s -- "$dest"); then
     error "Failed to determine downloaded file size: $dest"
