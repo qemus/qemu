@@ -56,27 +56,45 @@ configureAuthentication() {
   [ -n "${PASS:-}" ] && pass="$PASS"
 
   # Set password
-  echo "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd
-  sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf
+  if ! printf '%s\n' "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd; then
+    error "Failed to create web authentication file!"
+    return 1
+  fi
+
+  if ! sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf; then
+    error "Failed to enable web authentication!"
+    return 1
+  fi
 
   return 0
 }
 
 configureWebPorts() {
 
-  sed -i "s/listen 8006 default_server;/listen $WEB_PORT default_server;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http:\/\/127.0.0.1:5700\/;/proxy_pass http:\/\/127.0.0.1:$WSS_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http:\/\/127.0.0.1:8004\/;/proxy_pass http:\/\/127.0.0.1:$WSD_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http:\/\/127.0.0.1:8003\/;/proxy_pass http:\/\/127.0.0.1:$AUX_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
+  if ! sed -i \
+    -e "s|listen 8006 default_server;|listen $WEB_PORT default_server;|g" \
+    -e "s|proxy_pass http://127.0.0.1:5700/;|proxy_pass http://127.0.0.1:$WSS_PORT/;|g" \
+    -e "s|proxy_pass http://127.0.0.1:8004/;|proxy_pass http://127.0.0.1:$WSD_PORT/;|g" \
+    -e "s|proxy_pass http://127.0.0.1:8003/;|proxy_pass http://127.0.0.1:$AUX_PORT/;|g" \
+    /etc/nginx/sites-enabled/web.conf; then
+    error "Failed to configure webserver ports!"
+    return 1
+  fi
 
   return 0
 }
 
 configureIpv6Listen() {
 
-  # shellcheck disable=SC2143
   if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]]; then
-    sed -i "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" /etc/nginx/sites-enabled/web.conf
+
+    if ! sed -i \
+      "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" \
+      /etc/nginx/sites-enabled/web.conf; then
+      error "Failed to configure IPv6 webserver listener!"
+      return 1
+    fi
+
   fi
 
   return 0
