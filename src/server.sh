@@ -71,10 +71,15 @@ configureAuthentication() {
 
 configureWebPorts() {
 
-  sed -i "s/listen 8006 default_server;/listen $WEB_PORT default_server;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http:\/\/127.0.0.1:5700\/;/proxy_pass http:\/\/127.0.0.1:$WSS_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http:\/\/127.0.0.1:8004\/;/proxy_pass http:\/\/127.0.0.1:$WSD_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
-  sed -i "s/proxy_pass http:\/\/127.0.0.1:8003\/;/proxy_pass http:\/\/127.0.0.1:$AUX_PORT\/;/g" /etc/nginx/sites-enabled/web.conf
+  if ! sed -i \
+    -e "s|listen 8006 default_server;|listen $WEB_PORT default_server;|g" \
+    -e "s|proxy_pass http://127.0.0.1:5700/;|proxy_pass http://127.0.0.1:$WSS_PORT/;|g" \
+    -e "s|proxy_pass http://127.0.0.1:8004/;|proxy_pass http://127.0.0.1:$WSD_PORT/;|g" \
+    -e "s|proxy_pass http://127.0.0.1:8003/;|proxy_pass http://127.0.0.1:$AUX_PORT/;|g" \
+    /etc/nginx/sites-enabled/web.conf; then
+    error "Failed to configure webserver ports!"
+    return 1
+  fi
 
   return 0
 }
