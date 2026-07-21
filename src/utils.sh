@@ -7,6 +7,112 @@ info () { printf "%b%s%b" "\E[1;34m❯ \E[1;36m" "${1:-}" "\E[0m\n"; }
 error () { printf "%b%s%b" "\E[1;31m❯ " "ERROR: ${1:-}" "\E[0m\n" >&2; }
 warn () { printf "%b%s%b" "\E[1;31m❯ " "Warning: ${1:-}" "\E[0m\n" >&2; }
 
+_trap() {
+
+  local func="$1"; shift
+  local sig
+
+  TRAP_PID=$BASHPID
+
+  for sig; do
+    # Capture the local callback and signal while registering the trap.
+    # shellcheck disable=SC2064
+    trap "$func $sig" "$sig"
+  done
+
+  return 0
+}
+
+signalCode() {
+
+  local sig="$1"
+
+  case "$sig" in
+    SIGHUP)  echo 129 ;;
+    SIGINT)  echo 130 ;;
+    SIGQUIT) echo 131 ;;
+    SIGABRT) echo 134 ;;
+    SIGTERM) echo 143 ;;
+    *)       echo 0 ;;
+  esac
+
+  return 0
+}
+
+displayReason() {
+
+  local reason="$1"
+
+  case "$reason" in
+    129 ) echo "SIGHUP" ;;
+    130 ) echo "SIGINT" ;;
+    131 ) echo "SIGQUIT" ;;
+    134 ) echo "SIGABRT" ;;
+    143 ) echo "SIGTERM" ;;
+    * )   echo "$reason" ;;
+  esac
+
+  return 0
+}
+
+readQemuPid() {
+
+  local -n _pid="$1"
+  local file
+
+  for file in "$QEMU_START_PID" "$QEMU_PID"; do
+    if [ -s "$file" ] && read -r _pid < "$file"; then
+      return 0
+    fi
+  done
+
+  return 1
+}
+
+qemuPidFile() {
+
+  local -n _file="$1"
+
+  _file="$QEMU_PID"
+  [ -s "$QEMU_START_PID" ] && _file="$QEMU_START_PID"
+
+  return 0
+}
+
+terminateQemu() {
+
+  local file=""
+
+  qemuPidFile file
+  sKill "$file"
+
+  return 0
+}
+
+waitQemuExit() {
+
+  local timeout="${1:-10}"
+  local file=""
+
+  qemuPidFile file
+  waitPidFile "$file" "$timeout"
+}
+
+waitQemuPid() {
+
+  local -n _pid="$1"
+  local cnt=0 value=""
+
+  while ! readQemuPid value; do
+    sleep 0.02
+    cnt=$((cnt + 1))
+    (( cnt >= 50 )) && return 1
+  done
+
+  _pid="$value"
+  return 0
+}
+
 hasFlag() {
 
   # Match a whitespace-delimited token in /proc/cpuinfo
