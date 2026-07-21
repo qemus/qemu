@@ -1067,8 +1067,8 @@ downloadToFile() {
   local default_interval=536870912
   local interval="$default_interval"
   local filter_pid="" progress_pid=""
-  local aria_fd="" counter="" log="" 
-  local dir file option rc=0 
+  local aria_fd="" counter="" log=""
+  local dir file option rc=0
   local agent="" custom_agent="N"
   local output="" failure="" reason=""
 
@@ -1085,11 +1085,11 @@ downloadToFile() {
 
   if [ ! -d "$dir" ]; then
     error "Download destination directory \"$dir\" does not exist!"
-    return 1
+    return 2
   fi
 
   if ! checkDownloadSpace "$dest" "$expected"; then
-    return 1
+    return 2
   fi
 
   if (( expected > 0 )); then
@@ -1114,7 +1114,7 @@ downloadToFile() {
   if [[ "$custom_agent" != "Y" ]]; then
     if ! agent=$(getAgent) || [ -z "$agent" ]; then
       error "Failed to generate a download user agent!"
-      return 1
+      return 2
     fi
 
     request=( --user-agent "$agent" "${request[@]}" )
@@ -1127,7 +1127,7 @@ downloadToFile() {
     fi
   elif ! command -v wget >/dev/null; then
     error "The wget command was not found."
-    return 1
+    return 2
   fi
 
   # Use the downloader's progress display in a terminal
@@ -1144,7 +1144,7 @@ downloadToFile() {
 
   if ! log=$(mktemp); then
     error "Failed to create temporary download log!"
-    return 1
+    return 2
   fi
 
   if (( connections > 1 )); then
@@ -1152,13 +1152,13 @@ downloadToFile() {
     if ! counter=$(mktemp); then
       rm -f -- "$log"
       error "Failed to create temporary progress counter!"
-      return 1
+      return 2
     fi
 
     if ! printf '0\n' > "$counter"; then
       rm -f -- "$log" "$counter"
       error "Failed to initialize temporary progress counter!"
-      return 1
+      return 2
     fi
 
     progress_path="$counter"
@@ -1188,7 +1188,7 @@ downloadToFile() {
       rm -f -- "$log" "$counter" "$counter.tmp"
 
       error "Failed to create aria2 output filter!"
-      return 1
+      return 2
     fi
 
     filter_pid=$!
@@ -1288,14 +1288,14 @@ downloadToFile() {
           's/^(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//' \
           <<< "$reason")
       fi
-  
+
     else
 
       reason=$(sed -n \
         -e 's/^wget: //p' \
         -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
         "$log" | tail -n 1)
-  
+
     fi
   fi
 
@@ -1316,12 +1316,19 @@ downloadToFile() {
 
   if (( connections == 1 && rc == 3 )); then
     error "$failure because the file could not be written (disk full?)."
+  elif (( connections > 1 && rc == 9 )); then
+    error "$failure because there was not enough disk space."
   elif [ -n "$reason" ]; then
     error "$failure: ${reason%.}."
   elif (( rc == 0 )); then
     error "$failure because no output file was created."
   else
     error "$failure with exit status $rc."
+  fi
+
+  if (( connections == 1 && rc == 3 )) ||
+      (( connections > 1 && rc == 9 )); then
+    return 2
   fi
 
   return 1
@@ -1424,7 +1431,11 @@ downloadRetry() {
 
   # Status 2 indicates a failure that retrying cannot resolve.
   if (( rc == 2 )); then
-    rm -f -- "$dest" "$dest.aria2"
+
+    if ! rm -f -- "$dest" "$dest.aria2"; then
+      warn "failed to remove failed download \"$dest\"!"
+    fi
+
     return 2
   fi
 
@@ -1433,10 +1444,12 @@ downloadRetry() {
   # A multi-connection partial file can contain non-sequential
   # ranges and cannot safely be resumed by Wget.
   if (( connections > 1 )); then
+
     if ! rm -f -- "$dest" "$dest.aria2"; then
       error "Failed to remove partial download \"$dest\"!"
       return 2
     fi
+
   fi
 
   info "Retrying $description with a single connection..."
@@ -1457,7 +1470,7 @@ downloadRetry() {
   fi
 
   if ! rm -f -- "$dest" "$dest.aria2"; then
-    error "Failed to remove failed download \"$dest\"!"
+    warn "failed to remove failed download \"$dest\"!"
   fi
 
   return "$rc"
