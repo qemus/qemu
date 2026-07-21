@@ -733,12 +733,6 @@ case "${BOOT,,}" in
     exit 64 ;;
 esac
 
-if [[ ! "${CONNECTIONS:-}" =~ ^[1-9][0-9]*$ ]] ||
-    (( CONNECTIONS > 16 )); then
-  error "The CONNECTIONS value must be between 1 and 16!"
-  exit 64
-fi
-
 if ! makeDir "$STORAGE"; then
   error "Failed to create directory \"$STORAGE\" !" && exit 33
 fi
