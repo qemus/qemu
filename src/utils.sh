@@ -587,6 +587,25 @@ writeFile() {
   return 0
 }
 
+writeAtomic() {
+
+  local path="$1"
+  local content="$2"
+  local tmp="${path}.${BASHPID}.tmp"
+
+  if ! printf '%s\n' "$content" > "$tmp"; then
+    rm -f -- "$tmp"
+    return 1
+  fi
+
+  if ! mv -f -- "$tmp" "$path"; then
+    rm -f -- "$tmp"
+    return 1
+  fi
+
+  return 0
+}
+
 readFile() {
 
   local path="$1"
