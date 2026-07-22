@@ -717,8 +717,8 @@ html() {
   HTML="${HTML/\[4\]/$footer}"
   HTML="${HTML/\[5\]/$FOOTER2}"
 
-  echo "$HTML" > "$PAGE" || return 1
-  echo "$body" > "$INFO" || return 1
+  writeAtomic "$PAGE" "$HTML" || return 1
+  writeAtomic "$INFO" "$body" || return 1
 
   return 0
 }
