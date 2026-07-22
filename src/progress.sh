@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 info="/run/shm/msg.html"
+info_tmp="${info}.${BASHPID}.tmp"
 
 escape() {
 
@@ -14,6 +15,23 @@ escape() {
   s=${s//"'"/\&#39;}
 
   printf '%s' "$s"
+  return 0
+}
+
+writeInfo() {
+
+  local content="$1"
+
+  if ! printf '%s\n' "$content" > "$info_tmp"; then
+    rm -f -- "$info_tmp"
+    return 1
+  fi
+
+  if ! mv -f -- "$info_tmp" "$info"; then
+    rm -f -- "$info_tmp"
+    return 1
+  fi
+
   return 0
 }
 
@@ -135,7 +153,9 @@ printSizeProgress() {
   return 0
 }
 
-finishLogProgress() {
+finishProgress() {
+
+  rm -f -- "$info_tmp"
 
   if [[ "$output" == "log" && "$printed" == "Y" ]]; then
     printf '\n'
@@ -187,7 +207,7 @@ if [ -z "$total" ] || [[ "$total" == "0" ]]; then
   log_mode="size"
 fi
 
-trap finishLogProgress EXIT
+trap finishProgress EXIT
 trap 'exit 0' HUP INT QUIT TERM
 
 if [[ "$body" == *"..." ]]; then
@@ -258,7 +278,7 @@ while true; do
     fi
 
     if [[ "$write_html" == "Y" ]]; then
-      printf '%s\n' "${body//(\[P\])/($size)}" > "$info"
+      writeInfo "${body//(\[P\])/($size)}"
     fi
   fi
 
