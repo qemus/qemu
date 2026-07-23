@@ -880,7 +880,7 @@ getAgent() {
 
 delay() {
 
-  local i
+  local i rc
   local seconds="$1"
   local msg="Retrying failed download in X seconds..."
 
@@ -888,7 +888,11 @@ delay() {
 
   for i in $(seq "$seconds" -1 1); do
     html "${msg/X/$i}"
-    sleep 1
+
+    sleep 1 || {
+      rc=$?
+      (( rc >= 129 )) && exit "$rc"
+    }
   done
 
   return 0
