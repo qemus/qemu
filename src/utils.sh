@@ -1417,6 +1417,7 @@ downloadToFile() {
       --allow-overwrite=true \
       --auto-file-renaming=false \
       --max-tries=2 \
+      --lowest-speed-limit=10K \
       --connect-timeout=30 \
       --timeout=30 \
       --async-dns=false \
