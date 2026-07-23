@@ -1105,11 +1105,11 @@ downloadToFile() {
   local progress_mode="apparent"
   local default_interval=536870912
   local interval="$default_interval"
-  local filter_pid="" progress_pid=""
-  local download_pid="" aria_fd=""
-  local status="" log=""dir="" file=""
+  local filter_pid="" progress_pid="" download_pid=""
+  local aria_fd="" status="" log=""
+  local dir file option rc=0
+  local agent="" custom_agent="N"
   local output="" failure="" reason=""
-  local option="" rc=0 agent="" custom_agent="N"
   local cancel_signal="" int_trap="" term_trap=""
 
   if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
@@ -1237,24 +1237,24 @@ downloadToFile() {
 
   enabled "${DEBUG:-N}" && echo "Downloading: $url"
 
-  int_trap=$(trap -p INT)
-  term_trap=$(trap -p TERM)
-
-  trap '
-    cancel_signal="INT"
-    [ -n "$download_pid" ] &&
-      kill -INT -- "$download_pid" 2>/dev/null || :
-  ' INT
-
-  trap '
-    cancel_signal="TERM"
-    [ -n "$download_pid" ] &&
-      kill -TERM -- "$download_pid" 2>/dev/null || :
-  ' TERM
-
   if (( connections > 1 )); then
 
     file=$(basename -- "$dest")
+
+    int_trap=$(trap -p INT)
+    term_trap=$(trap -p TERM)
+
+    trap '
+      cancel_signal="INT"
+      [ -n "$download_pid" ] &&
+        kill -INT -- "$download_pid" 2>/dev/null || :
+    ' INT
+
+    trap '
+      cancel_signal="TERM"
+      [ -n "$download_pid" ] &&
+        kill -TERM -- "$download_pid" 2>/dev/null || :
+    ' TERM
 
     (
       trap - INT TERM
@@ -1291,13 +1291,41 @@ downloadToFile() {
         -- "$url" 2>&"$aria_fd"
     ) &
 
+    download_pid=$!
+
+    # Cover a signal arriving between starting aria2 and recording its PID.
+    if [ -n "$cancel_signal" ]; then
+      kill -"$cancel_signal" -- "$download_pid" 2>/dev/null || :
+    fi
+
+    while true; do
+      rc=0
+      wait "$download_pid" || rc=$?
+
+      ! isAlive "$download_pid" && break
+    done
+
+    download_pid=""
+
+    if [ -n "$int_trap" ]; then
+      eval "$int_trap"
+    else
+      trap - INT
+    fi
+
+    if [ -n "$term_trap" ]; then
+      eval "$term_trap"
+    else
+      trap - TERM
+    fi
+
+    exec {aria_fd}>&-
+    wait "$filter_pid" 2>/dev/null || :
+
   else
 
-    (
-      trap - INT TERM
-      export LC_ALL=C
-
-      exec wget \
+    {
+      LC_ALL=C wget \
         --output-document="$dest" \
         "${wget_resume[@]}" \
         --no-verbose \
@@ -1307,35 +1335,9 @@ downloadToFile() {
         --output-file="$log" \
         "${request[@]}" \
         -- "$url"
-    ) &
 
-  fi
-
-  download_pid=$!
-
-  # Cover the small window between starting the process and recording its PID.
-  if [ -n "$cancel_signal" ]; then
-    kill -"$cancel_signal" -- "$download_pid" 2>/dev/null || :
-  fi
-
-  while true; do
-
-    rc=0
-    wait "$download_pid" || rc=$?
-
-    (( rc == 0 )) && break
-
-    if [ -z "$cancel_signal" ] || ! isAlive "$download_pid"; then
-      break
-    fi
-
-  done
-
-  download_pid=""
-
-  if (( connections > 1 )); then
-    exec {aria_fd}>&-
-    wait "$filter_pid" 2>/dev/null || :
+      rc=$?
+    } || :
   fi
 
   kill -TERM "$progress_pid" 2>/dev/null || :
@@ -1343,24 +1345,10 @@ downloadToFile() {
 
   [ -n "$status" ] && rm -f -- "$status"
 
-  if [ -n "$int_trap" ]; then
-    eval "$int_trap"
-  else
-    trap - INT
-  fi
-
-  if [ -n "$term_trap" ]; then
-    eval "$term_trap"
-  else
-    trap - TERM
-  fi
-
   # Aria normally returns 7 after cancellation, but a concurrent download
-  # error can take precedence. Track the received signal independently so
-  # cancellation is never treated as a retryable failure.
+  # error can take precedence. Track the signal so cancellation is not retried.
   if [ -n "$cancel_signal" ] ||
       (( connections > 1 && rc == 7 )); then
-
     rm -f -- "$log"
 
     case "${cancel_signal:-INT}" in
