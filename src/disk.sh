@@ -644,7 +644,7 @@ addDisk () {
     diskCache="writeback"
   fi
 
-  if [ ! -s "$diskFile" ] ; then
+  if [ ! -f "$diskFile" ] || [ ! -s "$diskFile" ]; then
 
     if [[ "${diskFmt,,}" != "raw" ]]; then
       previousFmt="raw"
@@ -654,13 +654,14 @@ addDisk () {
 
     previousExt=$(fmt2ext "$previousFmt")
 
-    if [ -s "$diskBase.$previousExt" ] ; then
+    if [ -f "$diskBase.$previousExt" ] &&
+      [ -s "$diskBase.$previousExt" ]; then
       convertDisk "$diskBase.$previousExt" "$previousFmt" "$diskFile" "$diskFmt" "$diskBase" "$diskDesc" "$fs" || exit $?
     fi
 
   fi
 
-  if [ -s "$diskFile" ]; then
+  if [ -f "$diskFile" ] && [ -s "$diskFile" ]; then
 
     currentSize=$(getSize "$diskFile") || exit 71
 
