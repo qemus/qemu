@@ -1077,39 +1077,11 @@ checkDownloadSpace() {
   return 0
 }
 
-prepareDownloadRequest() {
-
-  local -n _request="$1"
-  local option agent="" custom_agent="N"
-
-  # Allow callers such as macOS recovery to provide a protocol-specific
-  # user agent while applying the normal browser agent everywhere else.
-  for option in "${_request[@]}"; do
-    case "$option" in
-      --user-agent | --user-agent=* | -U | -U* )
-        custom_agent="Y"
-        break ;;
-    esac
-  done
-
-  if [[ "$custom_agent" == "Y" ]]; then
-    return 0
-  fi
-
-  if ! agent=$(getAgent) || [ -z "$agent" ]; then
-    error "Failed to generate a download user agent!"
-    return 2
-  fi
-
-  _request=( --user-agent "$agent" "${_request[@]}" )
-  return 0
-}
-
 startDownloadProgress() {
 
-  local -n _log="$1"
-  local -n _status="$2"
-  local -n _pid="$3"
+  local log_name="$1"
+  local status_name="$2"
+  local pid_name="$3"
   local dest="$4"
   local expected="$5"
   local message="$6"
@@ -1118,26 +1090,27 @@ startDownloadProgress() {
   local connections="$9"
   local progress_path="$dest"
   local progress_mode="apparent"
+  local log_value="" status_value="" pid_value=""
 
-  if ! _log=$(mktemp -p "$QEMU_DIR"); then
+  if ! log_value=$(mktemp -p "$QEMU_DIR"); then
     error "Failed to create temporary download log!"
     return 2
   fi
 
   if (( connections > 1 )); then
-    if ! _status=$(mktemp -p "$QEMU_DIR"); then
-      rm -f -- "$_log"
+    if ! status_value=$(mktemp -p "$QEMU_DIR"); then
+      rm -f -- "$log_value"
       error "Failed to create temporary aria2 progress status!"
       return 2
     fi
 
-    if ! printf '0 0\n' > "$_status"; then
-      rm -f -- "$_log" "$_status"
+    if ! printf '0 0\n' > "$status_value"; then
+      rm -f -- "$log_value" "$status_value"
       error "Failed to initialize temporary aria2 progress status!"
       return 2
     fi
 
-    progress_path="$_status"
+    progress_path="$status_value"
     progress_mode="counter"
   fi
 
@@ -1150,9 +1123,13 @@ startDownloadProgress() {
     "$output" \
     "$interval" \
     "$progress_mode" \
-    "$_status" &
+    "$status_value" &
 
-  _pid=$!
+  pid_value=$!
+
+  printf -v "$log_name" '%s' "$log_value"
+  printf -v "$status_name" '%s' "$status_value"
+  printf -v "$pid_name" '%s' "$pid_value"
   return 0
 }
 
@@ -1172,23 +1149,15 @@ stopDownloadProgress() {
 
 downloadWithAria() {
 
-  local -n _rc="$1"
-  local -n _cancel_signal="$2"
-  local url="$3"
-  local dest="$4"
-  local log="$5"
-  local status="$6"
-  local aria_display="$7"
-  local aria_resume="$8"
-  local connections="$9"
-  local -n _request="${10}"
+  local rc_name="$1"
+  local signal_name="$2"
+  local status="$3"
+  local aria_display="$4"
+  shift 4
 
-  local file="" dir="" aria_fd=""
+  local aria_fd="" filter_pid="" download_pid=""
   local int_trap="" term_trap=""
-  local filter_pid="" download_pid=""
-
-  _rc=0
-  _cancel_signal=""
+  local rc_value=0 cancel_signal_value=""
 
   if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
     error "Failed to create aria2 output filter!"
@@ -1196,20 +1165,17 @@ downloadWithAria() {
   fi
 
   filter_pid=$!
-  file=$(basename -- "$dest")
-  dir=$(dirname -- "$dest")
-
   int_trap=$(trap -p INT)
   term_trap=$(trap -p TERM)
 
   trap '
-    _cancel_signal="INT"
+    cancel_signal_value="INT"
     [ -n "$download_pid" ] &&
       kill -INT -- "$download_pid" 2>/dev/null || :
   ' INT
 
   trap '
-    _cancel_signal="TERM"
+    cancel_signal_value="TERM"
     [ -n "$download_pid" ] &&
       kill -TERM -- "$download_pid" 2>/dev/null || :
   ' TERM
@@ -1217,48 +1183,19 @@ downloadWithAria() {
   (
     trap - INT TERM
     export LC_ALL=C
-
-    exec aria2c \
-      --no-conf=true \
-      --dir="$dir" \
-      --out="$file" \
-      --split="$connections" \
-      --max-connection-per-server="$connections" \
-      --file-allocation=falloc \
-      --continue="$aria_resume" \
-      --always-resume=false \
-      --allow-overwrite=true \
-      --auto-file-renaming=false \
-      --max-tries=2 \
-      --connect-timeout=30 \
-      --timeout=30 \
-      --async-dns=false \
-      --follow-metalink=false \
-      --follow-torrent=false \
-      --stderr=true \
-      --summary-interval=0 \
-      --show-console-readout=true \
-      --truncate-console-readout=true \
-      --download-result=hide \
-      --console-log-level=error \
-      --enable-color=false \
-      --human-readable=false \
-      --log="$log" \
-      --log-level=error \
-      "${_request[@]}" \
-      -- "$url" 2>&"$aria_fd"
+    exec "$@" 2>&"$aria_fd"
   ) &
 
   download_pid=$!
 
   # Cover a signal arriving between starting aria2 and recording its PID.
-  if [ -n "$_cancel_signal" ]; then
-    kill -"$_cancel_signal" -- "$download_pid" 2>/dev/null || :
+  if [ -n "$cancel_signal_value" ]; then
+    kill -"$cancel_signal_value" -- "$download_pid" 2>/dev/null || :
   fi
 
   while true; do
-    _rc=0
-    wait "$download_pid" || _rc=$?
+    rc_value=0
+    wait "$download_pid" || rc_value=$?
 
     ! isAlive "$download_pid" && break
   done
@@ -1280,68 +1217,41 @@ downloadWithAria() {
     trap - TERM
   fi
 
-  return 0
-}
-
-downloadWithWget() {
-
-  local -n _rc="$1"
-  local url="$2"
-  local dest="$3"
-  local log="$4"
-  local -n _wget_resume="$5"
-  local -n _progress="$6"
-  local -n _request="$7"
-
-  {
-    LC_ALL=C wget \
-      --output-document="$dest" \
-      "${_wget_resume[@]}" \
-      --no-verbose \
-      --timeout=30 \
-      --no-http-keep-alive \
-      "${_progress[@]}" \
-      --output-file="$log" \
-      "${_request[@]}" \
-      -- "$url"
-
-    _rc=$?
-  } || :
-
+  printf -v "$rc_name" '%s' "$rc_value"
+  printf -v "$signal_name" '%s' "$cancel_signal_value"
   return 0
 }
 
 getDownloadFailureReason() {
 
-  local -n _reason="$1"
-  local connections="$2"
-  local log="$3"
-
-  _reason=""
+  local connections="$1"
+  local log="$2"
+  local reason=""
 
   if (( connections > 1 )); then
-    _reason=$(sed -nE \
+    reason=$(sed -nE \
       -e 's/^[[:space:]]*->[[:space:]]*(\[[^]]+\][[:space:]]*)?(errorCode=[0-9]+[[:space:]]*)?(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
       -e 's/^.*\[ERROR\][[:space:]]*(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
       "$log" | tail -n 1)
 
-    if [ -z "$_reason" ]; then
-      _reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+    if [ -z "$reason" ]; then
+      reason=$(awk 'NF { line=$0 } END { print line }' "$log")
 
-      _reason=$(sed -E \
+      reason=$(sed -E \
         's/^(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//' \
-        <<< "$_reason")
+        <<< "$reason")
     fi
 
   else
 
-    _reason=$(sed -n \
+    reason=$(sed -n \
       -e 's/^wget: //p' \
       -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
       "$log" | tail -n 1)
 
   fi
 
+  printf '%s' "$reason"
   return 0
 }
 
@@ -1395,9 +1305,12 @@ downloadToFile() {
   local aria_resume="false"
   local default_interval=536870912
   local interval="$default_interval"
-  local progress_pid="" status="" log=""
-  local rc=0 run_rc=0 failure="" reason=""
-  local dir output="" cancel_signal=""
+  local progress_pid=""
+  local status="" log=""
+  local dir file option rc=0 run_rc=0
+  local agent="" custom_agent="N"
+  local output="" failure="" reason=""
+  local cancel_signal=""
 
   if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
     error "Invalid connection count: $connections"
@@ -1428,7 +1341,24 @@ downloadToFile() {
     aria_resume="true"
   fi
 
-  prepareDownloadRequest request || return $?
+  # Allow callers such as macOS recovery to provide a protocol-specific
+  # user agent while applying the normal browser agent everywhere else.
+  for option in "${request[@]}"; do
+    case "$option" in
+      --user-agent | --user-agent=* | -U | -U* )
+        custom_agent="Y"
+        break ;;
+    esac
+  done
+
+  if [[ "$custom_agent" != "Y" ]]; then
+    if ! agent=$(getAgent) || [ -z "$agent" ]; then
+      error "Failed to generate a download user agent!"
+      return 2
+    fi
+
+    request=( --user-agent "$agent" "${request[@]}" )
+  fi
 
   if (( connections > 1 )); then
     if ! command -v aria2c >/dev/null; then
@@ -1468,26 +1398,60 @@ downloadToFile() {
   enabled "${DEBUG:-N}" && echo "Downloading: $url"
 
   if (( connections > 1 )); then
+    file=$(basename -- "$dest")
+
     downloadWithAria \
       rc \
       cancel_signal \
-      "$url" \
-      "$dest" \
-      "$log" \
       "$status" \
       "$aria_display" \
-      "$aria_resume" \
-      "$connections" \
-      request || run_rc=$?
+      aria2c \
+      --no-conf=true \
+      --dir="$dir" \
+      --out="$file" \
+      --split="$connections" \
+      --max-connection-per-server="$connections" \
+      --file-allocation=falloc \
+      --continue="$aria_resume" \
+      --always-resume=false \
+      --allow-overwrite=true \
+      --auto-file-renaming=false \
+      --max-tries=2 \
+      --connect-timeout=30 \
+      --timeout=30 \
+      --async-dns=false \
+      --follow-metalink=false \
+      --follow-torrent=false \
+      --stderr=true \
+      --summary-interval=0 \
+      --show-console-readout=true \
+      --truncate-console-readout=true \
+      --download-result=hide \
+      --console-log-level=error \
+      --enable-color=false \
+      --human-readable=false \
+      --log="$log" \
+      --log-level=error \
+      "${request[@]}" \
+      -- "$url" || run_rc=$?
+
   else
-    downloadWithWget \
-      rc \
-      "$url" \
-      "$dest" \
-      "$log" \
-      wget_resume \
-      progress \
-      request || run_rc=$?
+
+    {
+      LC_ALL=C wget \
+        --output-document="$dest" \
+        "${wget_resume[@]}" \
+        --no-verbose \
+        --timeout=30 \
+        --no-http-keep-alive \
+        "${progress[@]}" \
+        --output-file="$log" \
+        "${request[@]}" \
+        -- "$url"
+
+      rc=$?
+    } || :
+
   fi
 
   stopDownloadProgress "$progress_pid" "$status"
@@ -1502,7 +1466,7 @@ downloadToFile() {
   handleDownloadCancellation "$cancel_signal" "$connections" "$rc" "$log"
 
   if (( rc != 0 )); then
-    getDownloadFailureReason reason "$connections" "$log"
+    reason=$(getDownloadFailureReason "$connections" "$log")
   fi
 
   if (( rc != 0 )) && enabled "${DEBUG:-N}" && [ -s "$log" ]; then
