@@ -1205,7 +1205,7 @@ downloadWithAria() {
 
   # Aria may exit successfully before emitting its final console update.
   # Send a synthetic completed update through the existing output filter so
-  # the terminal progress line is redrawn as 100.0% before it is terminated.
+  # the status file and terminal progress are updated to 100% before exit.
   if (( rc_value == 0 )) && [ -r "$status" ]; then
     if read -r completed total extra < "$status" &&
         [[ "$completed" =~ ^[0-9]+$ &&
