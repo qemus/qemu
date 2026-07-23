@@ -26,9 +26,8 @@ refresh() {
 refresh
 
 inotifywait \
-  -m \
-  -q \
-  -e close_write,moved_to,create,delete \
+  -m -q \
+  -e close_write,moved_to,delete \
   --format '%e %f' \
   "$dir" |
   while read -r event file; do
@@ -36,9 +35,9 @@ inotifywait \
     [[ "$file" == "$name" ]] || continue
 
     case "${event,,}" in
-      *"delete"* )
+      "delete"* )
         echo "c: vnc" ;;
-      *"close_write"* | *"moved_to"* | *"create"* )
+      "close_write"* | "moved_to"* )
         refresh ;;
     esac
 
