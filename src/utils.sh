@@ -1158,6 +1158,7 @@ downloadWithAria() {
   local aria_fd="" filter_pid="" download_pid=""
   local int_trap="" term_trap=""
   local rc_value=0 cancel_signal_value=""
+  local completed="" total="" extra=""
 
   if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
     error "Failed to create aria2 output filter!"
@@ -1201,6 +1202,20 @@ downloadWithAria() {
   done
 
   download_pid=""
+
+  # Aria may exit successfully before emitting its final console update.
+  # Send a synthetic completed update through the existing output filter so
+  # the terminal progress line is redrawn as 100.0% before it is terminated.
+  if (( rc_value == 0 )) && [ -r "$status" ]; then
+    if read -r completed total extra < "$status" &&
+        [[ "$completed" =~ ^[0-9]+$ &&
+           "$total" =~ ^[1-9][0-9]*$ &&
+           -z "$extra" ]]; then
+      printf '#000000 %sB/%sB CN:0\r' \
+        "$total" \
+        "$total" >&"$aria_fd" || :
+    fi
+  fi
 
   exec {aria_fd}>&-
   wait "$filter_pid" 2>/dev/null || :
