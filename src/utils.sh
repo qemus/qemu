@@ -1476,12 +1476,22 @@ downloadToFile() {
 
   if (( run_rc != 0 )); then
     rm -f -- "$log"
+
+    if (( run_rc >= 129 )); then
+      exit "$run_rc"
+    fi
+
     return "$run_rc"
   fi
 
   # Aria normally returns 7 after cancellation, but a concurrent download
   # error can take precedence. Track the signal so cancellation is not retried.
   handleDownloadCancellation "$cancel_signal" "$connections" "$rc" "$log"
+
+  if (( rc >= 129 )); then
+    rm -f -- "$log"
+    exit "$rc"
+  fi
 
   if (( rc != 0 )); then
     reason=$(getDownloadFailureReason "$connections" "$log")
