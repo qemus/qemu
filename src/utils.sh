@@ -1153,12 +1153,12 @@ downloadWithAria() {
   local signal_name="$2"
   local status="$3"
   local aria_display="$4"
-  shift 4
+  local dest="$5"
+  shift 5
 
   local aria_fd="" filter_pid="" download_pid=""
-  local int_trap="" term_trap=""
+  local int_trap="" term_trap="" total=""
   local rc_value=0 cancel_signal_value=""
-  local completed="" total="" extra=""
 
   if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
     error "Failed to create aria2 output filter!"
@@ -1204,13 +1204,12 @@ downloadWithAria() {
   download_pid=""
 
   # Aria may exit successfully before emitting its final console update.
-  # Send a synthetic completed update through the existing output filter so
-  # the status file and terminal progress are updated to 100% before exit.
-  if (( rc_value == 0 )) && [ -r "$status" ]; then
-    if read -r completed total extra < "$status" &&
-        [[ "$completed" =~ ^[0-9]+$ &&
-           "$total" =~ ^[1-9][0-9]*$ &&
-           -z "$extra" ]]; then
+  # Use the completed file size instead of the asynchronously updated status
+  # file, then send a final update through the existing output filter.
+  if (( rc_value == 0 )) && [ -f "$dest" ]; then
+    total=$(stat -c%s -- "$dest" 2>/dev/null) || total=""
+
+    if [[ "$total" =~ ^[1-9][0-9]*$ ]]; then
       printf '#000000 %sB/%sB CN:0\r' \
         "$total" \
         "$total" >&"$aria_fd" || :
@@ -1413,6 +1412,7 @@ downloadToFile() {
   enabled "${DEBUG:-N}" && echo "Downloading: $url"
 
   if (( connections > 1 )); then
+
     file=$(basename -- "$dest")
 
     downloadWithAria \
@@ -1420,6 +1420,7 @@ downloadToFile() {
       cancel_signal \
       "$status" \
       "$aria_display" \
+      "$dest" \
       aria2c \
       --no-conf=true \
       --dir="$dir" \
