@@ -226,7 +226,7 @@ detectSmbiosSerial() {
   SM_BIOS=""
   PS="/sys/class/dmi/id/product_serial"
 
-  if [ -s "$PS" ] && [ -r "$PS" ]; then
+  if [ -r "$PS" ]; then
 
     BIOS_SERIAL=$(<"$PS")
     BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
