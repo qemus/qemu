@@ -650,7 +650,7 @@ findArchiveImage() {
 
   if [ -z "$img" ]; then
     for ext in "${exts[@]}"; do
-      img=$(find "$tmp" -type f -iname "*.$ext" -print -quit)
+      img=$(find "$tmp" -type f -size +0c -iname "*.$ext" -print -quit)
       [ -n "$img" ] && break
     done
   fi
