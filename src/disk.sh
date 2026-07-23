@@ -858,17 +858,26 @@ if [ -s "$BOOT" ]; then
 fi
 
 DRIVERS="/mount.iso"
-[ ! -s "$DRIVERS" ] && [ ! -f "$DRIVERS" ] && DRIVERS="/drivers.iso"
-[ ! -s "$DRIVERS" ] && [ ! -f "$DRIVERS" ] && DRIVERS="$STORAGE/drivers.iso"
 
-if [ -s "$DRIVERS" ] && [ -f "$DRIVERS" ]; then
+if [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ]; then
+  DRIVERS="/drivers.iso"
+fi
+
+if [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ]; then
+  DRIVERS="$STORAGE/drivers.iso"
+fi
+
+if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
   DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "" "0x6")
 fi
 
 RESCUE="/start.iso"
-[ ! -s "$RESCUE" ] && [ ! -f "$RESCUE" ] && RESCUE="$STORAGE/start.iso"
 
-if [ -s "$RESCUE" ] && [ -f "$RESCUE" ]; then
+if [ ! -f "$RESCUE" ] || [ ! -s "$RESCUE" ]; then
+  RESCUE="$STORAGE/start.iso"
+fi
+
+if [ -f "$RESCUE" ] && [ -s "$RESCUE" ]; then
   DISK_OPTS+=$(addMedia "$RESCUE" "$FALLBACK" "1" "0x6")
 fi
 
