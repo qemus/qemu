@@ -1,3 +1,4 @@
+var timer;
 var request;
 var interval = 1000;
 
@@ -19,14 +20,25 @@ var webSocketFactory = {
     }
 };
 
+function abortRequest() {
+
+    if (!request) {
+        return false;
+    }
+
+    request.onreadystatechange = null;
+    request.abort();
+    request = null;
+
+    return true;
+}
+
 function getInfo() {
 
     var url = "msg.html";
 
     try {
-        if (request) {
-            request.abort();
-        }
+        abortRequest();
 
         if (window.XMLHttpRequest) {
             request = new XMLHttpRequest();
@@ -68,15 +80,18 @@ function processInfo() {
             return true;
         }
 
-        var msg = request.responseText;
+        var response = request;
+        request = null;
+
+        var msg = response.responseText;
         if (msg == null || msg.length == 0) {
             window.location.reload();
             return false;
         }
 
-        var notFound = (request.status == 404);
+        var notFound = (response.status == 404);
 
-        if (request.status == 200) {
+        if (response.status == 200) {
             if (msg.toLowerCase().indexOf("<html>") !== -1) {
                 notFound = true;
             } else {
@@ -91,7 +106,7 @@ function processInfo() {
             return true;
         }
 
-        setError("Error: Received statuscode " + request.status);
+        setError("Error: Received statuscode " + response.status);
         return false;
 
     } catch (e) {
@@ -156,7 +171,9 @@ function setError(text) {
 }
 
 function schedule() {
-    setTimeout(getInfo, interval);
+
+    clearTimeout(timer);
+    timer = setTimeout(getInfo, interval);
 }
 
 function connect() {
@@ -172,11 +189,18 @@ function connect() {
 
         switch (cmd) {
             case "s":
+
+                if (abortRequest()) {
+                    schedule();
+                }
+
                 setInfo(msg);
                 break;
+
             case "c":
                 switch (msg) {
                     case "vnc":
+                        abortRequest();
                         redirect();
                         break;
                     default:
@@ -184,9 +208,16 @@ function connect() {
                         break;
                 }
                 break;
+
             case "e":
+
+                if (abortRequest()) {
+                    schedule();
+                }
+
                 setError(msg);
                 break;
+
             default:
                 console.warn("Unknown event: " + cmd);
                 break;
