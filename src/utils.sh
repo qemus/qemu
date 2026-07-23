@@ -1077,6 +1077,208 @@ checkDownloadSpace() {
   return 0
 }
 
+startDownloadProgress() {
+
+  local log_name="$1"
+  local status_name="$2"
+  local pid_name="$3"
+  local dest="$4"
+  local expected="$5"
+  local message="$6"
+  local output="$7"
+  local interval="$8"
+  local connections="$9"
+  local progress_path="$dest"
+  local progress_mode="apparent"
+  local log_value="" status_value="" pid_value=""
+
+  if ! log_value=$(mktemp -p "$QEMU_DIR"); then
+    error "Failed to create temporary download log!"
+    return 2
+  fi
+
+  if (( connections > 1 )); then
+    if ! status_value=$(mktemp -p "$QEMU_DIR"); then
+      rm -f -- "$log_value"
+      error "Failed to create temporary aria2 progress status!"
+      return 2
+    fi
+
+    if ! printf '0 0\n' > "$status_value"; then
+      rm -f -- "$log_value" "$status_value"
+      error "Failed to initialize temporary aria2 progress status!"
+      return 2
+    fi
+
+    progress_path="$status_value"
+    progress_mode="counter"
+  fi
+
+  # Start progress.sh before opening the aria output pipe so it cannot
+  # inherit the pipe's write descriptor and prevent the filter from exiting.
+  /run/progress.sh \
+    "$progress_path" \
+    "$expected" \
+    "$message ([P])..." \
+    "$output" \
+    "$interval" \
+    "$progress_mode" \
+    "$status_value" &
+
+  pid_value=$!
+
+  printf -v "$log_name" '%s' "$log_value"
+  printf -v "$status_name" '%s' "$status_value"
+  printf -v "$pid_name" '%s' "$pid_value"
+  return 0
+}
+
+stopDownloadProgress() {
+
+  local pid="$1"
+  local status="$2"
+
+  if [ -n "$pid" ]; then
+    kill -TERM "$pid" 2>/dev/null || :
+    wait "$pid" 2>/dev/null || :
+  fi
+
+  [ -n "$status" ] && rm -f -- "$status"
+  return 0
+}
+
+downloadWithAria() {
+
+  local rc_name="$1"
+  local signal_name="$2"
+  local status="$3"
+  local aria_display="$4"
+  shift 4
+
+  local aria_fd="" filter_pid="" download_pid=""
+  local int_trap="" term_trap=""
+  local rc_value=0 cancel_signal_value=""
+
+  if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
+    error "Failed to create aria2 output filter!"
+    return 2
+  fi
+
+  filter_pid=$!
+  int_trap=$(trap -p INT)
+  term_trap=$(trap -p TERM)
+
+  trap '
+    cancel_signal_value="INT"
+    [ -n "$download_pid" ] &&
+      kill -INT -- "$download_pid" 2>/dev/null || :
+  ' INT
+
+  trap '
+    cancel_signal_value="TERM"
+    [ -n "$download_pid" ] &&
+      kill -TERM -- "$download_pid" 2>/dev/null || :
+  ' TERM
+
+  (
+    trap - INT TERM
+    export LC_ALL=C
+    exec "$@" 2>&"$aria_fd"
+  ) &
+
+  download_pid=$!
+
+  # Cover a signal arriving between starting aria2 and recording its PID.
+  if [ -n "$cancel_signal_value" ]; then
+    kill -"$cancel_signal_value" -- "$download_pid" 2>/dev/null || :
+  fi
+
+  while true; do
+    rc_value=0
+    wait "$download_pid" || rc_value=$?
+
+    ! isAlive "$download_pid" && break
+  done
+
+  download_pid=""
+
+  exec {aria_fd}>&-
+  wait "$filter_pid" 2>/dev/null || :
+
+  if [ -n "$int_trap" ]; then
+    eval "$int_trap"
+  else
+    trap - INT
+  fi
+
+  if [ -n "$term_trap" ]; then
+    eval "$term_trap"
+  else
+    trap - TERM
+  fi
+
+  printf -v "$rc_name" '%s' "$rc_value"
+  printf -v "$signal_name" '%s' "$cancel_signal_value"
+  return 0
+}
+
+getDownloadFailureReason() {
+
+  local connections="$1"
+  local log="$2"
+  local reason=""
+
+  if (( connections > 1 )); then
+    reason=$(sed -nE \
+      -e 's/^[[:space:]]*->[[:space:]]*(\[[^]]+\][[:space:]]*)?(errorCode=[0-9]+[[:space:]]*)?(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
+      -e 's/^.*\[ERROR\][[:space:]]*(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
+      "$log" | tail -n 1)
+
+    if [ -z "$reason" ]; then
+      reason=$(awk 'NF { line=$0 } END { print line }' "$log")
+
+      reason=$(sed -E \
+        's/^(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//' \
+        <<< "$reason")
+    fi
+
+  else
+
+    reason=$(sed -n \
+      -e 's/^wget: //p' \
+      -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
+      "$log" | tail -n 1)
+
+  fi
+
+  printf '%s' "$reason"
+  return 0
+}
+
+handleDownloadCancellation() {
+
+  local signal="$1"
+  local connections="$2"
+  local rc="$3"
+  local log="$4"
+
+  if [ -z "$signal" ] &&
+      ! (( connections > 1 && rc == 7 )); then
+    return 0
+  fi
+
+  rm -f -- "$log"
+
+  case "${signal:-INT}" in
+    TERM )
+      kill -TERM "$BASHPID"
+      exit 143 ;;
+    * )
+      kill -INT "$BASHPID"
+      exit 130 ;;
+  esac
+}
+
 downloadToFile() {
 
   if (( $# < 3 )); then
@@ -1101,15 +1303,14 @@ downloadToFile() {
   local wget_resume=()
   local aria_display="N"
   local aria_resume="false"
-  local progress_path="$dest"
-  local progress_mode="apparent"
   local default_interval=536870912
   local interval="$default_interval"
-  local filter_pid="" progress_pid=""
-  local aria_fd="" status="" log=""
-  local dir file option rc=0
+  local progress_pid=""
+  local status="" log=""
+  local dir file option rc=0 run_rc=0
   local agent="" custom_agent="N"
   local output="" failure="" reason=""
+  local cancel_signal=""
 
   if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
     error "Invalid connection count: $connections"
@@ -1181,101 +1382,58 @@ downloadToFile() {
     output="log"
   fi
 
-  if ! log=$(mktemp -p "$QEMU_DIR"); then
-    error "Failed to create temporary download log!"
-    return 2
-  fi
-
-  if (( connections > 1 )); then
-
-    if ! status=$(mktemp -p "$QEMU_DIR"); then
-      rm -f -- "$log"
-      error "Failed to create temporary aria2 progress status!"
-      return 2
-    fi
-
-    if ! printf '0 0\n' > "$status"; then
-      rm -f -- "$log" "$status"
-      error "Failed to initialize temporary aria2 progress status!"
-      return 2
-    fi
-
-    progress_path="$status"
-    progress_mode="counter"
-  fi
-
   html "$message..."
 
-  # Start progress.sh before opening the aria output pipe so it cannot
-  # inherit the pipe's write descriptor and prevent the filter from exiting.
-  /run/progress.sh \
-    "$progress_path" \
+  startDownloadProgress \
+    log \
+    status \
+    progress_pid \
+    "$dest" \
     "$expected" \
-    "$message ([P])..." \
+    "$message" \
     "$output" \
     "$interval" \
-    "$progress_mode" \
-    "$status" &
-
-  progress_pid=$!
-
-  if (( connections > 1 )); then
-    if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
-
-      kill -TERM "$progress_pid" 2>/dev/null || :
-      wait "$progress_pid" 2>/dev/null || :
-
-      rm -f -- "$log" "$status"
-
-      error "Failed to create aria2 output filter!"
-      return 2
-    fi
-
-    filter_pid=$!
-  fi
+    "$connections" || return $?
 
   enabled "${DEBUG:-N}" && echo "Downloading: $url"
 
   if (( connections > 1 )); then
-
     file=$(basename -- "$dest")
 
-    {
-      LC_ALL=C aria2c \
-        --no-conf=true \
-        --dir="$dir" \
-        --out="$file" \
-        --split="$connections" \
-        --max-connection-per-server="$connections" \
-        --file-allocation=falloc \
-        --continue="$aria_resume" \
-        --always-resume=false \
-        --allow-overwrite=true \
-        --auto-file-renaming=false \
-        --max-tries=2 \
-        --connect-timeout=30 \
-        --timeout=30 \
-        --async-dns=false \
-        --follow-metalink=false \
-        --follow-torrent=false \
-        --stderr=true \
-        --summary-interval=0 \
-        --show-console-readout=true \
-        --truncate-console-readout=true \
-        --download-result=hide \
-        --console-log-level=error \
-        --enable-color=false \
-        --human-readable=false \
-        --log="$log" \
-        --log-level=error \
-        "${request[@]}" \
-        -- "$url" 2>&"$aria_fd"
-
-      rc=$?
-    } || :
-
-    exec {aria_fd}>&-
-    wait "$filter_pid" 2>/dev/null || :
+    downloadWithAria \
+      rc \
+      cancel_signal \
+      "$status" \
+      "$aria_display" \
+      aria2c \
+      --no-conf=true \
+      --dir="$dir" \
+      --out="$file" \
+      --split="$connections" \
+      --max-connection-per-server="$connections" \
+      --file-allocation=falloc \
+      --continue="$aria_resume" \
+      --always-resume=false \
+      --allow-overwrite=true \
+      --auto-file-renaming=false \
+      --max-tries=2 \
+      --connect-timeout=30 \
+      --timeout=30 \
+      --async-dns=false \
+      --follow-metalink=false \
+      --follow-torrent=false \
+      --stderr=true \
+      --summary-interval=0 \
+      --show-console-readout=true \
+      --truncate-console-readout=true \
+      --download-result=hide \
+      --console-log-level=error \
+      --enable-color=false \
+      --human-readable=false \
+      --log="$log" \
+      --log-level=error \
+      "${request[@]}" \
+      -- "$url" || run_rc=$?
 
   else
 
@@ -1293,48 +1451,22 @@ downloadToFile() {
 
       rc=$?
     } || :
+
   fi
 
-  kill -TERM "$progress_pid" 2>/dev/null || :
-  wait "$progress_pid" 2>/dev/null || :
+  stopDownloadProgress "$progress_pid" "$status"
 
-  [ -n "$status" ] && rm -f -- "$status"
-
-  # Unlike Wget, aria handles INT and TERM itself and returns status 7.
-  # Raise INT again so an outer retry wrapper does not retry cancellation.
-  if (( connections > 1 && rc == 7 )); then
+  if (( run_rc != 0 )); then
     rm -f -- "$log"
-
-    kill -INT "$BASHPID"
-
-    # Defensive fallback in case SIGINT is ignored or trapped.
-    exit 130
+    return "$run_rc"
   fi
+
+  # Aria normally returns 7 after cancellation, but a concurrent download
+  # error can take precedence. Track the signal so cancellation is not retried.
+  handleDownloadCancellation "$cancel_signal" "$connections" "$rc" "$log"
 
   if (( rc != 0 )); then
-
-    if (( connections > 1 )); then
-      reason=$(sed -nE \
-        -e 's/^[[:space:]]*->[[:space:]]*(\[[^]]+\][[:space:]]*)?(errorCode=[0-9]+[[:space:]]*)?(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
-        -e 's/^.*\[ERROR\][[:space:]]*(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//p' \
-        "$log" | tail -n 1)
-
-      if [ -z "$reason" ]; then
-        reason=$(awk 'NF { line=$0 } END { print line }' "$log")
-
-        reason=$(sed -E \
-          's/^(CUID#[0-9]+[[:space:]]*-[[:space:]]*)?//' \
-          <<< "$reason")
-      fi
-
-    else
-
-      reason=$(sed -n \
-        -e 's/^wget: //p' \
-        -e 's/^[0-9-]\{10\} [0-9:]\{8\} ERROR //p' \
-        "$log" | tail -n 1)
-
-    fi
+    reason=$(getDownloadFailureReason "$connections" "$log")
   fi
 
   if (( rc != 0 )) && enabled "${DEBUG:-N}" && [ -s "$log" ]; then
