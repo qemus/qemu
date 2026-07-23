@@ -94,9 +94,12 @@ prepareUefiRom() {
 
   local logo
 
-  if [ -s "$DEST.rom" ]; then
-    return 0
+  if [ -e "$DEST.rom" ] && [ ! -f "$DEST.rom" ]; then
+    error "UEFI boot path \"$DEST.rom\" is not a regular file!"
+    exit 44
   fi
+
+  [ -s "$DEST.rom" ] && return 0
 
   [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
 
@@ -135,9 +138,12 @@ prepareUefiRom() {
 
 prepareUefiVars() {
 
-  if [ -s "$DEST.vars" ]; then
-    return 0
+  if [ -e "$DEST.vars" ] && [ ! -f "$DEST.vars" ]; then
+    error "UEFI vars path \"$DEST.vars\" is not a regular file!"
+    exit 44
   fi
+
+  [ -s "$DEST.vars" ] && return 0
 
   [ ! -s "$OVMF/$VARS" ] && error "UEFI vars file ($OVMF/$VARS) not found!" && exit 45
 
