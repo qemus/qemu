@@ -1214,7 +1214,7 @@ downloadWithAria() {
     total=$(stat -c%s -- "$dest" 2>/dev/null) || total=""
 
     if [[ "$total" =~ ^[1-9][0-9]*$ ]]; then
-      printf '#000000 %sB/%sB CN:0\r' \
+      printf '\r#000000 %sB/%sB CN:0\r' \
         "$total" \
         "$total" >&"$aria_fd" || :
     fi
