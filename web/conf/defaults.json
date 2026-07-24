@@ -1,4 +1,4 @@
 {
   "resize": "scale",
-  "reconnect_delay": 3000
+  "reconnect_delay": 1000
 }
