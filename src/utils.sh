@@ -420,8 +420,7 @@ waitPid() {
 
 waitPidFile() {
 
-  local i=0
-  local pid
+  local i=0 pid
   local file="$1"
   local timeout="${2:-10}"
 

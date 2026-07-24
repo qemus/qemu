@@ -92,8 +92,6 @@ clearNvram() {
 
 prepareUefiRom() {
 
-  local logo
-
   if [ -e "$DEST.rom" ] && [ ! -f "$DEST.rom" ]; then
     error "UEFI boot path \"$DEST.rom\" is not a regular file!"
     exit 44
@@ -103,7 +101,7 @@ prepareUefiRom() {
 
   [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
 
-  logo="/var/www/img/${PROCESS,,}.ffs"
+  local logo="/var/www/img/${PROCESS,,}.ffs"
   [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
   [ ! -s "$logo" ] && LOGO="N"
 
@@ -191,10 +189,10 @@ enableIgnoreMsrs() {
 
   MSRS="/sys/module/kvm/parameters/ignore_msrs"
   [ ! -e "$MSRS" ] && return 0
-  
+
   result=$(<"$MSRS")
   result="${result//[![:print:]]/}"
-  
+
   if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
     echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
@@ -212,10 +210,10 @@ checkClocksource() {
     warn "file \"$CLOCK\" cannot be found?"
     return 0
   fi
-  
+
   result=$(<"$CLOCK")
   result="${result//[![:print:]]/}"
-  
+
   case "${result,,}" in
     "${CLOCKSOURCE,,}" ) ;;
     "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
@@ -248,7 +246,7 @@ detectSmbiosSerial() {
 
 stopTpm() {
 
-  local pid=""
+  local pid
 
   if [ -s "$TPM_PID" ] && read -r pid < "$TPM_PID" && [ -n "$pid" ]; then
     pKill "$pid" 2
@@ -263,9 +261,6 @@ stopTpm() {
 }
 
 startTpm() {
-
-  local i=0
-  local rc=0
 
   SWTPM="/run/swtpm"
   TPM_PID="/var/run/tpm.pid"
@@ -293,7 +288,7 @@ startTpm() {
       --tpmstate "backend-uri=file://$DEST.tpm" \
       --ctrl "type=unixio,path=$TPM_SOCKET" \
       --pid "file=$TPM_PID"
-    rc=$?
+    local rc=$?
   } || :
 
   if (( rc != 0 )); then
@@ -302,6 +297,7 @@ startTpm() {
     return 0
   fi
 
+  local i
   for (( i = 1; i < 25; i++ )); do
 
     [ -S "$TPM_SOCKET" ] && break

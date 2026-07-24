@@ -16,7 +16,8 @@ QEMU_START_PID="$QEMU_DIR/qemu.start.pid"
 
 finish() {
 
-  local reason=$1 failed=0
+  local reason="$1"
+  local failed=0
 
   if [ ! -f "$QEMU_END" ] && (( reason != 0 )); then
     failed=1
@@ -45,7 +46,7 @@ finish() {
 gracefulShutdown() {
 
   local sig="$1"
-  local pid="" code=0
+  local pid code
 
   [[ $BASHPID != "$TRAP_PID" ]] && return
 
