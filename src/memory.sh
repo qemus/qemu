@@ -22,12 +22,12 @@ checkConfiguredMemory() {
     return 0
   fi
 
-  local wanted msg avail_mem
+  local wanted avail_mem
   wanted=$(numfmt --from=iec "$RAM_SIZE")
   avail_mem=$(formatBytes "$RAM_AVAIL")
 
   if (( (wanted + RAM_SPARE) > RAM_AVAIL )); then
-    msg="Your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is too high for the $avail_mem of free memory available,"
+    local msg="Your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is too high for the $avail_mem of free memory available,"
     if [[ "${FS,,}" == "zfs" ]]; then
       info "$msg but since ZFS is active this will be ignored."
     else
@@ -36,7 +36,7 @@ checkConfiguredMemory() {
     fi
   else
     if (( (wanted + (RAM_SPARE * 3)) > RAM_AVAIL )); then
-      msg="your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is very close to the $avail_mem of free memory available,"
+      local msg="your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is very close to the $avail_mem of free memory available,"
       if [[ "${FS,,}" == "zfs" ]]; then
         info "$msg but since ZFS is active this will be ignored."
       else
@@ -49,14 +49,13 @@ checkConfiguredMemory() {
 }
 
 configureHalfMemory() {
-  local wanted
 
   if [[ "${RAM_SIZE,,}" != "half" ]]; then
     return 0
   fi
 
   if (( (RAM_AVAIL / 2) > RAM_SPARE )); then
-    wanted=$(( (RAM_AVAIL / 2) / 1048577 ))
+    local wanted=$(( (RAM_AVAIL / 2) / 1048577 ))
     RAM_SIZE="${wanted}M"
     info "Allocated $wanted MB of RAM for $(app)."
   else
@@ -67,7 +66,6 @@ configureHalfMemory() {
 }
 
 configureMaxMemory() {
-  local wanted
 
   if [[ "${RAM_SIZE,,}" != "max" ]]; then
     return 0
@@ -75,11 +73,11 @@ configureMaxMemory() {
 
   if (( RAM_AVAIL < (RAM_SPARE * 2) )); then
 
-    wanted=$(( RAM_AVAIL / 2 ))
+    local wanted=$(( RAM_AVAIL / 2 ))
 
   else
 
-    wanted=$(( RAM_AVAIL - (RAM_SPARE * 3) ))
+    local wanted=$(( RAM_AVAIL - (RAM_SPARE * 3) ))
 
     if (( wanted < (RAM_SPARE * 6) )); then
       wanted=$(( RAM_AVAIL - RAM_SPARE ))
@@ -96,8 +94,8 @@ configureMaxMemory() {
 }
 
 checkMinimumMemory() {
-  local wanted
 
+  local wanted
   wanted=$(numfmt --from=iec "$RAM_SIZE")
 
   if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
