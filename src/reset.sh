@@ -44,7 +44,7 @@ detectEngine() {
 
 detectRootless() {
 
-  local uid_map=""
+  local uid_map
 
   uid_map=$(awk '{$1=$1; print}' /proc/self/uid_map 2>/dev/null || true)
 
@@ -61,8 +61,6 @@ checkPrivileged() {
 
   local cap_bnd
   local last_cap
-  local max_cap
-
   # Get the capability bounding set
   cap_bnd=$(grep '^CapBnd:' /proc/$$/status | awk '{print $2}')
   cap_bnd=$(printf "%d" "0x${cap_bnd}")
@@ -71,7 +69,7 @@ checkPrivileged() {
   last_cap=$(cat /proc/sys/kernel/cap_last_cap)
 
   # Calculate the maximum capability value
-  max_cap=$(((1 << (last_cap + 1)) - 1))
+  local max_cap=$(((1 << (last_cap + 1)) - 1))
 
   if [ "$cap_bnd" -eq "$max_cap" ]; then
     PRIVILEGED="Y"
@@ -134,9 +132,7 @@ finiteMemoryLimit() {
 
   local limit="$1"
   local sentinel="4611686018427387904"
-  local i=0
-  local left=""
-  local right=""
+  local i
 
   [[ "$limit" =~ ^[0-9]+$ ]] || return 1
 
@@ -144,8 +140,8 @@ finiteMemoryLimit() {
   (( ${#limit} > ${#sentinel} )) && return 1
 
   for (( i=0; i<${#sentinel}; i++ )); do
-    left="${limit:i:1}"
-    right="${sentinel:i:1}"
+    local left="${limit:i:1}"
+    local right="${sentinel:i:1}"
 
     (( left < right )) && return 0
     (( left > right )) && return 1
@@ -156,11 +152,10 @@ finiteMemoryLimit() {
 
 getMemoryInfo() {
 
-  local host_total=""
-  local host_avail=""
+  local host_total
+  local host_avail
   local limit=""
   local current=""
-  local available=""
 
   host_total=$(free -b | awk '/^Mem:/ {print $2; exit}')
   host_avail=$(free -b | awk '/^Mem:/ {print $7; exit}')
@@ -179,7 +174,7 @@ getMemoryInfo() {
   if finiteMemoryLimit "$limit" && [[ "$current" =~ ^[0-9]+$ ]]; then
     (( limit < RAM_TOTAL )) && RAM_TOTAL="$limit"
 
-    available=$(( limit - current ))
+    local available=$(( limit - current ))
     (( available < 0 )) && available=0
     (( available < RAM_AVAIL )) && RAM_AVAIL="$available"
   fi

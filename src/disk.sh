@@ -140,8 +140,8 @@ normalizeSize() {
   local diskDesc="$2"
   local dir="$3"
 
-  local gb free space
-  local dataSize spare=1073741824
+  local free dataSize
+  local spare=1073741824
 
   if [[ "${diskSpace,,}" == "max" || "${diskSpace,,}" == "half" ]]; then
 
@@ -154,12 +154,12 @@ normalizeSize() {
     fi
 
     (( free < spare )) && free="$spare"
-    gb=$(( free / 1073741825 ))
+    local gb=$(( free / 1073741825 ))
     diskSpace="${gb}G"
 
   fi
 
-  space="${diskSpace// /}"
+  local space="${diskSpace// /}"
   [ -z "$space" ] && space="64G"
   [ -z "${space//[0-9. ]}" ] && space="${space}G"
   space=$(echo "${space^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
@@ -618,13 +618,12 @@ addDisk () {
   local diskCache="$9"
 
   local fs dir used space
-  local diskExt diskFile
-  local dataSize missing
+  local diskExt dataSize
   local available currentSize
-  local previousExt previousFmt
+  local previousExt
 
   diskExt=$(fmt2ext "$diskFmt")
-  diskFile="$diskBase.$diskExt"
+  local diskFile="$diskBase.$diskExt"
 
   dir=$(dirname "$diskFile")
   [ ! -d "$dir" ] && return 0
@@ -647,9 +646,9 @@ addDisk () {
   if [ ! -f "$diskFile" ] || [ ! -s "$diskFile" ]; then
 
     if [[ "${diskFmt,,}" != "raw" ]]; then
-      previousFmt="raw"
+      local previousFmt="raw"
     else
-      previousFmt="qcow2"
+      local previousFmt="qcow2"
     fi
 
     previousExt=$(fmt2ext "$previousFmt")
@@ -691,18 +690,18 @@ addDisk () {
     currentSize=$(getSize "$diskFile") || exit 73
     used=$(du -sB 1 "$diskFile" | cut -f1)
     available=$(df --output=avail -B 1 "$dir" | tail -n 1)
-    missing=$(( currentSize - used - available ))
+    local missing=$(( currentSize - used - available ))
     (( missing < 0 )) && missing=0
 
     if (( missing > 0 )); then
 
-      local gb base msg
+      local gb base
 
       gb=$(formatBytes "$available")
       base=$(baseDir "$dir")
       missing=$(formatBytes "$missing")
       currentSize=$(formatBytes "$currentSize")
-      msg="The virtual size of the ${diskDesc,,} is $currentSize"
+      local msg="The virtual size of the ${diskDesc,,} is $currentSize"
 
       if [ -n "$used" ] && [[ "$used" != "0" ]]; then
         used=$(formatBytes "$used")

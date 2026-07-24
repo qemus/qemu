@@ -14,7 +14,7 @@ getBase() {
 
 getFolder() {
 
-  local base=""
+  local base
   local result="$1"
 
   if [[ "$result" != *"."* ]]; then
@@ -70,8 +70,7 @@ bootFile() {
 detectRawDiskMode() {
 
   local file="$1"
-  local result=""
-  local mode=""
+  local result mode
 
   if [ ! -r "$file" ]; then
     error "Failed to read disk image \"$file\"!"
@@ -125,7 +124,7 @@ detectRawDiskMode() {
 isLegacyIso() {
 
   local file="$1"
-  local result=""
+  local result
 
   if ! result=$(LC_ALL=C xorriso \
       -no_rc \
@@ -205,19 +204,12 @@ detectQcow2Mode() {
   local file="$1"
   local found="N"
   local protective="N"
-  local signature=""
-  local tmp=""
-  local type=""
-  local offset=""
-  local actual_size=0
+  local tmp type offset
+  local signature actual_size
 
-  local entry_lba=""
-  local entry_count=""
-  local entry_size=""
-  local entry_units=0
-  local table_size=0
-  local table_sectors=0
-  local expected_size=0
+  local entry_lba
+  local entry_count
+  local entry_size
 
   if ! tmp=$(mktemp "$QEMU_DIR/boot-mode.XXXXXX"); then
     error "Failed to create temporary boot detection file!"
@@ -316,7 +308,7 @@ detectQcow2Mode() {
         return 1
       fi
 
-      entry_units=$((entry_size / 128))
+      local entry_units=$((entry_size / 128))
 
       if (( entry_lba < 2 ||
             entry_count < 1 ||
@@ -330,7 +322,7 @@ detectQcow2Mode() {
         return 1
       fi
 
-      table_size=$((entry_count * entry_size))
+      local table_size=$((entry_count * entry_size))
 
       # Protect against corrupt images requesting an excessive read.
       if (( table_size > 16777216 )); then
@@ -339,8 +331,8 @@ detectQcow2Mode() {
         return 1
       fi
 
-      table_sectors=$(((table_size + 511) / 512))
-      expected_size=$((table_sectors * 512))
+      local table_sectors=$(((table_size + 511) / 512))
+      local expected_size=$((table_sectors * 512))
 
       if ! readQcow2Sectors \
           "$file" "$entry_lba" "$table_sectors" "$tmp"; then
@@ -450,13 +442,12 @@ downloadFile() {
   local expected="${4:-0}"
   local connections="${5:-1}"
   local dest="$STORAGE/$base"
-  local msg
 
   if [ -z "$name" ]; then
-    msg="Downloading image"
+    local msg="Downloading image"
     info "Downloading $base..."
   else
-    msg="Downloading $name"
+    local msg="Downloading $name"
     info "Downloading $name..."
   fi
 
@@ -476,7 +467,7 @@ convertImage() {
   local dst_file=$3
   local dst_fmt=$4
   local dir base fs fa space space_gb
-  local cur_size cur_gb src_size disk_param
+  local cur_size cur_gb src_size
 
   [ -f "$dst_file" ] && error "Conversion failed, destination file $dst_file already exists?" && return 1
   [ ! -f "$source_file" ] && error "Conversion failed, source file $source_file does not exists?" && return 1
@@ -521,9 +512,9 @@ convertImage() {
   local conv_flags="-p"
 
   if [ -z "$ALLOCATE" ] || disabled "$ALLOCATE"; then
-    disk_param="preallocation=off"
+    local disk_param="preallocation=off"
   else
-    disk_param="preallocation=falloc"
+    local disk_param="preallocation=falloc"
   fi
 
   if ! fs=$(stat -f -c %T "$dir"); then
