@@ -2102,10 +2102,12 @@ showGuestInfo() {
 
   local mode="${NETWORK,,}"
 
-  if isNAT; then
-    mode="NAT"
-  elif enabled "$DHCP"; then
+  local mode="${NETWORK,,}"
+
+  if enabled "$DHCP"; then
     mode="DHCP"
+  elif isNAT; then
+    mode="NAT"
   elif isUserMode; then
     mode="User ($mode)"
   elif [ -z "$mode" ]; then
