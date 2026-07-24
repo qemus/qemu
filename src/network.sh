@@ -46,6 +46,8 @@ USER_PORTS=$(strip "$USER_PORTS")
 CHECK_PORT=$(strip "$CHECK_PORT")
 
 ADD_ERR="Please add the following setting to your container:"
+SYSTEM_HOST="system.lan"
+SYSTEM_IP=""
 
 # ######################################
 #  Generic helpers
@@ -174,6 +176,37 @@ networkCIDR() {
   return 0
 }
 
+systemIP() {
+
+  local subnet="$1"
+  local guest="$2"
+  local gateway="$3"
+  local broadcast candidate last
+
+  broadcast=$(ipcalc -n -b "$subnet" 2>/dev/null | awk '
+    /^Broadcast:/ {
+      print $2
+      exit
+    }
+  ')
+
+  if [[ ! "$broadcast" =~ ^([0-9]{1,3}\.){3}[0-9]{1,3}$ ]]; then
+    return 1
+  fi
+
+  last="${broadcast##*.}"
+
+  for (( last--; last>=2; last-- )); do
+    candidate="${broadcast%.*}.$last"
+    [[ "$candidate" == "$guest" || "$candidate" == "$gateway" ]] && continue
+
+    echo "$candidate"
+    return 0
+  done
+
+  return 1
+}
+
 detectInterface() {
 
   if [ -n "$DEV" ]; then
@@ -211,7 +244,19 @@ formatAddress() {
 
 detectAddresses() {
 
-  GATEWAY=$(ip route list dev "$DEV" | awk ' /^default/ {print $3}' | head -n 1)
+  GATEWAY=""
+
+  { GATEWAY=$(ip -4 route list default dev "$DEV" | awk '
+      $1 == "default" {
+        for (i = 1; i < NF; i++) {
+          if ($i == "via") {
+            print $(i + 1)
+            exit
+          }
+        }
+      }
+    '); } 2>/dev/null || GATEWAY=""
+
   { UPLINK=$(ip address show dev "$DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1); } 2>/dev/null || :
 
   IP6=""
@@ -411,6 +456,7 @@ configureDNS() {
   local host="$4"
   local mask="$5"
   local gateway="$6"
+  local system="${7:-}"
   local arguments="$DNSMASQ_OPTS"
 
   enabled "${DNSMASQ_DISABLE:-}" && return 0
@@ -453,6 +499,11 @@ configureDNS() {
 
   # Add DNS entry for container
   arguments+=" --address=/host.lan/$gateway"
+
+  # Add DNS entry for the system immediately outside the container.
+  if isNAT && [ -n "$system" ]; then
+    arguments+=" --address=/$SYSTEM_HOST/$system"
+  fi
 
   # Avoid returning IPv6 records when the active network mode is IPv4-only.
   if isNAT || [ -z "$IP6" ]; then
@@ -914,6 +965,7 @@ configurePasst() {
 createBridge() {
 
   local gateway="$1"
+  local system="${2:-}"
   local msg
 
   # Create a bridge with a static IP for the VM guest
@@ -939,6 +991,13 @@ createBridge() {
 
   if ! ip address add "$gateway/$PREFIX" dev "$BRIDGE"; then
     warn "failed to add IP address pool!" && return 1
+  fi
+
+  if [ -n "$system" ] && ! ip address add "$system/32" dev "$BRIDGE"; then
+    if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+      warn "failed to add the $SYSTEM_HOST address; access through that name will be unavailable."
+    fi
+    SYSTEM_IP=""
   fi
 
   # Backwards compatibility
@@ -1188,6 +1247,26 @@ applyTables() {
   local rule_tag="$dnat_chain"
 
   exclude=$(getHostPorts)
+
+  # Forward the dedicated guest-side system address to the container's
+  # upstream gateway. This feature is optional and must never break NAT.
+  if [ -n "$SYSTEM_IP" ]; then
+    if ! runTableRule "$silent" table_error \
+      iptables -t nat -A PREROUTING \
+      -i "$BRIDGE" \
+      -d "$SYSTEM_IP" \
+      -m comment --comment "$rule_tag" \
+      -j DNAT --to-destination "$GATEWAY"; then
+
+      ip address del "$SYSTEM_IP/32" dev "$BRIDGE" > /dev/null 2>&1 || :
+
+      if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+        warn "failed to configure $SYSTEM_HOST forwarding; access through that name will be unavailable."
+      fi
+
+      SYSTEM_IP=""
+    fi
+  fi
 
   # NAT traffic from the VM subnet leaving through any external interface.
   if ! runTableRule "$silent" table_error \
@@ -1685,6 +1764,11 @@ configureNAT() {
   local gateway="${ip%.*}.1"
   subnet=$(networkCIDR "$ip") || return 1
 
+  SYSTEM_IP=""
+  if [ -n "$GATEWAY" ]; then
+    SYSTEM_IP=$(systemIP "$subnet" "$ip" "$gateway") || SYSTEM_IP=""
+  fi
+
   if subnetInUse "$subnet"; then
     error "VM subnet $subnet conflicts with an existing route inside the container."
     return 1
@@ -1693,7 +1777,7 @@ configureNAT() {
     (( rc == 1 )) || return 1
   fi
 
-  createBridge "$gateway" || return 1
+  createBridge "$gateway" "$SYSTEM_IP" || return 1
   createTap "$tuntap" || return 1
 
   # Use the lowest effective guest-facing MTU, without mutating the parent/uplink MTU.
@@ -1712,7 +1796,7 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" || return 1
+  configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" "$SYSTEM_IP" || return 1
 
   IP="$ip"
   return 0
