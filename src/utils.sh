@@ -81,7 +81,7 @@ qemuPidFile() {
 
 terminateQemu() {
 
-  local file=""
+  local file
 
   qemuPidFile file
   sKill "$file"
@@ -92,7 +92,7 @@ terminateQemu() {
 waitQemuExit() {
 
   local timeout="${1:-10}"
-  local file=""
+  local file
 
   qemuPidFile file
   waitPidFile "$file" "$timeout"
@@ -101,7 +101,7 @@ waitQemuExit() {
 waitQemuPid() {
 
   local -n _pid="$1"
-  local cnt=0 value=""
+  local cnt=0 value
 
   while ! readQemuPid value; do
     sleep 0.02
@@ -116,7 +116,7 @@ waitQemuPid() {
 forceKillQemu() {
 
   local reason="$1"
-  local pid="" display
+  local pid display
 
   ! readQemuPid pid && return 0
   ! isAlive "$pid" && return 0
@@ -130,11 +130,11 @@ forceKillQemu() {
 
 cleanupHelpers() {
 
-  local var value
+  local var
   local pids=()
 
   for var in "${HELPER_PIDS[@]}"; do
-    value="${!var:-}"
+    local value="${!var:-}"
     [ -n "$value" ] && pids+=( "$value" )
   done
 
@@ -148,7 +148,7 @@ cleanupHelpers() {
 startConsole() {
 
   local output="${1:-/dev/tty}"
-  local cnt=0 pid=""
+  local cnt=0
 
   rm -f -- "$CONSOLE_SOCKET" "$CONSOLE_PID"
 
@@ -162,7 +162,7 @@ startConsole() {
     exec nc -lU "$CONSOLE_SOCKET" </dev/tty >"$output"
   ) &
 
-  pid=$!
+  local pid="$!"
   echo "$pid" > "$CONSOLE_PID"
 
   while [ ! -S "$CONSOLE_SOCKET" ]; do
@@ -260,7 +260,7 @@ waitForShutdown() {
 
   local pid="$1"
   local name="$APP"
-  local slp cnt=0
+  local cnt=0
 
   if [[ "$name" == "QEMU" ]]; then
     name="the virtual machine"
@@ -269,7 +269,7 @@ waitForShutdown() {
   while (( cnt <= wait_until && SHUTDOWN_SKIP == 0 )); do
 
     sleep 1 &
-    slp=$!
+    local slp="$!"
 
     # Stop waiting if the process has exited
     ! isAlive "$pid" && break
@@ -421,7 +421,7 @@ waitPid() {
 waitPidFile() {
 
   local i=0
-  local pid=""
+  local pid
   local file="$1"
   local timeout="${2:-10}"
 
@@ -488,7 +488,7 @@ fKill() {
 
 sKill() {
 
-  local pid=""
+  local pid
   local file="$1"
 
   [ ! -s "$file" ] && return 0
@@ -668,8 +668,7 @@ restoreState() {
 
 escape () {
 
-  local s
-  s=${1//&/\&amp;}
+  local s=${1//&/\&amp;}
   s=${s//</\&lt;}
   s=${s//>/\&gt;}
   s=${s//'"'/\&quot;}
@@ -695,7 +694,7 @@ html() {
 
   local title
   local body
-  local script
+  local script="${2:-}"
   local footer
 
   title=$(escape "$APP")
@@ -706,8 +705,6 @@ html() {
   if [[ "$body" == *"..." ]]; then
     body="<p class=\"loading\">${body/.../}</p>"
   fi
-
-  [ -n "${2:-}" ] && script="$2" || script=""
 
   local HTML
   HTML=$(<"$TEMPLATE")
@@ -880,7 +877,7 @@ getAgent() {
 
 delay() {
 
-  local i rc
+  local i
   local seconds="$1"
   local msg="Retrying failed download in X seconds..."
 
@@ -890,7 +887,7 @@ delay() {
     html "${msg/X/$i}"
 
     sleep 1 || {
-      rc=$?
+      local rc=$?
       (( rc >= 129 )) && exit "$rc"
     }
   done
@@ -903,14 +900,13 @@ updateAriaProgress() {
   local line="$1"
   local status_file="$2"
   local status_tmp="$3"
-  local completed total
 
   [ -z "$status_file" ] && return 0
 
   if [[ "$line" == *" CN:"* &&
       "$line" =~ \#[[:xdigit:]]+[[:space:]]+([0-9]+)B/([0-9]+)B ]]; then
-    completed="${BASH_REMATCH[1]}"
-    total="${BASH_REMATCH[2]}"
+    local completed="${BASH_REMATCH[1]}"
+    local total="${BASH_REMATCH[2]}"
 
     if ! printf '%s %s\n' "$completed" "$total" > "$status_tmp" ||
         ! mv -f -- "$status_tmp" "$status_file"; then
@@ -924,8 +920,8 @@ updateAriaProgress() {
 showAriaLine() {
 
   local line="$1"
-  local current total progress percent speed eta
-  local current_size total_size speed_size output
+  local percent speed_size
+  local current_size total_size
 
   [[ "$line" == *" CN:"* ]] || return 1
 
@@ -933,14 +929,14 @@ showAriaLine() {
     return 1
   fi
 
-  current="${BASH_REMATCH[1]}"
-  total="${BASH_REMATCH[2]}"
+  local current="${BASH_REMATCH[1]}"
+  local total="${BASH_REMATCH[2]}"
 
   current_size=$(formatBytes "$current") || current_size="${current}B"
   total_size=$(formatBytes "$total") || total_size="${total}B"
 
   if (( total > 0 )); then
-    progress=$((current * 1000 / total))
+    local progress=$((current * 1000 / total))
     (( progress > 1000 )) && progress=1000
 
     printf -v percent '%d.%d' \
@@ -950,18 +946,18 @@ showAriaLine() {
     percent="0.0"
   fi
 
-  output=$'\033[35m[ \033[0m'
+  local output=$'\033[35m[ \033[0m'
   output+=$'\033[36m'"${percent}%"$'\033[0m'
   output+=" | $current_size / $total_size"
 
   if [[ "$line" =~ DL:([0-9]+)B ]]; then
-    speed="${BASH_REMATCH[1]}"
+    local speed="${BASH_REMATCH[1]}"
     speed_size=$(formatBytes "$speed") || speed_size="${speed}B"
     output+=$' | \033[32m'"$speed_size/s"$'\033[0m'
   fi
 
   if [[ "$line" =~ ETA:([^]]+) ]]; then
-    eta="${BASH_REMATCH[1]}"
+    local eta="${BASH_REMATCH[1]}"
     output+=$' | \033[33mETA '"$eta"$'\033[0m'
   fi
 
@@ -1032,7 +1028,7 @@ checkDownloadSpace() {
 
   local dest="$1"
   local expected="${2:-0}"
-  local dir available used capacity
+  local dir available
   local expected_size capacity_size
 
   [[ "$expected" =~ ^[1-9][0-9]*$ ]] || return 0
@@ -1052,7 +1048,7 @@ checkDownloadSpace() {
     return 1
   fi
 
-  used=0
+  local used=0
 
   # Existing blocks can be reused when the destination is resumed or replaced.
   if [ -f "$dest" ]; then
@@ -1065,7 +1061,7 @@ checkDownloadSpace() {
     fi
   fi
 
-  capacity=$((available + used))
+  local capacity=$((available + used))
 
   if (( expected > capacity )); then
     expected_size=$(formatBytes "$expected") ||
@@ -1094,7 +1090,7 @@ startDownloadProgress() {
   local connections="$9"
   local progress_path="$dest"
   local progress_mode="apparent"
-  local log_value="" status_value="" pid_value=""
+  local log_value status_value=""
 
   if ! log_value=$(mktemp -p "$QEMU_DIR"); then
     error "Failed to create temporary download log!"
@@ -1129,7 +1125,7 @@ startDownloadProgress() {
     "$progress_mode" \
     "$status_value" &
 
-  pid_value=$!
+  local pid_value="$!"
 
   printf -v "$log_name" '%s' "$log_value"
   printf -v "$status_name" '%s' "$status_value"
@@ -1160,16 +1156,16 @@ downloadWithAria() {
   local dest="$5"
   shift 5
 
-  local aria_fd="" filter_pid="" download_pid=""
-  local int_trap="" term_trap="" total=""
-  local rc_value=0 cancel_signal_value=""
+  local aria_fd download_pid=""
+  local int_trap term_trap total
+  local cancel_signal_value=""
 
   if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
     error "Failed to create aria2 output filter!"
     return 2
   fi
 
-  filter_pid=$!
+  local filter_pid="$!"
   int_trap=$(trap -p INT)
   term_trap=$(trap -p TERM)
 
@@ -1199,7 +1195,7 @@ downloadWithAria() {
   fi
 
   while true; do
-    rc_value=0
+    local rc_value=0
     wait "$download_pid" || rc_value=$?
 
     ! isAlive "$download_pid" && break
@@ -1244,7 +1240,7 @@ getDownloadFailureReason() {
 
   local connections="$1"
   local log="$2"
-  local reason=""
+  local reason
 
   if (( connections > 1 )); then
     reason=$(sed -nE \
@@ -1323,11 +1319,10 @@ downloadToFile() {
   local aria_resume="false"
   local default_interval=536870912
   local interval="$default_interval"
-  local progress_pid=""
-  local status="" log=""
-  local dir file option rc=0 run_rc=0
-  local agent="" custom_agent="N"
-  local output="" failure="" reason=""
+  local progress_pid status log
+  local dir file option rc run_rc=0
+  local agent custom_agent="N"
+  local output="" reason=""
   local cancel_signal=""
 
   if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
@@ -1514,7 +1509,7 @@ downloadToFile() {
     return 0
   fi
 
-  failure="Failed to download $url"
+  local failure="Failed to download $url"
 
   if (( connections == 1 && rc == 3 )); then
     error "$failure because the file could not be written (disk full?)."
@@ -1592,8 +1587,6 @@ downloadRetry() {
   local minimum="$5"
   shift 5
 
-  local rc=0
-
   if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]] ||
       (( connections > 16 )); then
     error "The CONNECTIONS value must be between 1 and 16!"
@@ -1622,12 +1615,12 @@ downloadRetry() {
     if validateDownloadMinimum "$dest" "$minimum"; then
       return 0
     else
-      rc=$?
+      local rc=$?
     fi
 
   else
 
-    rc=$?
+    local rc=$?
 
   fi
 
@@ -1662,12 +1655,12 @@ downloadRetry() {
     if validateDownloadMinimum "$dest" "$minimum"; then
       return 0
     else
-      rc=$?
+      local rc=$?
     fi
 
   else
 
-    rc=$?
+    local rc=$?
 
   fi
 
