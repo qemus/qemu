@@ -99,7 +99,7 @@ stopAudioRelay() {
     fi
   fi
 
-  rm -f "$AUDIO_PID" "$AUDIO_SOCKET"
+  rm -f -- "$AUDIO_PID" "$AUDIO_FIFO" "$AUDIO_SOCKET"
   return 0
 }
 
