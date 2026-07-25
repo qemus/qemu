@@ -15,15 +15,6 @@ SWTPM="/run/swtpm"
 TPM_PID="/var/run/tpm.pid"
 TPM_SOCKET="/tmp/swtpm.sock"
 
-isQ35() {
-
-  case "${MACHINE,,}" in
-    q35|pc-q35-*) return 0 ;;
-  esac
-
-  return 1
-}
-
 configureBootMode() {
 
   SECURE="off"
