@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 NOVNC="/usr/share/novnc"
 NOVNC_HTML="$NOVNC/vnc.html"
+NOVNC_BACKUP="$NOVNC_HTML.bak"
+
 AUDIO_RELAY="/run/audio.py"
 AUDIO_LOG="/var/log/audio.log"
 AUDIO_PID="$QEMU_DIR/audio.pid"
@@ -19,15 +21,39 @@ supportsAudio() {
   return 1
 }
 
+backupHtml() {
+
+  [ -f "$NOVNC_BACKUP" ] && return 0
+
+  if ! cp -p -- "$NOVNC_HTML" "$NOVNC_BACKUP"; then
+    error "Failed to backup noVNC html!"
+    return 1
+  fi
+
+  return 0
+}
+
+restoreHtml() {
+
+  [ -f "$NOVNC_BACKUP" ] || return 0
+
+  if ! cp -p -- "$NOVNC_BACKUP" "$NOVNC_HTML"; then
+    error "Failed to restore noVNC html!"
+    return 1
+  fi
+
+  return 0
+}
+
 installAudioPlugin() {
 
   [ -f "$AUDIO_PLUGIN" ] || {
-    echo "Audio plugin not found: $AUDIO_PLUGIN" >&2
+    error "Audio plugin not found: $AUDIO_PLUGIN"
     return 1
   }
 
   [ -f "$NOVNC_HTML" ] || {
-    echo "noVNC page not found: $NOVNC_HTML" >&2
+    error "noVNC page not found: $NOVNC_HTML"
     return 1
   }
 
@@ -152,6 +178,7 @@ startAudioRelay() {
   return 0
 }
 
+! restoreHtml && return 1
 ! enabled "$AUDIO" && return 0
 
 if disabled "${WEB:-}"; then
@@ -165,15 +192,19 @@ if ! supportsAudio; then
   return 0
 fi
 
-if installAudioPlugin; then
-  if startAudioRelay; then
-    if startAudioServer; then
-      return 0
+if backupHtml; then
+  if installAudioPlugin; then
+    if startAudioRelay; then
+      if startAudioServer; then
+        return 0
+      fi
     fi
   fi
 fi
 
-stopAudioRelay
+stopAudioRelay || :
+restoreHtml || :
+
 AUDIO="N"
 
 warn "Audio support failed to initialize, ignoring AUDIO=Y."
