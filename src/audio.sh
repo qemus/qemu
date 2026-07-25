@@ -14,9 +14,8 @@ AUDIO_PLUGIN="/var/www/js/audio.js"
 
 supportsAudio() {
 
-  case "${MACHINE,,}" in
-    q35|virt) return 0 ;;
-  esac
+  isQ35 && return 0
+  [[ "${MACHINE,,}" == "virt" ]] && return 0
 
   return 1
 }

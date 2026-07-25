@@ -28,6 +28,11 @@ configureBootMode() {
       VARS="OVMF_VARS_4M.fd"
       ;;
     "secure" )
+      if ! isQ35; then
+        error "Secure boot requires a Q35 machine!"
+        exit 33
+      fi
+
       SECURE="on"
       BOOT_DESC=" securely"
       ROM="OVMF_CODE_4M.secboot.fd"
@@ -38,6 +43,11 @@ configureBootMode() {
       VARS="OVMF_VARS_4M.fd"
       ;;
     "windows_secure" )
+      if ! isQ35; then
+        error "Secure boot requires a Q35 machine!"
+        exit 33
+      fi
+
       TPM="Y"
       SECURE="on"
       BOOT_DESC=" securely"
@@ -75,8 +85,11 @@ addWindowsBootOptions() {
 
   if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
     BOOT_OPTS+=" -rtc base=localtime"
-    BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
-    BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
+
+    if isQ35; then
+      BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
+      BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
+    fi
   fi
 
   return 0

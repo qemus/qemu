@@ -67,18 +67,18 @@ configureMachine() {
 
 configureVirtioDevices() {
 
-  local BUS="${PCI_BUS:-pcie.0}"
-  [[ -z "${PCI_BUS:-}" && ( "${MACHINE,,}" == pc || "${MACHINE,,}" == pc-i440fx* ) ]] && BUS="pci.0"
+  local bus
+  bus=$(getPciBus)
 
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
-  DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$BUS"
+  DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$bus"
 
   if [[ "${BOOT_MODE,,}" != "windows"* ]] || enabled "${BALLOONING:-}"; then
     if ! enabled "${BALLOONING:-}"; then
-      DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=$BUS"
+      DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=$bus"
     else
       MON_OPTS+=" -qmp unix:${BALLOONING_SOCKET},server,nowait"
-      DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=$BUS"
+      DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=$bus"
     fi
   fi
 
