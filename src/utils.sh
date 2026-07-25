@@ -294,15 +294,6 @@ waitForShutdown() {
   return 0
 }
 
-isQ35() {
-
-  case "${MACHINE,,}" in
-    q35|pc-q35-*) return 0 ;;
-  esac
-
-  return 1
-}
-
 hasFlag() {
 
   # Match a whitespace-delimited token in /proc/cpuinfo
@@ -323,6 +314,17 @@ isAmdCpu() {
   vendor=$(awk -F ': *' '/^vendor_id/{print $2; exit}' /proc/cpuinfo)
 
   [[ "$vendor" == "AuthenticAMD" ]]
+}
+
+isQ35() {
+
+  local machine="${1:-${MACHINE:-q35}}"
+
+  case "${machine,,}" in
+    q35|pc-q35*) return 0 ;;
+  esac
+
+  return 1
 }
 
 interactive() {
