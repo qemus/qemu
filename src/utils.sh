@@ -294,6 +294,15 @@ waitForShutdown() {
   return 0
 }
 
+isQ35() {
+
+  case "${MACHINE,,}" in
+    q35|pc-q35-*) return 0 ;;
+  esac
+
+  return 1
+}
+
 hasFlag() {
 
   # Match a whitespace-delimited token in /proc/cpuinfo
