@@ -116,7 +116,7 @@ startAudioRelay() {
   fi
 
   if ! mkfifo -m 0600 "$AUDIO_FIFO"; then
-    error "Failed to create audio FIFO \"$AUDIO_FIFO\" !"
+    error "Failed to create audio FIFO \"$AUDIO_FIFO\"!"
     return 1
   fi
 
@@ -134,7 +134,13 @@ startAudioRelay() {
   local i
   for (( i = 1; i < 25; i++ )); do
 
-    [ -S "$AUDIO_SOCKET" ] && break
+    if [ -S "$AUDIO_SOCKET" ] && isAlive "$pid"; then
+      return 0
+    fi
+
+    if ! isAlive "$pid"; then
+      break
+    fi
 
     if (( i % 5 == 0 )); then
       echo "Waiting for audio relay to launch..."
@@ -144,14 +150,11 @@ startAudioRelay() {
 
   done
 
-  if [ ! -S "$AUDIO_SOCKET" ]; then
-    stopAudioRelay
-    [ -s "$AUDIO_LOG" ] && cat "$AUDIO_LOG" >&2
-    error "Failed to start audio relay!"
-    return 1
-  fi
+  stopAudioRelay
+  [ -s "$AUDIO_LOG" ] && cat "$AUDIO_LOG" >&2
 
-  return 0
+  error "Failed to start audio relay!"
+  return 1
 }
 
 backupHtml() {
