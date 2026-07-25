@@ -206,14 +206,12 @@ if ! supportsAudio; then
   return 0
 fi
 
-if backupHtml; then
-  if installAudioPlugin; then
-    if startAudioRelay; then
-      if startAudioServer; then
-        return 0
-      fi
-    fi
-  fi
+if backupHtml &&
+  installAudioPlugin &&
+  startAudioRelay &&
+  startAudioServer
+then
+  return 0
 fi
 
 stopAudioRelay || :
