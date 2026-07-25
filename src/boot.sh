@@ -11,6 +11,10 @@ set -Eeuo pipefail
 BOOT_DESC=""
 BOOT_OPTS=""
 
+SWTPM="/run/swtpm"
+TPM_PID="/var/run/tpm.pid"
+TPM_SOCKET="/tmp/swtpm.sock"
+
 configureBootMode() {
 
   SECURE="off"
@@ -266,12 +270,6 @@ stopTpm() {
 
 startTpm() {
 
-  SWTPM="/run/swtpm"
-  TPM_PID="/var/run/tpm.pid"
-  TPM_SOCKET="/tmp/swtpm.sock"
-
-  stopTpm
-
   if ! enabled "$TPM"; then
     return 0
   fi
@@ -352,6 +350,8 @@ configureBootMode
 addWindowsBootOptions
 
 clearNvram
+stopTpm
+
 configureUefi
 enableIgnoreMsrs
 checkClocksource
