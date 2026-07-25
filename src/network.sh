@@ -174,7 +174,7 @@ networkCIDR() {
   return 0
 }
 
-systemIP() {
+upstreamIP() {
 
   local subnet="$1"
   local guest="$2"
@@ -240,21 +240,17 @@ formatAddress() {
   return 0
 }
 
+defaultGateway() {
+
+  ip -4 route list default dev "$1" 2>/dev/null |
+    awk '$1 == "default" { for (i = 1; i < NF; i++) if ($i == "via") { print $(i + 1); exit } }' || :
+
+  return 0
+}
+
 detectAddresses() {
 
-  GATEWAY=""
-
-  { GATEWAY=$(ip -4 route list default dev "$DEV" | awk '
-      $1 == "default" {
-        for (i = 1; i < NF; i++) {
-          if ($i == "via") {
-            print $(i + 1)
-            exit
-          }
-        }
-      }
-    '); } 2>/dev/null || GATEWAY=""
-
+  GATEWAY=$(defaultGateway "$DEV")
   { UPLINK=$(ip address show dev "$DEV" | grep inet | awk '/inet / { print $2 }' | cut -f1 -d/ | head -n 1); } 2>/dev/null || :
 
   IP6=""
@@ -454,7 +450,7 @@ configureDNS() {
   local host="$4"
   local mask="$5"
   local gateway="$6"
-  local system="${7:-}"
+  local upstream="${7:-}"
   local arguments="$DNSMASQ_OPTS"
 
   enabled "${DNSMASQ_DISABLE:-}" && return 0
@@ -498,9 +494,9 @@ configureDNS() {
   # Add DNS entry for container
   arguments+=" --address=/host.lan/$gateway"
 
-  # Add DNS entry for the system immediately outside the container.
-  if isNAT && [ -n "$system" ]; then
-    arguments+=" --address=/system.lan/$system"
+  # Add DNS entry for the upstream gateway.
+  if isNAT && [ -n "$upstream" ]; then
+    arguments+=" --address=/system.lan/$upstream"
   fi
 
   # Avoid returning IPv6 records when the active network mode is IPv4-only.
@@ -1681,16 +1677,16 @@ configureTables() {
   return 1
 }
 
-configureSystem() {
+addUpstream() {
 
-  local system="$1"
+  local upstream="$1"
   local table_error
   local rule_tag="QEMU_DNAT"
 
-  [ -n "$system" ] || return 1
+  [ -n "$upstream" ] || return 1
   [ -n "$GATEWAY" ] || return 1
 
-  if ! ip address add "$system/32" dev "$BRIDGE"; then
+  if ! ip address add "$upstream/32" dev "$BRIDGE"; then
     if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
       warn "failed to add the system.lan address; access through that name will be unavailable."
     fi
@@ -1700,11 +1696,11 @@ configureSystem() {
   if ! runTableRule "Y" table_error \
     iptables -t nat -A PREROUTING \
     -i "$BRIDGE" \
-    -d "$system" \
+    -d "$upstream" \
     -m comment --comment "$rule_tag" \
     -j DNAT --to-destination "$GATEWAY"; then
 
-    ip address del "$system/32" dev "$BRIDGE" > /dev/null 2>&1 || :
+    ip address del "$upstream/32" dev "$BRIDGE" > /dev/null 2>&1 || :
 
     if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
       [ -n "$table_error" ] && echo "$table_error" >&2
@@ -1720,7 +1716,7 @@ configureSystem() {
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
-  local ip subnet system="" forwarding=""
+  local ip subnet upstream="" forwarding=""
 
   enabled "$DEBUG" && echo "Configuring NAT networking..."
 
@@ -1771,7 +1767,7 @@ configureNAT() {
   subnet=$(networkCIDR "$ip") || return 1
 
   if [ -n "$GATEWAY" ]; then
-    system=$(systemIP "$subnet" "$ip" "$gateway") || system=""
+    upstream=$(upstreamIP "$subnet" "$ip" "$gateway") || upstream=""
   fi
 
   if subnetInUse "$subnet"; then
@@ -1792,8 +1788,8 @@ configureNAT() {
 
   configureTables "$ip" "$subnet" || return 1
 
-  if [ -n "$system" ] && ! configureSystem "$system"; then
-    system=""
+  if [ -n "$upstream" ] && ! addUpstream "$upstream"; then
+    upstream=""
   fi
 
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$TAP"
@@ -1805,7 +1801,7 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" "$system" || return 1
+  configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" "$upstream" || return 1
 
   IP="$ip"
   return 0
