@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 NOVNC="/usr/share/novnc"
 NOVNC_HTML="$NOVNC/vnc.html"
+NOVNC_BACKUP="$NOVNC_HTML.bak"
+
 AUDIO_RELAY="/run/audio.py"
 AUDIO_LOG="/var/log/audio.log"
 AUDIO_PID="$QEMU_DIR/audio.pid"
@@ -22,12 +24,12 @@ supportsAudio() {
 installAudioPlugin() {
 
   [ -f "$AUDIO_PLUGIN" ] || {
-    echo "Audio plugin not found: $AUDIO_PLUGIN" >&2
+    error "Audio plugin not found: $AUDIO_PLUGIN"
     return 1
   }
 
   [ -f "$NOVNC_HTML" ] || {
-    echo "noVNC page not found: $NOVNC_HTML" >&2
+    error "noVNC page not found: $NOVNC_HTML"
     return 1
   }
 
@@ -85,10 +87,26 @@ PY
   return 0
 }
 
+stopAudioRelay() {
+
+  local pid
+
+  if [ -s "$AUDIO_PID" ] && read -r pid < "$AUDIO_PID" && [ -n "$pid" ]; then
+    pKill "$pid" 2
+
+    if isAlive "$pid"; then
+      kill -9 -- "$pid" 2>/dev/null || :
+    fi
+  fi
+
+  rm -f -- "$AUDIO_PID" "$AUDIO_FIFO" "$AUDIO_SOCKET"
+  return 0
+}
+
 startAudioRelay() {
 
   [ -f "$AUDIO_RELAY" ] || {
-    echo "Audio relay not found: $AUDIO_RELAY" >&2
+    error "Audio relay not found: $AUDIO_RELAY"
     return 1
   }
 
@@ -98,7 +116,7 @@ startAudioRelay() {
   fi
 
   if ! mkfifo -m 0600 "$AUDIO_FIFO"; then
-    error "Failed to create audio FIFO \"$AUDIO_FIFO\" !"
+    error "Failed to create audio FIFO \"$AUDIO_FIFO\"!"
     return 1
   fi
 
@@ -109,21 +127,72 @@ startAudioRelay() {
 
   if ! echo "$pid" > "$AUDIO_PID"; then
     kill "$pid" 2>/dev/null || :
+    stopAudioRelay
     return 1
   fi
 
-  sleep 0.1
+  local i
+  for (( i = 1; i < 25; i++ )); do
 
-  if ! isAlive "$pid"; then
-    rm -f "$AUDIO_PID" "$AUDIO_SOCKET"
-    [ -s "$AUDIO_LOG" ] && cat "$AUDIO_LOG" >&2
-    error "Failed to start audio relay!"
+    if [ -S "$AUDIO_SOCKET" ] && isAlive "$pid"; then
+      return 0
+    fi
+
+    if ! isAlive "$pid"; then
+      break
+    fi
+
+    if (( i % 5 == 0 )); then
+      echo "Waiting for audio relay to launch..."
+    fi
+
+    sleep 0.25
+
+  done
+
+  stopAudioRelay
+  [ -s "$AUDIO_LOG" ] && cat "$AUDIO_LOG" >&2
+
+  error "Failed to start audio relay!"
+  return 1
+}
+
+backupHtml() {
+
+  local tmp="$NOVNC_BACKUP.tmp"
+
+  [ -f "$NOVNC_BACKUP" ] && return 0
+
+  rm -f -- "$tmp"
+
+  if ! cp -p -- "$NOVNC_HTML" "$tmp"; then
+    rm -f -- "$tmp"
+    error "Failed to backup noVNC html!"
+    return 1
+  fi
+
+  if ! mv -f -- "$tmp" "$NOVNC_BACKUP"; then
+    rm -f -- "$tmp"
+    error "Failed to save noVNC html backup!"
     return 1
   fi
 
   return 0
 }
 
+restoreHtml() {
+
+  [ -f "$NOVNC_BACKUP" ] || return 0
+
+  if ! cp -p -- "$NOVNC_BACKUP" "$NOVNC_HTML"; then
+    error "Failed to restore noVNC html!"
+    return 1
+  fi
+
+  return 0
+}
+
+! restoreHtml && return 1
 ! enabled "$AUDIO" && return 0
 
 if disabled "${WEB:-}"; then
@@ -137,14 +206,19 @@ if ! supportsAudio; then
   return 0
 fi
 
-if installAudioPlugin; then
-  if startAudioRelay; then
-    if startAudioServer; then
-      return 0
-    fi
-  fi
+if backupHtml &&
+  installAudioPlugin &&
+  startAudioRelay &&
+  startAudioServer
+then
+  return 0
 fi
 
+stopAudioServer || :
+stopAudioRelay || :
+restoreHtml || :
+
 AUDIO="N"
+
 warn "Audio support failed to initialize, ignoring AUDIO=Y."
 return 0
