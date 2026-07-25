@@ -46,8 +46,6 @@ USER_PORTS=$(strip "$USER_PORTS")
 CHECK_PORT=$(strip "$CHECK_PORT")
 
 ADD_ERR="Please add the following setting to your container:"
-SYSTEM_HOST="system.lan"
-SYSTEM_IP=""
 
 # ######################################
 #  Generic helpers
@@ -502,7 +500,7 @@ configureDNS() {
 
   # Add DNS entry for the system immediately outside the container.
   if isNAT && [ -n "$system" ]; then
-    arguments+=" --address=/$SYSTEM_HOST/$system"
+    arguments+=" --address=/system.lan/$system"
   fi
 
   # Avoid returning IPv6 records when the active network mode is IPv4-only.
@@ -965,7 +963,6 @@ configurePasst() {
 createBridge() {
 
   local gateway="$1"
-  local system="${2:-}"
   local msg
 
   # Create a bridge with a static IP for the VM guest
@@ -991,13 +988,6 @@ createBridge() {
 
   if ! ip address add "$gateway/$PREFIX" dev "$BRIDGE"; then
     warn "failed to add IP address pool!" && return 1
-  fi
-
-  if [ -n "$system" ] && ! ip address add "$system/32" dev "$BRIDGE"; then
-    if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
-      warn "failed to add the $SYSTEM_HOST address; access through that name will be unavailable."
-    fi
-    SYSTEM_IP=""
   fi
 
   # Backwards compatibility
@@ -1247,26 +1237,6 @@ applyTables() {
   local rule_tag="$dnat_chain"
 
   exclude=$(getHostPorts)
-
-  # Forward the dedicated guest-side system address to the container's
-  # upstream gateway. This feature is optional and must never break NAT.
-  if [ -n "$SYSTEM_IP" ]; then
-    if ! runTableRule "$silent" table_error \
-      iptables -t nat -A PREROUTING \
-      -i "$BRIDGE" \
-      -d "$SYSTEM_IP" \
-      -m comment --comment "$rule_tag" \
-      -j DNAT --to-destination "$GATEWAY"; then
-
-      ip address del "$SYSTEM_IP/32" dev "$BRIDGE" > /dev/null 2>&1 || :
-
-      if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
-        warn "failed to configure $SYSTEM_HOST forwarding; access through that name will be unavailable."
-      fi
-
-      SYSTEM_IP=""
-    fi
-  fi
 
   # NAT traffic from the VM subnet leaving through any external interface.
   if ! runTableRule "$silent" table_error \
@@ -1711,10 +1681,46 @@ configureTables() {
   return 1
 }
 
+configureSystem() {
+
+  local system="$1"
+  local table_error
+  local rule_tag="QEMU_DNAT"
+
+  [ -n "$system" ] || return 1
+  [ -n "$GATEWAY" ] || return 1
+
+  if ! ip address add "$system/32" dev "$BRIDGE"; then
+    if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+      warn "failed to add the system.lan address; access through that name will be unavailable."
+    fi
+    return 1
+  fi
+
+  if ! runTableRule "Y" table_error \
+    iptables -t nat -A PREROUTING \
+    -i "$BRIDGE" \
+    -d "$system" \
+    -m comment --comment "$rule_tag" \
+    -j DNAT --to-destination "$GATEWAY"; then
+
+    ip address del "$system/32" dev "$BRIDGE" > /dev/null 2>&1 || :
+
+    if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
+      [ -n "$table_error" ] && echo "$table_error" >&2
+      warn "failed to configure system.lan forwarding; access through that name will be unavailable."
+    fi
+
+    return 1
+  fi
+
+  return 0
+}
+
 configureNAT() {
 
   local tuntap="TUN device is missing. $ADD_ERR --device /dev/net/tun"
-  local ip subnet forwarding=""
+  local ip subnet system="" forwarding=""
 
   enabled "$DEBUG" && echo "Configuring NAT networking..."
 
@@ -1764,9 +1770,8 @@ configureNAT() {
   local gateway="${ip%.*}.1"
   subnet=$(networkCIDR "$ip") || return 1
 
-  SYSTEM_IP=""
   if [ -n "$GATEWAY" ]; then
-    SYSTEM_IP=$(systemIP "$subnet" "$ip" "$gateway") || SYSTEM_IP=""
+    system=$(systemIP "$subnet" "$ip" "$gateway") || system=""
   fi
 
   if subnetInUse "$subnet"; then
@@ -1777,7 +1782,7 @@ configureNAT() {
     (( rc == 1 )) || return 1
   fi
 
-  createBridge "$gateway" "$SYSTEM_IP" || return 1
+  createBridge "$gateway" || return 1
   createTap "$tuntap" || return 1
 
   # Use the lowest effective guest-facing MTU, without mutating the parent/uplink MTU.
@@ -1786,6 +1791,10 @@ configureNAT() {
   fi
 
   configureTables "$ip" "$subnet" || return 1
+
+  if [ -n "$system" ] && ! configureSystem "$system"; then
+    system=""
+  fi
 
   NET_OPTS="-netdev tap,id=hostnet0,ifname=$TAP"
 
@@ -1796,7 +1805,7 @@ configureNAT() {
 
   NET_OPTS+=",script=no,downscript=no"
 
-  configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" "$SYSTEM_IP" || return 1
+  configureDNS "$BRIDGE" "$ip" "$MAC" "$HOST" "$MASK" "$gateway" "$system" || return 1
 
   IP="$ip"
   return 0
