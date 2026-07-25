@@ -21,30 +21,6 @@ supportsAudio() {
   return 1
 }
 
-backupHtml() {
-
-  [ -f "$NOVNC_BACKUP" ] && return 0
-
-  if ! cp -p -- "$NOVNC_HTML" "$NOVNC_BACKUP"; then
-    error "Failed to backup noVNC html!"
-    return 1
-  fi
-
-  return 0
-}
-
-restoreHtml() {
-
-  [ -f "$NOVNC_BACKUP" ] || return 0
-
-  if ! cp -p -- "$NOVNC_BACKUP" "$NOVNC_HTML"; then
-    error "Failed to restore noVNC html!"
-    return 1
-  fi
-
-  return 0
-}
-
 installAudioPlugin() {
 
   [ -f "$AUDIO_PLUGIN" ] || {
@@ -130,7 +106,7 @@ stopAudioRelay() {
 startAudioRelay() {
 
   [ -f "$AUDIO_RELAY" ] || {
-    echo "Audio relay not found: $AUDIO_RELAY" >&2
+    error "Audio relay not found: $AUDIO_RELAY"
     return 1
   }
 
@@ -172,6 +148,41 @@ startAudioRelay() {
     stopAudioRelay
     [ -s "$AUDIO_LOG" ] && cat "$AUDIO_LOG" >&2
     error "Failed to start audio relay!"
+    return 1
+  fi
+
+  return 0
+}
+
+backupHtml() {
+
+  local tmp="$NOVNC_BACKUP.tmp"
+
+  [ -f "$NOVNC_BACKUP" ] && return 0
+
+  rm -f -- "$tmp"
+
+  if ! cp -p -- "$NOVNC_HTML" "$tmp"; then
+    rm -f -- "$tmp"
+    error "Failed to backup noVNC html!"
+    return 1
+  fi
+
+  if ! mv -f -- "$tmp" "$NOVNC_BACKUP"; then
+    rm -f -- "$tmp"
+    error "Failed to save noVNC html backup!"
+    return 1
+  fi
+
+  return 0
+}
+
+restoreHtml() {
+
+  [ -f "$NOVNC_BACKUP" ] || return 0
+
+  if ! cp -p -- "$NOVNC_BACKUP" "$NOVNC_HTML"; then
+    error "Failed to restore noVNC html!"
     return 1
   fi
 
