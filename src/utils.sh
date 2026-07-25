@@ -327,6 +327,23 @@ isQ35() {
   return 1
 }
 
+getPciBus() {
+
+  local machine="${1:-${MACHINE:-q35}}"
+
+  if [ -n "${PCI_BUS:-}" ]; then
+    echo "$PCI_BUS"
+    return 0
+  fi
+
+  case "${machine,,}" in
+    pc|pc-i440fx*) echo "pci.0" ;;
+    *)             echo "pcie.0" ;;
+  esac
+
+  return 0
+}
+
 interactive() {
 
   [ -t 0 ] && : 2>/dev/null </dev/tty >/dev/tty
