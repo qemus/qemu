@@ -214,6 +214,7 @@ then
   return 0
 fi
 
+stopAudioServer || :
 stopAudioRelay || :
 restoreHtml || :
 
