@@ -246,13 +246,17 @@ detectSmbiosSerial() {
 
 stopTpm() {
 
-  local pid
+  local pid=""
 
-  if [ -s "$TPM_PID" ] && read -r pid < "$TPM_PID" && [ -n "$pid" ]; then
-    pKill "$pid" 2
+  if [ -s "$TPM_PID" ]; then
+    read -r pid < "$TPM_PID" || pid=""
 
-    if isAlive "$pid"; then
-      kill -9 -- "$pid" 2>/dev/null || :
+    if [[ "$pid" =~ ^[0-9]+$ ]] && isAlive "$pid"; then
+      pKill "$pid" 2
+
+      if isAlive "$pid"; then
+        kill -9 -- "$pid" 2>/dev/null || :
+      fi
     fi
   fi
 
@@ -266,13 +270,13 @@ startTpm() {
   TPM_PID="/var/run/tpm.pid"
   TPM_SOCKET="/tmp/swtpm.sock"
 
-  rm -f "$TPM_PID" "$TPM_SOCKET"
+  stopTpm
 
   if ! enabled "$TPM"; then
     return 0
   fi
 
-  msg="Starting TPM emulator..."
+  local msg="Starting TPM emulator..."
   html "$msg"
   enabled "$DEBUG" && echo "$msg"
 
@@ -284,12 +288,16 @@ startTpm() {
     fi
   fi
 
-  { "$SWTPM" socket -t -d --tpm2 \
+  local rc
+
+  if "$SWTPM" socket -t -d --tpm2 \
       --tpmstate "backend-uri=file://$DEST.tpm" \
       --ctrl "type=unixio,path=$TPM_SOCKET" \
-      --pid "file=$TPM_PID"
-    local rc=$?
-  } || :
+      --pid "file=$TPM_PID"; then
+    rc=0
+  else
+    rc=$?
+  fi
 
   if (( rc != 0 )); then
     stopTpm
@@ -298,9 +306,28 @@ startTpm() {
   fi
 
   local i
+  local pid=""
+
   for (( i = 1; i < 25; i++ )); do
 
-    [ -S "$TPM_SOCKET" ] && break
+    pid=""
+
+    if [ -s "$TPM_PID" ]; then
+      read -r pid < "$TPM_PID" || pid=""
+    fi
+
+    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+      if [ -S "$TPM_SOCKET" ] && isAlive "$pid"; then
+        BOOT_OPTS+=" -chardev socket,id=chrtpm,path=$TPM_SOCKET"
+        BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm"
+        BOOT_OPTS+=" -device tpm-tis,tpmdev=tpm0"
+        return 0
+      fi
+
+      if ! isAlive "$pid"; then
+        break
+      fi
+    fi
 
     if (( i % 5 == 0 )); then
       echo "Waiting for TPM emulator to launch..."
@@ -310,20 +337,14 @@ startTpm() {
 
   done
 
-  if [ ! -S "$TPM_SOCKET" ]; then
-    stopTpm
-    error "TPM socket ($TPM_SOCKET) not found? Disabling TPM module..."
-    return 0
-  fi
-
-  BOOT_OPTS+=" -chardev socket,id=chrtpm,path=$TPM_SOCKET"
-  BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm"
-  BOOT_OPTS+=" -device tpm-tis,tpmdev=tpm0"
+  stopTpm
+  error "TPM socket ($TPM_SOCKET) not found? Disabling TPM module..."
 
   return 0
 }
 
 msg="Configuring boot..."
+
 html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
