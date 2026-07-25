@@ -10,19 +10,22 @@ cd /run
 [ -f "/run/shm/qemu.end" ] && echo "QEMU is shutting down..." && exit 1
 [ ! -s "/run/shm/qemu.pid" ] && echo "QEMU is not running yet..." && exit 0
 
-disabled "$NETWORK" && echo "Networking is disabled." && exit 0
+if disabled "$NETWORK"; then
+  echo "Networking is disabled."
+  exit 0
+fi
+
+if enabled "$DHCP"; then
+  echo "Guest networking uses DHCP; connectivity check skipped."
+  exit 0
+fi
 
 file="/run/shm/qemu.url"
 
 if [ ! -s "$file" ]; then
 
-  if enabled "$DHCP"; then
-    echo "Guest networking uses DHCP; connectivity check skipped."
-    exit 0
-  fi
-
   echo "The container has not enabled networking yet..."
-  exit 1
+  exit 0
 
 fi
 
