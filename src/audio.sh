@@ -85,6 +85,22 @@ PY
   return 0
 }
 
+stopAudioRelay() {
+
+  local pid
+
+  if [ -s "$AUDIO_PID" ] && read -r pid < "$AUDIO_PID" && [ -n "$pid" ]; then
+    pKill "$pid" 2
+
+    if isAlive "$pid"; then
+      kill -9 -- "$pid" 2>/dev/null || :
+    fi
+  fi
+
+  rm -f "$AUDIO_PID" "$AUDIO_SOCKET"
+  return 0
+}
+
 startAudioRelay() {
 
   [ -f "$AUDIO_RELAY" ] || {
@@ -109,13 +125,25 @@ startAudioRelay() {
 
   if ! echo "$pid" > "$AUDIO_PID"; then
     kill "$pid" 2>/dev/null || :
+    stopAudioRelay
     return 1
   fi
 
-  sleep 0.1
+  local i
+  for (( i = 1; i < 25; i++ )); do
 
-  if ! isAlive "$pid"; then
-    rm -f "$AUDIO_PID" "$AUDIO_SOCKET"
+    [ -S "$AUDIO_SOCKET" ] && break
+
+    if (( i % 5 == 0 )); then
+      echo "Waiting for audio relay to launch..."
+    fi
+
+    sleep 0.25
+
+  done
+
+  if [ ! -S "$AUDIO_SOCKET" ]; then
+    stopAudioRelay
     [ -s "$AUDIO_LOG" ] && cat "$AUDIO_LOG" >&2
     error "Failed to start audio relay!"
     return 1
@@ -145,6 +173,8 @@ if installAudioPlugin; then
   fi
 fi
 
+stopAudioRelay
 AUDIO="N"
+
 warn "Audio support failed to initialize, ignoring AUDIO=Y."
 return 0
