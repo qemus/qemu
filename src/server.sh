@@ -190,7 +190,7 @@ stopAudioServer() {
 
   local pid
 
-  if [ -s "$AUX_PID" ] && read -r pid < "$AUX_PID" && [ -n "$pid" ]; then
+  if readPidFile pid "$AUX_PID"; then
     pKill "$pid" 2
 
     if isAlive "$pid"; then
