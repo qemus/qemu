@@ -654,12 +654,16 @@ class BalloonMonitor:
             log.critical("Qemu pid file does not exists: %s", self.args.qemu_pid_file)
             sys.exit(1)
 
-        with open(self.args.qemu_pid_file, 'r') as f:
-            try:
+        try:
+            with open(self.args.qemu_pid_file, "r", encoding="utf-8") as f:
                 self.qemu_pid = int(f.read().strip())
-            except:
-                log.critical("Qemu pid file malformed or cannot be read", exc_info=True)
-                sys.exit(1)
+
+            if self.qemu_pid <= 0:
+                raise ValueError("QEMU PID must be positive")
+
+        except (OSError, ValueError):
+            log.critical("Qemu pid file malformed or cannot be read", exc_info=True)
+            sys.exit(1)
 
         log.debug("QMP pid: %s", self.qemu_pid)
 
