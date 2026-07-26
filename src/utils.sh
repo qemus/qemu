@@ -55,13 +55,29 @@ displayReason() {
   return 0
 }
 
+readPidFile() {
+
+  local -n _pid="$1"
+  local file="$2"
+
+  _pid=""
+
+  [ -s "$file" ] || return 1
+
+  _pid=$(<"$file")
+
+  [[ "$_pid" =~ ^[1-9][0-9]*$ ]]
+}
+
 readQemuPid() {
 
   local -n _pid="$1"
   local file
+  local pid
 
   for file in "$QEMU_START_PID" "$QEMU_PID"; do
-    if [ -s "$file" ] && read -r _pid < "$file"; then
+    if readPidFile pid "$file"; then
+      _pid="$pid"
       return 0
     fi
   done
@@ -452,9 +468,7 @@ waitPidFile() {
   local file="$1"
   local timeout="${2:-10}"
 
-  [ ! -s "$file" ] && return 0
-  ! read -r pid <"$file" && return 0
-  [ -z "$pid" ] && return 0
+  ! readPidFile pid "$file" && return 0
 
   while [ -s "$file" ] && isAlive "$pid"; do
     sleep 0.2
@@ -518,9 +532,7 @@ sKill() {
   local pid
   local file="$1"
 
-  [ ! -s "$file" ] && return 0
-  ! read -r pid <"$file" && return 0
-  [ -z "$pid" ] && return 0
+  ! readPidFile pid "$file" && return 0
 
   if isAlive "$pid"; then
     { kill -15 -- "$pid" || :; } 2>/dev/null
