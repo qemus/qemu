@@ -90,7 +90,7 @@ stopAudioRelay() {
 
   local pid
 
-  if [ -s "$AUDIO_PID" ] && read -r pid < "$AUDIO_PID" && [ -n "$pid" ]; then
+  if readPidFile pid "$AUDIO_PID"; then
     pKill "$pid" 2
 
     if isAlive "$pid"; then

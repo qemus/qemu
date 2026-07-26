@@ -116,7 +116,7 @@ stopWebServer() {
 
   local pid
 
-  if [ -s "$WEB_PID" ] && read -r pid < "$WEB_PID" && [ -n "$pid" ]; then
+  if readPidFile pid "$WEB_PID"; then
     pKill "$pid" 2
 
     if isAlive "$pid"; then
@@ -140,7 +140,7 @@ stopWebsocketServer() {
 
   local pid
 
-  if [ -s "$WSD_PID" ] && read -r pid < "$WSD_PID" && [ -n "$pid" ]; then
+  if readPidFile pid "$WSD_PID"; then
     pKill "$pid" 2
 
     if isAlive "$pid"; then
@@ -190,7 +190,7 @@ stopAudioServer() {
 
   local pid
 
-  if [ -s "$AUX_PID" ] && read -r pid < "$AUX_PID" && [ -n "$pid" ]; then
+  if readPidFile pid "$AUX_PID"; then
     pKill "$pid" 2
 
     if isAlive "$pid"; then
