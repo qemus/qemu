@@ -265,15 +265,11 @@ stopTpm() {
 
   local pid=""
 
-  if [ -s "$TPM_PID" ]; then
-    pid=$(<"$TPM_PID")
+  if readPidFile pid "$TPM_PID" && isAlive "$pid"; then
+    pKill "$pid" 2
 
-    if [[ "$pid" =~ ^[0-9]+$ ]] && isAlive "$pid"; then
-      pKill "$pid" 2
-
-      if isAlive "$pid"; then
-        kill -9 -- "$pid" 2>/dev/null || :
-      fi
+    if isAlive "$pid"; then
+      kill -9 -- "$pid" 2>/dev/null || :
     fi
   fi
 
@@ -321,13 +317,7 @@ startTpm() {
 
   for (( i = 1; i < 25; i++ )); do
 
-    pid=""
-
-    if [ -s "$TPM_PID" ]; then
-      pid=$(<"$TPM_PID")
-    fi
-
-    if [[ "$pid" =~ ^[0-9]+$ ]]; then
+    if readPidFile pid "$TPM_PID"; then
       if [ -S "$TPM_SOCKET" ] && isAlive "$pid"; then
         BOOT_OPTS+=" -chardev socket,id=chrtpm,path=$TPM_SOCKET"
         BOOT_OPTS+=" -tpmdev emulator,id=tpm0,chardev=chrtpm"
