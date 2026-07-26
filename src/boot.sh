@@ -266,7 +266,7 @@ stopTpm() {
   local pid=""
 
   if [ -s "$TPM_PID" ]; then
-    read -r pid < "$TPM_PID" || pid=""
+    pid=$(<"$TPM_PID")
 
     if [[ "$pid" =~ ^[0-9]+$ ]] && isAlive "$pid"; then
       pKill "$pid" 2
@@ -324,7 +324,7 @@ startTpm() {
     pid=""
 
     if [ -s "$TPM_PID" ]; then
-      read -r pid < "$TPM_PID" || pid=""
+      pid=$(<"$TPM_PID")
     fi
 
     if [[ "$pid" =~ ^[0-9]+$ ]]; then
