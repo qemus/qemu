@@ -72,6 +72,7 @@ RUN <<EOF
   wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10
   tar -xf /tmp/novnc.tar.gz -C /tmp/
   cd "/tmp/noVNC-${VERSION_VNC}"
+  sed -i '/window\.addEventListener("beforeunload", UI\.handleBeforeUnload);/d' app/ui.js
   mv app core vendor package.json ./*.html /usr/share/novnc
 
   # Configure nginx
