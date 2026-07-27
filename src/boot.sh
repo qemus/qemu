@@ -93,10 +93,8 @@ configureBootMode() {
   esac
 
   # Default settings
-  [ -z "$HV" ] && HV="Y"
   [ -z "$SMM" ] && SMM="N"
   [ -z "$TPM" ] && TPM="N"
-  [ -z "$VMX" ] && VMX="N"  
   [ -z "$LOGO" ] && LOGO="Y"
   [ -z "$CLEAR" ] && CLEAR="N"  
 
