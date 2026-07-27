@@ -243,7 +243,7 @@ if [ -z "$VMX" ]; then
 
 fi
 
-if ! disabled "$KVM"; then
+if ! disabled "${KVM:-}"; then
   configureKvm
 else
   configureTcg
