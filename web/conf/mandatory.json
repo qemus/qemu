@@ -1,4 +1,5 @@
 {
   "reconnect": true,
-  "autoconnect": true
+  "autoconnect": true,
+  "warn_before_close": false 
 }
