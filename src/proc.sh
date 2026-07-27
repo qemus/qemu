@@ -3,16 +3,16 @@ set -Eeuo pipefail
 
 # Docker environment variables
 
-: "${HV:="Y"}"
-: "${VMX:="N"}"
-: "${CPU_FLAGS:=""}"
-: "${CPU_MODEL:=""}"
+: "${CPU_MODEL:=""}"    # QEMU CPU mode
+: "${CPU_FLAGS:=""}"    # Additional QEMU CPU flags
+: "${HV:=""}"           # Enables Hyper-V enlightenments for Windows guests
+: "${VMX:=""}"          # Exposes Intel VMX virtualization extensions to the guest
+
+enabled "$DEBUG" && echo "Configuring KVM..."
 
 # Sanitize variables
 CPU_FLAGS=$(strip "$CPU_FLAGS")
 CPU_MODEL=$(strip "$CPU_MODEL")
-
-enabled "$DEBUG" && echo "Configuring KVM..."
 
 isWindowsBoot() {
 
@@ -69,8 +69,7 @@ configureKvmCpuModel() {
     CPU_FEATURES+=",migratable=no"
   fi
 
-  if disabled "$VMX" && isWindowsBoot; then
-    # Prevents a crash caused by a certain Windows update
+  if disabled "$VMX"; then
     CPU_FEATURES+=",-vmx"
   fi
 
@@ -105,9 +104,7 @@ configureKvmIntelFeatures() {
 
 configureHyperVFeatures() {
 
-  if ! isWindowsBoot || disabled "$HV"; then
-    return 0
-  fi
+  disabled "$HV" && return 0
 
   HV_FEATURES="hv_passthrough"
 
@@ -224,7 +221,29 @@ composeCpuFlags() {
 
 removeCpuArgument
 
-if ! disabled "$KVM"; then
+if [ -z "$HV" ]; then
+
+  HV="N"
+  isWindowsBoot && HV="Y"
+
+fi
+
+if [ -z "$VMX" ]; then
+
+  VMX="Y"
+
+  if isWindowsBoot; then
+
+    # Turn off nested virtualization by default to
+    # prevent a crash caused by a recent Windows update
+
+    VMX="N"
+
+  fi
+
+fi
+
+if ! disabled "${KVM:-}"; then
   configureKvm
 else
   configureTcg
