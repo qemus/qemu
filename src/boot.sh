@@ -369,8 +369,6 @@ configureBootMode
 # Apply default settings
 [ -z "$SMM" ] && SMM="N"
 [ -z "$TPM" ] && TPM="N"
-[ -z "$LOGO" ] && LOGO="Y"
-[ -z "$CLEAR" ] && CLEAR="N"  
 
 addWindowsBootOptions
 
