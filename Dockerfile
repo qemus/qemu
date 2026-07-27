@@ -73,6 +73,7 @@ RUN <<EOF
   tar -xf /tmp/novnc.tar.gz -C /tmp/
   cd "/tmp/noVNC-${VERSION_VNC}"
   sed -i '/window\.addEventListener("beforeunload", UI\.handleBeforeUnload);/d' app/ui.js
+  sed -i 's#<p class="noVNC_logo" translate="no"><span>no</span>VNC</p>#<img class="noVNC_logo" src="app/images/logo.svg" alt="Logo">#' vnc.html
   mv app core vendor package.json ./*.html /usr/share/novnc
 
   # Configure nginx
@@ -90,6 +91,7 @@ COPY --chmod=755 ./web /var/www/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
+COPY --chmod=644 ./web/images/logo.svg /usr/share/novnc/app/images/logo.svg
 
 ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK}/utk_${VERSION_UTK}_${TARGETARCH}.bin" /run/utk.bin
 
