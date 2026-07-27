@@ -75,6 +75,8 @@ configureBootMode() {
 
     "custom" )
 
+      BOOT_DESC=" with custom BIOS file"
+
       BIOS=$(strip "$BIOS")
 
       if [ -z "$BIOS" ]; then
@@ -82,8 +84,7 @@ configureBootMode() {
         exit 33
       fi
 
-      BOOT_OPTS="-bios $BIOS"
-      BOOT_DESC=" with custom BIOS file" ;;
+      BOOT_OPTS="-bios $BIOS" ;;
 
     *)
 
