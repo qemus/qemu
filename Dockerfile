@@ -73,8 +73,8 @@ RUN <<EOF
   tar -xf /tmp/novnc.tar.gz -C /tmp/
   cd "/tmp/noVNC-${VERSION_VNC}"
   sed -i '/window\.addEventListener("beforeunload", UI\.handleBeforeUnload);/d' app/ui.js
-  sed -i -e 's#<p class="noVNC_logo" translate="no"><span>no</span>VNC</p>#<img class="noVNC_logo" src="app/images/favicon.svg" alt="Logo" style="display: block; width: 50%; height: auto; margin: 0 auto;">#' \
-         -e '/<\/head>/i\    <link rel="icon" type="image/svg+xml" href="app/images/favicon.svg">' vnc.html
+  sed -i -e 's#<link rel="icon" type="image/x-icon" href="app/images/icons/novnc.ico">#<link rel="icon" type="image/svg+xml" href="app/images/favicon.svg">#' \
+         -e 's#<p class="noVNC_logo" translate="no"><span>no</span>VNC</p>#<img class="noVNC_logo" src="app/images/favicon.svg" alt="Logo" style="display: block; width: 50%; height: auto; margin: 0 auto;">#' vnc.html
   mv app core vendor package.json ./*.html /usr/share/novnc
 
   # Configure nginx
