@@ -219,6 +219,8 @@ composeCpuFlags() {
   return 0
 }
 
+removeCpuArgument
+
 if [ -z "$HV" ]; then
 
   HV="N"
@@ -240,8 +242,6 @@ if [ -z "$VMX" ]; then
   fi
 
 fi
-
-removeCpuArgument
 
 if ! disabled "$KVM"; then
   configureKvm
