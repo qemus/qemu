@@ -91,7 +91,7 @@ COPY --chmod=755 ./web /var/www/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
-COPY --chmod=644 ./web/images/logo.svg /usr/share/novnc/app/images/logo.svg
+COPY --chmod=644 ./web/img/favicon.svg /usr/share/novnc/app/images/logo.svg
 
 ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK}/utk_${VERSION_UTK}_${TARGETARCH}.bin" /run/utk.bin
 
