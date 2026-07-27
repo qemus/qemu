@@ -15,7 +15,12 @@ AUDIO_PLUGIN="/var/www/js/audio.js"
 supportsAudio() {
 
   isQ35 && return 0
-  [[ "${MACHINE,,}" == "virt" ]] && return 0
+
+  case "${MACHINE,,}" in
+    pc|pc-i440fx-*|virt)
+      return 0
+      ;;
+  esac
 
   return 1
 }
