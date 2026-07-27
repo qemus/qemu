@@ -92,12 +92,6 @@ configureBootMode() {
 
   esac
 
-  # Default settings
-  [ -z "$SMM" ] && SMM="N"
-  [ -z "$TPM" ] && TPM="N"
-  [ -z "$LOGO" ] && LOGO="Y"
-  [ -z "$CLEAR" ] && CLEAR="N"  
-
   return 0
 }
 
@@ -371,6 +365,13 @@ html "$msg"
 enabled "$DEBUG" && echo "$msg"
 
 configureBootMode
+
+# Apply default settings
+[ -z "$SMM" ] && SMM="N"
+[ -z "$TPM" ] && TPM="N"
+[ -z "$LOGO" ] && LOGO="Y"
+[ -z "$CLEAR" ] && CLEAR="N"  
+
 addWindowsBootOptions
 
 clearNvram
