@@ -73,9 +73,8 @@ RUN <<EOF
   tar -xf /tmp/novnc.tar.gz -C /tmp/
   cd "/tmp/noVNC-${VERSION_VNC}"
   sed -i '/window\.addEventListener("beforeunload", UI\.handleBeforeUnload);/d' app/ui.js
-  sed -i \
-    -e 's#<p class="noVNC_logo" translate="no"><span>no</span>VNC</p>#<img class="noVNC_logo" src="app/images/logo.svg" alt="Logo" style="width: 50%; height: auto;">#' \
-    -e '/<\/head>/i\    <link rel="icon" type="image/svg+xml" href="app/images/logo.svg">' vnc.html
+  sed -i -e 's#<p class="noVNC_logo" translate="no"><span>no</span>VNC</p>#<img class="noVNC_logo" src="app/images/favicon.svg" alt="Logo" style="width: 50%; height: auto;">#' \
+         -e '/<\/head>/i\    <link rel="icon" type="image/svg+xml" href="app/images/favicon.svg">' vnc.html
   mv app core vendor package.json ./*.html /usr/share/novnc
 
   # Configure nginx
@@ -93,7 +92,7 @@ COPY --chmod=755 ./web /var/www/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
-COPY --chmod=644 ./web/img/favicon.svg /usr/share/novnc/app/images/logo.svg
+COPY --chmod=644 ./web/img/favicon.svg /usr/share/novnc/app/images/favicon.svg
 
 ADD --chmod=755 "https://github.com/qemus/fiano/releases/download/v${VERSION_UTK}/utk_${VERSION_UTK}_${TARGETARCH}.bin" /run/utk.bin
 
