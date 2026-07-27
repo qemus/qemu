@@ -3,10 +3,10 @@ set -Eeuo pipefail
 
 # Docker environment variables
 : "${BIOS:=""}"         # BIOS file
-: "${TPM:="N"}"         # Disable TPM
-: "${SMM:="N"}"         # Disable SMM
-: "${LOGO:="Y"}"        # Enable logo
-: "${CLEAR:="N"}"       # Persist NVRAM
+: "${SMM:=""}"          # Enable SMM
+: "${TPM:=""}"          # Enable TPM
+: "${LOGO:=""}"         # Enable logo
+: "${CLEAR:=""}"        # Persist NVRAM
 
 BOOT_DESC=""
 BOOT_OPTS=""
@@ -17,66 +17,88 @@ TPM_SOCKET="/tmp/swtpm.sock"
 
 configureBootMode() {
 
-  SECURE="off"
-  enabled "$SMM" && SECURE="on"
   [ -n "$BIOS" ] && BOOT_MODE="custom"
 
   case "${BOOT_MODE,,}" in
     "uefi" | "" )
+
       BOOT_MODE="uefi"
+
       ROM="OVMF_CODE_4M.fd"
-      VARS="OVMF_VARS_4M.fd"
-      ;;
+      VARS="OVMF_VARS_4M.fd" ;;
+
     "secure" )
+
+      BOOT_DESC=" securely"
+
       if ! isQ35; then
         error "Secure boot requires a Q35 machine!"
         exit 33
       fi
 
-      SECURE="on"
-      BOOT_DESC=" securely"
+      [ -z "$SMM" ] && SMM="Y"
+
       ROM="OVMF_CODE_4M.secboot.fd"
-      VARS="OVMF_VARS_4M.secboot.fd"
-      ;;
+      VARS="OVMF_VARS_4M.secboot.fd" ;;
+
     "windows" | "windows_plain" )
+
       ROM="OVMF_CODE_4M.fd"
-      VARS="OVMF_VARS_4M.fd"
-      ;;
+      VARS="OVMF_VARS_4M.fd" ;;
+
     "windows_secure" )
+
+      BOOT_DESC=" securely"
+
       if ! isQ35; then
         error "Secure boot requires a Q35 machine!"
         exit 33
       fi
 
-      TPM="Y"
-      SECURE="on"
-      BOOT_DESC=" securely"
+      [ -z "$SMM" ] && SMM="Y"
+      [ -z "$TPM" ] && TPM="Y"
+
       ROM="OVMF_CODE_4M.ms.fd"
-      VARS="OVMF_VARS_4M.ms.fd"
-      ;;
+      VARS="OVMF_VARS_4M.ms.fd" ;;
+
     "windows_legacy" )
-      HV="N"
-      SECURE="on"
+
       BOOT_DESC=" (legacy)"
-      [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci"
-      ;;
+
+      [ -z "$SMM" ] && SMM="Y"
+      [ -z "${HV:-}" ] && HV="N"      
+      [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci" ;;
+
     "legacy" )
-      BOOT_DESC=" with SeaBIOS"
-      ;;
+
+      BOOT_DESC=" with SeaBIOS" ;;
+
     "custom" )
+
       BIOS=$(strip "$BIOS")
+
       if [ -z "$BIOS" ]; then
         error "BOOT_MODE is custom but BIOS is empty!"
         exit 33
       fi
+
       BOOT_OPTS="-bios $BIOS"
-      BOOT_DESC=" with custom BIOS file"
-      ;;
+      BOOT_DESC=" with custom BIOS file" ;;
+
     *)
+
       error "Unknown BOOT_MODE, value \"${BOOT_MODE}\" is not recognized!"
-      exit 33
-      ;;
+      exit 33 ;;
+
   esac
+
+  # Default settings
+  [ -z "$HV" ] && HV="Y"
+  [ -z "$SMM" ] && SMM="N"
+  [ -z "$TPM" ] && TPM="N"
+  [ -z "$VMX" ] && VMX="N"  
+  [ -z "$LOGO" ] && LOGO="Y"
+  [ -z "$CLEAR" ] && CLEAR="N"  
 
   return 0
 }
@@ -84,12 +106,14 @@ configureBootMode() {
 addWindowsBootOptions() {
 
   if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+
     BOOT_OPTS+=" -rtc base=localtime"
 
     if isQ35; then
       BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
       BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
     fi
+
   fi
 
   return 0
@@ -182,6 +206,7 @@ prepareUefiVars() {
 configureUefi() {
 
   case "${BOOT_MODE,,}" in
+
     "uefi" | "secure" | "windows" | "windows_plain" | "windows_secure" )
 
       OVMF="/usr/share/OVMF"
@@ -194,9 +219,8 @@ configureUefi() {
       fi
 
       BOOT_OPTS+=" -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
-      BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw"
+      BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw" ;;
 
-      ;;
   esac
 
   return 0
@@ -284,7 +308,6 @@ startTpm() {
   fi
 
   local msg="Starting TPM emulator..."
-  html "$msg"
   enabled "$DEBUG" && echo "$msg"
 
   # Workaround to circumvent AppArmor profile
