@@ -6,7 +6,7 @@ set -Eeuo pipefail
 : "${SMM:=""}"          # Enable SMM
 : "${TPM:=""}"          # Enable TPM
 : "${LOGO:=""}"         # Enable logo
-: "${CLEAR:=""}"        # Persist NVRAM
+: "${CLEAR:=""}"        # Clear NVRAM
 
 BOOT_DESC=""
 BOOT_OPTS=""
