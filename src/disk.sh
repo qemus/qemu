@@ -890,6 +890,16 @@ if [ -f "$RESCUE" ] && [ -s "$RESCUE" ]; then
   DISK_OPTS+=$(addMedia "$RESCUE" "$FALLBACK" "1" "0x6")
 fi
 
+SETUP="/setup.img"
+
+if [ ! -f "$SETUP" ] || [ ! -s "$SETUP" ]; then
+  SETUP="$STORAGE/setup.img"
+fi
+
+if [ -f "$SETUP" ] && [ -s "$SETUP" ]; then
+  DISK_OPTS+=$(addMedia "$SETUP" "usb" "" "0x6")
+fi
+
 DISK1_FILE="$STORAGE/${DISK_NAME}"
 DISK2_FILE="/storage2/${DISK_NAME}2"
 DISK3_FILE="/storage3/${DISK_NAME}3"
