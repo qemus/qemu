@@ -769,6 +769,48 @@ addDisk () {
   return 0
 }
 
+addImage () {
+
+  local diskFile="$1"
+  local diskType="$2"
+  local diskDesc="$3"
+  local diskIndex="$4"
+  local diskAddress="$5"
+
+  local fs diskFmt
+  local diskIo="$DISK_IO"
+  local diskCache="$DISK_CACHE"
+
+  [ -z "$diskFile" ] && return 0
+  [ ! -f "$diskFile" ] && error "Image $diskFile cannot be found! Please add it to the 'volumes' section of your compose file." && exit 55
+  [ ! -s "$diskFile" ] && error "Image $diskFile is empty! Please provide a valid disk image." && exit 55
+
+  case "${diskFile,,}" in
+    *".img" | *".raw" ) diskFmt="raw" ;;
+    *".qcow2" ) diskFmt="qcow2" ;;
+    * )
+      error "Unsupported disk image extension: .${diskFile/*./}"
+      error "Only .img, .raw and .qcow2 disk images are supported."
+      exit 78 ;;
+  esac
+
+  if ! fs=$(stat -f -c %T "$diskFile"); then
+    error "Failed to determine filesystem type of \"$diskFile\" !"
+    return 1
+  fi
+
+  checkFS "$fs" "$diskFile" "$diskDesc" || exit $?
+
+  if ! supportsDirect "$fs"; then
+    diskIo="threads"
+    diskCache="writeback"
+  fi
+
+  DISK_OPTS+=$(createDevice "$diskFile" "$diskType" "$diskIndex" "$diskAddress" "$diskFmt" "$diskIo" "$diskCache" "" "")
+
+  return 0
+}
+
 addDevice () {
 
   local diskDev="$1"
@@ -905,6 +947,43 @@ if [ -s "$BOOT" ]; then
   esac
 fi
 
+findDiskSource () {
+
+  local sourceType="$1"
+  local sourceFile="$2"
+  shift 2
+
+  local candidate
+
+  [ -n "$sourceFile" ] && {
+    echo "$sourceFile"
+    return 0
+  }
+
+  for candidate in "$@"; do
+
+    case "$sourceType" in
+      "device" )
+        [ -b "$candidate" ] || continue ;;
+
+      "image" )
+        [ -f "$candidate" ] || continue ;;
+
+      * )
+        error "Invalid disk source type: $sourceType"
+        return 1 ;;
+    esac
+
+    echo "$candidate"
+    return 0
+
+  done
+
+  return 0
+}
+
+# Initialize disks
+
 DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" "$STORAGE/start.iso")
 DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" "/drivers.iso" "$STORAGE/drivers.iso")
 DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" "$STORAGE/setup.img" "$STORAGE/windows.setup.img")
@@ -960,25 +1039,55 @@ fi
 : "${DEVICE5:=""}"
 : "${DEVICE6:=""}"
 
-[ -z "$DEVICE" ] && [ -b "/disk" ] && DEVICE="/disk"
-[ -z "$DEVICE" ] && [ -b "/disk1" ] && DEVICE="/disk1"
-[ -z "$DEVICE2" ] && [ -b "/disk2" ] && DEVICE2="/disk2"
-[ -z "$DEVICE3" ] && [ -b "/disk3" ] && DEVICE3="/disk3"
-[ -z "$DEVICE4" ] && [ -b "/disk4" ] && DEVICE4="/disk4"
-[ -z "$DEVICE5" ] && [ -b "/disk5" ] && DEVICE5="/disk5"
-[ -z "$DEVICE6" ] && [ -b "/disk6" ] && DEVICE6="/disk6"
+DISK_IMAGES=()
+DISK_DEVICES=()
+DISK_DEVICE_VARS=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
 
-[ -z "$DEVICE" ] && [ -b "/dev/disk1" ] && DEVICE="/dev/disk1"
-[ -z "$DEVICE2" ] && [ -b "/dev/disk2" ] && DEVICE2="/dev/disk2"
-[ -z "$DEVICE3" ] && [ -b "/dev/disk3" ] && DEVICE3="/dev/disk3"
-[ -z "$DEVICE4" ] && [ -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
-[ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE5="/dev/disk5"
-[ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE6="/dev/disk6"
+for i in "${!DISK_DEVICE_VARS[@]}"; do
+
+  diskNumber=$(( i + 1 ))
+
+  if (( diskNumber == 1 )); then
+
+    DISK_DEVICES[i]=$(findDiskSource "device" "${DISK_DEVICE_VARS[i]}" \
+      "/disk" \
+      "/disk1" \
+      "/dev/disk1") || exit $?
+
+    DISK_IMAGES[i]=$(findDiskSource "image" "" \
+      "/${DISK_NAME}.img" \
+      "/${DISK_NAME}.raw" \
+      "/${DISK_NAME}.qcow2" \
+      "/disk.img" \
+      "/disk.raw" \
+      "/disk.qcow2" \
+      "/disk1.img" \
+      "/disk1.raw" \
+      "/disk1.qcow2") || exit $?
+
+  else
+
+    DISK_DEVICES[i]=$(findDiskSource "device" "${DISK_DEVICE_VARS[i]}" \
+      "/disk${diskNumber}" \
+      "/dev/disk${diskNumber}") || exit $?
+
+    DISK_IMAGES[i]=$(findDiskSource "image" "" \
+      "/${DISK_NAME}${diskNumber}.img" \
+      "/${DISK_NAME}${diskNumber}.raw" \
+      "/${DISK_NAME}${diskNumber}.qcow2" \
+      "/disk${diskNumber}.img" \
+      "/disk${diskNumber}.raw" \
+      "/disk${diskNumber}.qcow2") || exit $?
+
+  fi
+
+done
+
+unset DISK_DEVICE_VARS diskNumber
 
 DISK_FILES=( "$DISK1_FILE" "$DISK2_FILE" "$DISK3_FILE" "$DISK4_FILE" "$DISK5_FILE" "$DISK6_FILE" )
 DISK_DESCS=( "disk" "disk2" "disk3" "disk4" "disk5" "disk6" )
 DISK_SIZES=( "$DISK_SIZE" "$DISK2_SIZE" "$DISK3_SIZE" "$DISK4_SIZE" "$DISK5_SIZE" "$DISK6_SIZE" )
-DISK_DEVICES=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
 DISK_INDEXES=( "3" "4" "5" "6" "7" "8" )
 DISK_ADDRESSES=( "0xa" "0xb" "0xc" "0xd" "0xe" "0xf" )
 
@@ -986,6 +1095,8 @@ for i in "${!DISK_FILES[@]}"; do
 
   if [ -n "${DISK_DEVICES[i]}" ]; then
     addDevice "${DISK_DEVICES[i]}" "$DISK_TYPE" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
+  elif [ -n "${DISK_IMAGES[i]}" ]; then
+    addImage "${DISK_IMAGES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
   else
     addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
   fi
