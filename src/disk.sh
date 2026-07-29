@@ -543,54 +543,92 @@ createDevice () {
 
 addMedia () {
 
-  local diskFile="$1"
-  local diskType="$2"
-  local diskIndex="$3"
-  local diskAddress="$4"
+  local mediaFile="$1"
+  local mediaType="$2"
+  local mediaIndex="$3"
+  local mediaAddress="$4"
+  shift 4
 
-  local bus
-  bus=$(getPciBus)
+  local candidate result
+  local -a candidates=( "$mediaFile" "$@" )
+
+  mediaFile=""
+
+  for candidate in "${candidates[@]}"; do
+    if [ -f "$candidate" ] && [ -s "$candidate" ]; then
+      mediaFile="$candidate"
+      break
+    fi
+  done
+
+  [ -z "$mediaFile" ] && return 0
 
   local bootIndex=""
-  local diskId="cdrom$diskIndex"
-  [ -n "$diskIndex" ] && bootIndex=",bootindex=$diskIndex"
-  local result=" -drive file=$diskFile,id=$diskId,format=raw,cache=unsafe,readonly=on,media=cdrom"
+  [ -n "$mediaIndex" ] && bootIndex=",bootindex=$mediaIndex"
 
-  case "${diskType,,}" in
-    "none" ) ;;
-    "auto" )
-      echo "$result"
-      ;;
-    "usb" )
-      result+=",if=none \
+  local mediaId="${mediaAddress#0x}${mediaIndex}"
+  local diskId="media${mediaId}"
+
+  case "${mediaFile,,}" in
+
+    *".img" | *".raw" )
+
+      result=" -drive file=$mediaFile,id=$diskId,format=raw,cache=unsafe,readonly=on,media=disk,if=none \
       -device usb-storage,drive=${diskId}${bootIndex},removable=on"
-      echo "$result"
-      ;;
-    "nvme" )
-      result+=",if=none \
-      -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${diskIndex}"
-      echo "$result"
-      ;;
-    "ide" | "sata" )
-      result+=",if=none \
-      -device ich9-ahci,id=ahci${diskIndex},addr=$diskAddress \
-      -device ide-cd,drive=${diskId},bus=ahci${diskIndex}.0${bootIndex}"
-      echo "$result"
-      ;;
-    "blk" | "virtio-blk" )
-      result+=",if=none \
-      -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$diskAddress${IOTHREAD_OPT}${bootIndex}"
-      echo "$result"
-      ;;
-    "scsi" | "virtio-scsi" )
-      result+=",if=none \
-      -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress${IOTHREAD_OPT},hotplug=off \
-      -device scsi-cd,drive=${diskId},bus=${diskId}b.0${bootIndex}"
-      echo "$result"
-      ;;
-  esac
 
-  return 0
+      echo "$result"
+      return 0
+      ;;
+
+    *".iso" )
+
+      local bus
+      bus=$(getPciBus)
+
+      result=" -drive file=$mediaFile,id=$diskId,format=raw,cache=unsafe,readonly=on,media=cdrom"
+
+      case "${mediaType,,}" in
+
+        "none" ) ;;
+
+        "auto" )
+          echo "$result" ;;
+
+        "usb" )
+          result+=",if=none \
+          -device usb-storage,drive=${diskId}${bootIndex},removable=on"
+          echo "$result" ;;
+
+        "nvme" )
+          result+=",if=none \
+          -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${mediaIndex}"
+          echo "$result" ;;
+
+        "ide" | "sata" )
+          result+=",if=none \
+          -device ich9-ahci,id=ahci${mediaId},addr=$mediaAddress \
+          -device ide-cd,drive=${diskId},bus=ahci${mediaId}.0${bootIndex}"
+          echo "$result" ;;
+
+        "blk" | "virtio-blk" )
+          result+=",if=none \
+          -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$mediaAddress${IOTHREAD_OPT}${bootIndex}"
+          echo "$result" ;;
+
+        "scsi" | "virtio-scsi" )
+          result+=",if=none \
+          -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$mediaAddress${IOTHREAD_OPT},hotplug=off \
+          -device scsi-cd,drive=${diskId},bus=${diskId}b.0${bootIndex}"
+          echo "$result" ;;
+      esac
+
+      return 0 ;;
+
+    * )
+      error "Invalid media image specified, extension \".${mediaFile/*./}\" is not recognized!"
+      return 80 ;;
+
+  esac
 }
 
 finishDisks () {
