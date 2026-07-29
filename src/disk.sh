@@ -982,9 +982,6 @@ findDiskSource () {
 
 # Initialize disks
 
-DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" "$STORAGE/start.iso")
-DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" "/drivers.iso" "$STORAGE/drivers.iso")
-
 DISK1_FILE="$STORAGE/${DISK_NAME}"
 DISK2_FILE="/storage2/${DISK_NAME}2"
 DISK3_FILE="/storage3/${DISK_NAME}3"
@@ -1100,6 +1097,8 @@ for i in "${!DISK_FILES[@]}"; do
 
 done
 
+DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" "$STORAGE/start.iso")
+DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" "/drivers.iso" "$STORAGE/drivers.iso")
 DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" "$STORAGE/setup.img" "$STORAGE/windows.setup.img")
 
 finishDisks
