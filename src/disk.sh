@@ -516,7 +516,7 @@ createDevice () {
       ;;
     "nvme" )
       result+=",if=none \
-      -device nvme,drive=${diskId}${bootIndex},serial=${diskId}${diskIndex}${diskSerial}${diskSectors}${options}"
+      -device nvme,drive=${diskId}${bootIndex},serial=${diskId}${diskSerial}${diskSectors}${options}"
       echo "$result"
       ;;
     "ide" | "sata" )
@@ -984,7 +984,6 @@ findDiskSource () {
 
 DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" "$STORAGE/start.iso")
 DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" "/drivers.iso" "$STORAGE/drivers.iso")
-DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" "$STORAGE/setup.img" "$STORAGE/windows.setup.img")
 
 DISK1_FILE="$STORAGE/${DISK_NAME}"
 DISK2_FILE="/storage2/${DISK_NAME}2"
