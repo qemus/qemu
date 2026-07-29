@@ -568,7 +568,7 @@ addMedia () {
   [ -n "$mediaAddress" ] && address=",addr=$mediaAddress"
   [ -n "$mediaIndex" ] && bootIndex=",bootindex=$mediaIndex"
 
-  local diskId="media${mediaId}"
+  local diskId="media_${mediaId}"
 
   case "${mediaFile,,}" in
 
