@@ -574,7 +574,7 @@ addMedia () {
 
     *".img" | *".raw" )
 
-      result=" -drive file=$mediaFile,id=$diskId,format=raw,cache=unsafe,readonly=on,media=disk,if=none \
+      result=" -drive file=$mediaFile,id=$diskId,format=raw,cache=unsafe,media=disk,if=none \
       -device usb-storage,drive=${diskId}${bootIndex},removable=on"
 
       echo "$result"
