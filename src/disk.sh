@@ -516,7 +516,7 @@ createDevice () {
       ;;
     "nvme" )
       result+=",if=none \
-      -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${diskIndex}${diskSerial}${diskSectors}${options}"
+      -device nvme,drive=${diskId}${bootIndex},serial=${diskId}${diskIndex}${diskSerial}${diskSectors}${options}"
       echo "$result"
       ;;
     "ide" | "sata" )
@@ -568,14 +568,12 @@ addMedia () {
   [ -n "$mediaAddress" ] && address=",addr=$mediaAddress"
   [ -n "$mediaIndex" ] && bootIndex=",bootindex=$mediaIndex"
 
-  local diskId="media_${mediaId}"
-
   case "${mediaFile,,}" in
 
     *".img" | *".raw" )
 
-      result=" -drive file=$mediaFile,id=$diskId,format=raw,cache=unsafe,media=disk,if=none \
-      -device usb-storage,drive=${diskId}${bootIndex},removable=on"
+      result=" -drive file=$mediaFile,id=$mediaId,format=raw,cache=unsafe,media=disk,if=none \
+      -device usb-storage,drive=${mediaId}${bootIndex},removable=on"
 
       echo "$result"
       return 0
@@ -586,7 +584,7 @@ addMedia () {
       local bus
       bus=$(getPciBus)
 
-      result=" -drive file=$mediaFile,id=$diskId,format=raw,cache=unsafe,readonly=on,media=cdrom"
+      result=" -drive file=$mediaFile,id=$mediaId,format=raw,cache=unsafe,readonly=on,media=cdrom"
 
       case "${mediaType,,}" in
 
@@ -597,29 +595,29 @@ addMedia () {
 
         "usb" )
           result+=",if=none \
-          -device usb-storage,drive=${diskId}${bootIndex},removable=on"
+          -device usb-storage,drive=${mediaId}${bootIndex},removable=on"
           echo "$result" ;;
 
         "nvme" )
           result+=",if=none \
-          -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${mediaId}"
+          -device nvme,drive=${mediaId}${bootIndex},serial=${mediaId}"
           echo "$result" ;;
 
         "ide" | "sata" )
           result+=",if=none \
           -device ich9-ahci,id=ahci${mediaId}${address} \
-          -device ide-cd,drive=${diskId},bus=ahci${mediaId}.0${bootIndex}"
+          -device ide-cd,drive=${mediaId},bus=ahci${mediaId}.0${bootIndex}"
           echo "$result" ;;
 
         "blk" | "virtio-blk" )
           result+=",if=none \
-          -device virtio-blk-pci,drive=${diskId},bus=$bus${address}${IOTHREAD_OPT}${bootIndex}"
+          -device virtio-blk-pci,drive=${mediaId},bus=$bus${address}${IOTHREAD_OPT}${bootIndex}"
           echo "$result" ;;
 
         "scsi" | "virtio-scsi" )
           result+=",if=none \
-          -device virtio-scsi-pci,id=${diskId}b,bus=$bus${address}${IOTHREAD_OPT},hotplug=off \
-          -device scsi-cd,drive=${diskId},bus=${diskId}b.0${bootIndex}"
+          -device virtio-scsi-pci,id=${mediaId}b,bus=$bus${address}${IOTHREAD_OPT},hotplug=off \
+          -device scsi-cd,drive=${mediaId},bus=${mediaId}b.0${bootIndex}"
           echo "$result" ;;
       esac
 
@@ -1102,6 +1100,8 @@ for i in "${!DISK_FILES[@]}"; do
   fi
 
 done
+
+DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" "$STORAGE/setup.img" "$STORAGE/windows.setup.img")
 
 finishDisks
 
