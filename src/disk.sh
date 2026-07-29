@@ -769,6 +769,48 @@ addDisk () {
   return 0
 }
 
+addImage () {
+
+  local diskFile="$1"
+  local diskType="$2"
+  local diskDesc="$3"
+  local diskIndex="$4"
+  local diskAddress="$5"
+
+  local fs diskFmt
+  local diskIo="$DISK_IO"
+  local diskCache="$DISK_CACHE"
+
+  [ -z "$diskFile" ] && return 0
+  [ ! -f "$diskFile" ] && error "Image $diskFile cannot be found! Please add it to the 'volumes' section of your compose file." && exit 55
+  [ ! -s "$diskFile" ] && error "Image $diskFile is empty! Please provide a valid disk image." && exit 55
+
+  case "${diskFile,,}" in
+    *".img" | *".raw" ) diskFmt="raw" ;;
+    *".qcow2" ) diskFmt="qcow2" ;;
+    * )
+      error "Unsupported disk image extension: .${diskFile/*./}"
+      error "Only .img, .raw and .qcow2 disk images are supported."
+      exit 78 ;;
+  esac
+
+  if ! fs=$(stat -f -c %T "$diskFile"); then
+    error "Failed to determine filesystem type of \"$diskFile\" !"
+    return 1
+  fi
+
+  checkFS "$fs" "$diskFile" "$diskDesc" || exit $?
+
+  if ! supportsDirect "$fs"; then
+    diskIo="threads"
+    diskCache="writeback"
+  fi
+
+  DISK_OPTS+=$(createDevice "$diskFile" "$diskType" "$diskIndex" "$diskAddress" "$diskFmt" "$diskIo" "$diskCache" "" "")
+
+  return 0
+}
+
 addDevice () {
 
   local diskDev="$1"
@@ -975,10 +1017,37 @@ fi
 [ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE5="/dev/disk5"
 [ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE6="/dev/disk6"
 
+DISK1_IMAGE=""
+DISK2_IMAGE=""
+DISK3_IMAGE=""
+DISK4_IMAGE=""
+DISK5_IMAGE=""
+DISK6_IMAGE=""
+
+[ -z "$DEVICE" ] && [ -z "$DISK1_IMAGE" ] && [ -f "/${DISK_NAME}.img" ] && DISK1_IMAGE="/${DISK_NAME}.img"
+[ -z "$DEVICE" ] && [ -z "$DISK1_IMAGE" ] && [ -f "/${DISK_NAME}.raw" ] && DISK1_IMAGE="/${DISK_NAME}.raw"
+[ -z "$DEVICE" ] && [ -z "$DISK1_IMAGE" ] && [ -f "/${DISK_NAME}.qcow2" ] && DISK1_IMAGE="/${DISK_NAME}.qcow2"
+[ -z "$DEVICE2" ] && [ -z "$DISK2_IMAGE" ] && [ -f "/${DISK_NAME}2.img" ] && DISK2_IMAGE="/${DISK_NAME}2.img"
+[ -z "$DEVICE2" ] && [ -z "$DISK2_IMAGE" ] && [ -f "/${DISK_NAME}2.raw" ] && DISK2_IMAGE="/${DISK_NAME}2.raw"
+[ -z "$DEVICE2" ] && [ -z "$DISK2_IMAGE" ] && [ -f "/${DISK_NAME}2.qcow2" ] && DISK2_IMAGE="/${DISK_NAME}2.qcow2"
+[ -z "$DEVICE3" ] && [ -z "$DISK3_IMAGE" ] && [ -f "/${DISK_NAME}3.img" ] && DISK3_IMAGE="/${DISK_NAME}3.img"
+[ -z "$DEVICE3" ] && [ -z "$DISK3_IMAGE" ] && [ -f "/${DISK_NAME}3.raw" ] && DISK3_IMAGE="/${DISK_NAME}3.raw"
+[ -z "$DEVICE3" ] && [ -z "$DISK3_IMAGE" ] && [ -f "/${DISK_NAME}3.qcow2" ] && DISK3_IMAGE="/${DISK_NAME}3.qcow2"
+[ -z "$DEVICE4" ] && [ -z "$DISK4_IMAGE" ] && [ -f "/${DISK_NAME}4.img" ] && DISK4_IMAGE="/${DISK_NAME}4.img"
+[ -z "$DEVICE4" ] && [ -z "$DISK4_IMAGE" ] && [ -f "/${DISK_NAME}4.raw" ] && DISK4_IMAGE="/${DISK_NAME}4.raw"
+[ -z "$DEVICE4" ] && [ -z "$DISK4_IMAGE" ] && [ -f "/${DISK_NAME}4.qcow2" ] && DISK4_IMAGE="/${DISK_NAME}4.qcow2"
+[ -z "$DEVICE5" ] && [ -z "$DISK5_IMAGE" ] && [ -f "/${DISK_NAME}5.img" ] && DISK5_IMAGE="/${DISK_NAME}5.img"
+[ -z "$DEVICE5" ] && [ -z "$DISK5_IMAGE" ] && [ -f "/${DISK_NAME}5.raw" ] && DISK5_IMAGE="/${DISK_NAME}5.raw"
+[ -z "$DEVICE5" ] && [ -z "$DISK5_IMAGE" ] && [ -f "/${DISK_NAME}5.qcow2" ] && DISK5_IMAGE="/${DISK_NAME}5.qcow2"
+[ -z "$DEVICE6" ] && [ -z "$DISK6_IMAGE" ] && [ -f "/${DISK_NAME}6.img" ] && DISK6_IMAGE="/${DISK_NAME}6.img"
+[ -z "$DEVICE6" ] && [ -z "$DISK6_IMAGE" ] && [ -f "/${DISK_NAME}6.raw" ] && DISK6_IMAGE="/${DISK_NAME}6.raw"
+[ -z "$DEVICE6" ] && [ -z "$DISK6_IMAGE" ] && [ -f "/${DISK_NAME}6.qcow2" ] && DISK6_IMAGE="/${DISK_NAME}6.qcow2"
+
 DISK_FILES=( "$DISK1_FILE" "$DISK2_FILE" "$DISK3_FILE" "$DISK4_FILE" "$DISK5_FILE" "$DISK6_FILE" )
 DISK_DESCS=( "disk" "disk2" "disk3" "disk4" "disk5" "disk6" )
 DISK_SIZES=( "$DISK_SIZE" "$DISK2_SIZE" "$DISK3_SIZE" "$DISK4_SIZE" "$DISK5_SIZE" "$DISK6_SIZE" )
 DISK_DEVICES=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
+DISK_IMAGES=( "$DISK1_IMAGE" "$DISK2_IMAGE" "$DISK3_IMAGE" "$DISK4_IMAGE" "$DISK5_IMAGE" "$DISK6_IMAGE" )
 DISK_INDEXES=( "3" "4" "5" "6" "7" "8" )
 DISK_ADDRESSES=( "0xa" "0xb" "0xc" "0xd" "0xe" "0xf" )
 
@@ -986,6 +1055,8 @@ for i in "${!DISK_FILES[@]}"; do
 
   if [ -n "${DISK_DEVICES[i]}" ]; then
     addDevice "${DISK_DEVICES[i]}" "$DISK_TYPE" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
+  elif [ -n "${DISK_IMAGES[i]}" ]; then
+    addImage "${DISK_IMAGES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
   else
     addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
   fi
