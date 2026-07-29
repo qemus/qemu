@@ -545,9 +545,10 @@ addMedia () {
 
   local mediaFile="$1"
   local mediaType="$2"
-  local mediaIndex="$3"
-  local mediaAddress="$4"
-  shift 4
+  local mediaId="$3"
+  local mediaIndex="$4"
+  local mediaAddress="$5"
+  shift 5
 
   local candidate result
   local -a candidates=( "$mediaFile" "$@" )
@@ -563,10 +564,10 @@ addMedia () {
 
   [ -z "$mediaFile" ] && return 0
 
-  local bootIndex=""
+  local bootIndex="" address=""
+  [ -n "$mediaAddress" ] && address=",addr=$mediaAddress"
   [ -n "$mediaIndex" ] && bootIndex=",bootindex=$mediaIndex"
 
-  local mediaId="${mediaAddress#0x}${mediaIndex}"
   local diskId="media${mediaId}"
 
   case "${mediaFile,,}" in
@@ -601,23 +602,23 @@ addMedia () {
 
         "nvme" )
           result+=",if=none \
-          -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${mediaIndex}"
+          -device nvme,drive=${diskId}${bootIndex},serial=deadbeaf${mediaId}"
           echo "$result" ;;
 
         "ide" | "sata" )
           result+=",if=none \
-          -device ich9-ahci,id=ahci${mediaId},addr=$mediaAddress \
+          -device ich9-ahci,id=ahci${mediaId}${address} \
           -device ide-cd,drive=${diskId},bus=ahci${mediaId}.0${bootIndex}"
           echo "$result" ;;
 
         "blk" | "virtio-blk" )
           result+=",if=none \
-          -device virtio-blk-pci,drive=${diskId},bus=$bus,addr=$mediaAddress${IOTHREAD_OPT}${bootIndex}"
+          -device virtio-blk-pci,drive=${diskId},bus=$bus${address}${IOTHREAD_OPT}${bootIndex}"
           echo "$result" ;;
 
         "scsi" | "virtio-scsi" )
           result+=",if=none \
-          -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$mediaAddress${IOTHREAD_OPT},hotplug=off \
+          -device virtio-scsi-pci,id=${diskId}b,bus=$bus${address}${IOTHREAD_OPT},hotplug=off \
           -device scsi-cd,drive=${diskId},bus=${diskId}b.0${bootIndex}"
           echo "$result" ;;
       esac
@@ -891,9 +892,9 @@ if [ -s "$BOOT" ]; then
           hybrid=$(head -c 512 "$BOOT" | tail -c 2 | xxd -p)
         fi
         if [[ "$hybrid" != "0000" ]]; then
-          DISK_OPTS+=$(addMedia "$BOOT" "usb" "$BOOT_INDEX" "0x5")
+          DISK_OPTS+=$(addMedia "$BOOT" "usb" "boot" "$BOOT_INDEX" "0x5")
         else
-          DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "$BOOT_INDEX" "0x5")
+          DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "boot" "$BOOT_INDEX" "0x5")
         fi ;;
     *".img" | *".raw" )
         DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "") ;;
@@ -904,39 +905,15 @@ if [ -s "$BOOT" ]; then
   esac
 fi
 
-DRIVERS="/mount.iso"
+DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" \
+  "/drivers.iso" \
+  "$STORAGE/drivers.iso")
 
-if [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ]; then
-  DRIVERS="/drivers.iso"
-fi
+DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" \
+  "$STORAGE/start.iso")
 
-if [ ! -f "$DRIVERS" ] || [ ! -s "$DRIVERS" ]; then
-  DRIVERS="$STORAGE/drivers.iso"
-fi
-
-if [ -f "$DRIVERS" ] && [ -s "$DRIVERS" ]; then
-  DISK_OPTS+=$(addMedia "$DRIVERS" "$FALLBACK" "" "0x6")
-fi
-
-RESCUE="/start.iso"
-
-if [ ! -f "$RESCUE" ] || [ ! -s "$RESCUE" ]; then
-  RESCUE="$STORAGE/start.iso"
-fi
-
-if [ -f "$RESCUE" ] && [ -s "$RESCUE" ]; then
-  DISK_OPTS+=$(addMedia "$RESCUE" "$FALLBACK" "1" "0x6")
-fi
-
-SETUP="/setup.img"
-
-if [ ! -f "$SETUP" ] || [ ! -s "$SETUP" ]; then
-  SETUP="$STORAGE/setup.img"
-fi
-
-if [ -f "$SETUP" ] && [ -s "$SETUP" ]; then
-  DISK_OPTS+=$(addMedia "$SETUP" "usb" "" "0x6")
-fi
+DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" \
+  "$STORAGE/setup.img")
 
 DISK1_FILE="$STORAGE/${DISK_NAME}"
 DISK2_FILE="/storage2/${DISK_NAME}2"
