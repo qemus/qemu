@@ -905,15 +905,9 @@ if [ -s "$BOOT" ]; then
   esac
 fi
 
-DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" \
-  "/drivers.iso" \
-  "$STORAGE/drivers.iso")
-
-DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" \
-  "$STORAGE/start.iso")
-
-DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" \
-  "$STORAGE/setup.img")
+DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" "$STORAGE/start.iso")
+DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" "/drivers.iso" "$STORAGE/drivers.iso")
+DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" "$STORAGE/setup.img" "$STORAGE/windows.setup.img")
 
 DISK1_FILE="$STORAGE/${DISK_NAME}"
 DISK2_FILE="/storage2/${DISK_NAME}2"
