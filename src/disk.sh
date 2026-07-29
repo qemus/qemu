@@ -947,6 +947,43 @@ if [ -s "$BOOT" ]; then
   esac
 fi
 
+findDiskSource () {
+
+  local sourceType="$1"
+  local sourceFile="$2"
+  shift 2
+
+  local candidate
+
+  [ -n "$sourceFile" ] && {
+    echo "$sourceFile"
+    return 0
+  }
+
+  for candidate in "$@"; do
+
+    case "$sourceType" in
+      "device" )
+        [ -b "$candidate" ] || continue ;;
+
+      "image" )
+        [ -f "$candidate" ] || continue ;;
+
+      * )
+        error "Invalid disk source type: $sourceType"
+        return 1 ;;
+    esac
+
+    echo "$candidate"
+    return 0
+
+  done
+
+  return 0
+}
+
+# Initialize disks
+
 DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" "$STORAGE/start.iso")
 DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" "/drivers.iso" "$STORAGE/drivers.iso")
 DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" "$STORAGE/setup.img" "$STORAGE/windows.setup.img")
@@ -1002,52 +1039,55 @@ fi
 : "${DEVICE5:=""}"
 : "${DEVICE6:=""}"
 
-[ -z "$DEVICE" ] && [ -b "/disk" ] && DEVICE="/disk"
-[ -z "$DEVICE" ] && [ -b "/disk1" ] && DEVICE="/disk1"
-[ -z "$DEVICE2" ] && [ -b "/disk2" ] && DEVICE2="/disk2"
-[ -z "$DEVICE3" ] && [ -b "/disk3" ] && DEVICE3="/disk3"
-[ -z "$DEVICE4" ] && [ -b "/disk4" ] && DEVICE4="/disk4"
-[ -z "$DEVICE5" ] && [ -b "/disk5" ] && DEVICE5="/disk5"
-[ -z "$DEVICE6" ] && [ -b "/disk6" ] && DEVICE6="/disk6"
+DISK_IMAGES=()
+DISK_DEVICES=()
+DISK_DEVICE_VARS=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
 
-[ -z "$DEVICE" ] && [ -b "/dev/disk1" ] && DEVICE="/dev/disk1"
-[ -z "$DEVICE2" ] && [ -b "/dev/disk2" ] && DEVICE2="/dev/disk2"
-[ -z "$DEVICE3" ] && [ -b "/dev/disk3" ] && DEVICE3="/dev/disk3"
-[ -z "$DEVICE4" ] && [ -b "/dev/disk4" ] && DEVICE4="/dev/disk4"
-[ -z "$DEVICE5" ] && [ -b "/dev/disk5" ] && DEVICE5="/dev/disk5"
-[ -z "$DEVICE6" ] && [ -b "/dev/disk6" ] && DEVICE6="/dev/disk6"
+for i in "${!DISK_DEVICE_VARS[@]}"; do
 
-DISK1_IMAGE=""
-DISK2_IMAGE=""
-DISK3_IMAGE=""
-DISK4_IMAGE=""
-DISK5_IMAGE=""
-DISK6_IMAGE=""
+  diskNumber=$(( i + 1 ))
 
-[ -z "$DEVICE" ] && [ -z "$DISK1_IMAGE" ] && [ -f "/${DISK_NAME}.img" ] && DISK1_IMAGE="/${DISK_NAME}.img"
-[ -z "$DEVICE" ] && [ -z "$DISK1_IMAGE" ] && [ -f "/${DISK_NAME}.raw" ] && DISK1_IMAGE="/${DISK_NAME}.raw"
-[ -z "$DEVICE" ] && [ -z "$DISK1_IMAGE" ] && [ -f "/${DISK_NAME}.qcow2" ] && DISK1_IMAGE="/${DISK_NAME}.qcow2"
-[ -z "$DEVICE2" ] && [ -z "$DISK2_IMAGE" ] && [ -f "/${DISK_NAME}2.img" ] && DISK2_IMAGE="/${DISK_NAME}2.img"
-[ -z "$DEVICE2" ] && [ -z "$DISK2_IMAGE" ] && [ -f "/${DISK_NAME}2.raw" ] && DISK2_IMAGE="/${DISK_NAME}2.raw"
-[ -z "$DEVICE2" ] && [ -z "$DISK2_IMAGE" ] && [ -f "/${DISK_NAME}2.qcow2" ] && DISK2_IMAGE="/${DISK_NAME}2.qcow2"
-[ -z "$DEVICE3" ] && [ -z "$DISK3_IMAGE" ] && [ -f "/${DISK_NAME}3.img" ] && DISK3_IMAGE="/${DISK_NAME}3.img"
-[ -z "$DEVICE3" ] && [ -z "$DISK3_IMAGE" ] && [ -f "/${DISK_NAME}3.raw" ] && DISK3_IMAGE="/${DISK_NAME}3.raw"
-[ -z "$DEVICE3" ] && [ -z "$DISK3_IMAGE" ] && [ -f "/${DISK_NAME}3.qcow2" ] && DISK3_IMAGE="/${DISK_NAME}3.qcow2"
-[ -z "$DEVICE4" ] && [ -z "$DISK4_IMAGE" ] && [ -f "/${DISK_NAME}4.img" ] && DISK4_IMAGE="/${DISK_NAME}4.img"
-[ -z "$DEVICE4" ] && [ -z "$DISK4_IMAGE" ] && [ -f "/${DISK_NAME}4.raw" ] && DISK4_IMAGE="/${DISK_NAME}4.raw"
-[ -z "$DEVICE4" ] && [ -z "$DISK4_IMAGE" ] && [ -f "/${DISK_NAME}4.qcow2" ] && DISK4_IMAGE="/${DISK_NAME}4.qcow2"
-[ -z "$DEVICE5" ] && [ -z "$DISK5_IMAGE" ] && [ -f "/${DISK_NAME}5.img" ] && DISK5_IMAGE="/${DISK_NAME}5.img"
-[ -z "$DEVICE5" ] && [ -z "$DISK5_IMAGE" ] && [ -f "/${DISK_NAME}5.raw" ] && DISK5_IMAGE="/${DISK_NAME}5.raw"
-[ -z "$DEVICE5" ] && [ -z "$DISK5_IMAGE" ] && [ -f "/${DISK_NAME}5.qcow2" ] && DISK5_IMAGE="/${DISK_NAME}5.qcow2"
-[ -z "$DEVICE6" ] && [ -z "$DISK6_IMAGE" ] && [ -f "/${DISK_NAME}6.img" ] && DISK6_IMAGE="/${DISK_NAME}6.img"
-[ -z "$DEVICE6" ] && [ -z "$DISK6_IMAGE" ] && [ -f "/${DISK_NAME}6.raw" ] && DISK6_IMAGE="/${DISK_NAME}6.raw"
-[ -z "$DEVICE6" ] && [ -z "$DISK6_IMAGE" ] && [ -f "/${DISK_NAME}6.qcow2" ] && DISK6_IMAGE="/${DISK_NAME}6.qcow2"
+  if (( diskNumber == 1 )); then
+
+    DISK_DEVICES[i]=$(findDiskSource "device" "${DISK_DEVICE_VARS[i]}" \
+      "/disk" \
+      "/disk1" \
+      "/dev/disk1") || exit $?
+
+    DISK_IMAGES[i]=$(findDiskSource "image" "" \
+      "/${DISK_NAME}.img" \
+      "/${DISK_NAME}.raw" \
+      "/${DISK_NAME}.qcow2" \
+      "/disk.img" \
+      "/disk.raw" \
+      "/disk.qcow2" \
+      "/disk1.img" \
+      "/disk1.raw" \
+      "/disk1.qcow2") || exit $?
+
+  else
+
+    DISK_DEVICES[i]=$(findDiskSource "device" "${DISK_DEVICE_VARS[i]}" \
+      "/disk${diskNumber}" \
+      "/dev/disk${diskNumber}") || exit $?
+
+    DISK_IMAGES[i]=$(findDiskSource "image" "" \
+      "/${DISK_NAME}${diskNumber}.img" \
+      "/${DISK_NAME}${diskNumber}.raw" \
+      "/${DISK_NAME}${diskNumber}.qcow2" \
+      "/disk${diskNumber}.img" \
+      "/disk${diskNumber}.raw" \
+      "/disk${diskNumber}.qcow2") || exit $?
+
+  fi
+
+done
+
+unset DISK_DEVICE_VARS diskNumber
 
 DISK_FILES=( "$DISK1_FILE" "$DISK2_FILE" "$DISK3_FILE" "$DISK4_FILE" "$DISK5_FILE" "$DISK6_FILE" )
 DISK_DESCS=( "disk" "disk2" "disk3" "disk4" "disk5" "disk6" )
 DISK_SIZES=( "$DISK_SIZE" "$DISK2_SIZE" "$DISK3_SIZE" "$DISK4_SIZE" "$DISK5_SIZE" "$DISK6_SIZE" )
-DISK_DEVICES=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
-DISK_IMAGES=( "$DISK1_IMAGE" "$DISK2_IMAGE" "$DISK3_IMAGE" "$DISK4_IMAGE" "$DISK5_IMAGE" "$DISK6_IMAGE" )
 DISK_INDEXES=( "3" "4" "5" "6" "7" "8" )
 DISK_ADDRESSES=( "0xa" "0xb" "0xc" "0xd" "0xe" "0xf" )
 
