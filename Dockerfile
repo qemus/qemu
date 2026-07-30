@@ -13,7 +13,7 @@ ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
 ARG DEBCONF_NONINTERACTIVE_SEEN="true"
 
-RUN <<EOF
+RUN --mount=type=bind,source=web/conf/novnc.sh,target=/tmp/novnc.sh,ro <<EOF
   set -eu
 
   apt-get update
@@ -68,14 +68,7 @@ RUN <<EOF
   echo "allow br0" > /etc/qemu/bridge.conf
 
   # Install noVNC
-  mkdir -p /usr/share/novnc
-  wget "https://github.com/novnc/noVNC/archive/refs/tags/v${VERSION_VNC}.tar.gz" -O /tmp/novnc.tar.gz -q --timeout=10
-  tar -xf /tmp/novnc.tar.gz -C /tmp/
-  cd "/tmp/noVNC-${VERSION_VNC}"
-  sed -i '/window\.addEventListener("beforeunload", UI\.handleBeforeUnload);/d' app/ui.js
-  sed -i -e 's#<link rel="icon" type="image/x-icon" href="app/images/icons/novnc.ico">#<link rel="icon" type="image/svg+xml" href="app/images/favicon.svg">#' \
-         -e 's#<p class="noVNC_logo" translate="no"><span>no</span>VNC</p>#<img class="noVNC_logo" src="app/images/favicon.svg" alt="Logo" style="display: block; width: 50%; height: auto; margin: 0 auto 20px;">#' vnc.html
-  mv app core vendor package.json ./*.html /usr/share/novnc
+  sh /tmp/novnc.sh "$VERSION_VNC"
 
   # Configure nginx
   unlink /etc/nginx/sites-enabled/default
@@ -88,7 +81,7 @@ RUN <<EOF
 EOF
 
 COPY --chmod=755 ./src /run/
-COPY --chmod=755 ./web /var/www/
+COPY --chmod=755 --exclude=conf/novnc.sh ./web /var/www/
 COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
 COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
