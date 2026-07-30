@@ -13,7 +13,7 @@ ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
 ARG DEBCONF_NONINTERACTIVE_SEEN="true"
 
-RUN --mount=type=bind,source=web/conf/novnc.sh,target=/tmp/novnc.sh,ro <<EOF
+RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   set -eu
 
   apt-get update
@@ -68,7 +68,7 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/tmp/novnc.sh,ro <<EOF
   echo "allow br0" > /etc/qemu/bridge.conf
 
   # Install noVNC
-  sh /tmp/novnc.sh "$VERSION_VNC"
+  sh /run/novnc.sh "$VERSION_VNC"
 
   # Configure nginx
   unlink /etc/nginx/sites-enabled/default
