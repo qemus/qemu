@@ -196,8 +196,8 @@ restoreHtml() {
   return 0
 }
 
-! restoreHtml && return 1
-! enabled "$AUDIO" && return 0
+restoreHtml || return 1
+enabled "$AUDIO" || return 0
 
 if disabled "${WEB:-}"; then
   AUDIO="N"

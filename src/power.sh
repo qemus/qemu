@@ -88,7 +88,7 @@ gracefulShutdown() {
   finish "$code"
 }
 
-! enabled "$SHUTDOWN" && return 0
+enabled "$SHUTDOWN" || return 0
 
 if interactive; then
   _trap gracefulShutdown SIGINT

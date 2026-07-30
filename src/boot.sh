@@ -163,7 +163,7 @@ prepareUefiRom() {
     error "Failed to move UEFI boot file to $DEST.rom" && exit 44
   fi
 
-  ! setOwner "$DEST.rom" && warn "failed to set the owner for \"$DEST.rom\" !"
+  setOwner "$DEST.rom" || warn "failed to set the owner for \"$DEST.rom\" !"
 
   return 0
 }
@@ -191,7 +191,7 @@ prepareUefiVars() {
     error "Failed to move UEFI vars file to $DEST.vars" && exit 45
   fi
 
-  ! setOwner "$DEST.vars" && warn "failed to set the owner for \"$DEST.vars\" !"
+  setOwner "$DEST.vars" || warn "failed to set the owner for \"$DEST.vars\" !"
 
   return 0
 }

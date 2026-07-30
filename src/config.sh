@@ -109,7 +109,7 @@ configureUsb() {
 configureAudio() {
 
   disabled "${WEB:-}" && return 0
-  ! enabled "${AUDIO:-N}" && return 0
+  enabled "${AUDIO:-N}" || return 0
 
   if [ -z "${AUDIO_FIFO:-}" ] || [ ! -p "$AUDIO_FIFO" ]; then
     warn "Audio support failed to initialize, ignoring AUDIO=Y."

@@ -8,7 +8,7 @@ set -Eeuo pipefail
 
 rm -f "$BALLOONING_PID" "$BALLOONING_SOCKET"
 
-! enabled "$BALLOONING" && return 0
+enabled "$BALLOONING" || return 0
 
 # Memory ballooning dynamically adjusts guest memory based on host pressure and container memory limits. 
 # See the docs/ballooning.md documentation for behavior, configuration, tuning options, and important caveats.
