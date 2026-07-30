@@ -256,10 +256,10 @@ normalizeTimeout() {
 
 sendAcpiShutdown() {
 
-  [ ! -S "$QEMU_DIR/monitor.sock" ] && return 0
+  [ ! -S "$ACPI_SOCKET" ] && return 0
 
   # Send ACPI shutdown signal
-  nc -q 1 -w 1 -U "$QEMU_DIR/monitor.sock" &> /dev/null <<<'system_powerdown' || :
+  nc -q 1 -w 1 -U "$ACPI_SOCKET" &> /dev/null <<<'system_powerdown' || :
 
   return 0
 }
