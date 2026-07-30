@@ -848,7 +848,7 @@ case "${base,,}" in
 
   *".iso" | *".img" | *".raw" | *".qcow2" )
 
-    ! setOwner "$STORAGE/$base" && warn "failed to set the owner for \"$STORAGE/$base\" !"
+    setOwner "$STORAGE/$base" || warn "failed to set the owner for \"$STORAGE/$base\" !"
     detectType "$STORAGE/$base" && return 0
     error "Cannot read file \"${base}\"" && exit 63 ;;
 
@@ -869,11 +869,11 @@ esac
 
 dst="$STORAGE/${base%.*}.$target_ext"
 
-! convertImage "$STORAGE/$base" "$source_fmt" "$dst" "$target_fmt" && exit 35
+convertImage "$STORAGE/$base" "$source_fmt" "$dst" "$target_fmt" || exit 35
 
 base=$(basename "$dst")
 
-! setOwner "$STORAGE/$base" && warn "failed to set the owner for \"$STORAGE/$base\" !"
+setOwner "$STORAGE/$base" || warn "failed to set the owner for \"$STORAGE/$base\" !"
 detectType "$STORAGE/$base" && return 0
 error "Cannot convert file \"${base}\"" && exit 36
 
