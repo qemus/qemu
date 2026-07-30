@@ -30,6 +30,7 @@ if [ ! -f "$HTML_FILE" ]; then
 fi
 
 python3 - "$UI_FILE" "$HTML_FILE" <<'PY'
+import re
 import sys
 from pathlib import Path
 
@@ -51,27 +52,41 @@ def replace_once(content, original, replacement, description):
     return content.replace(original, replacement, 1)
 
 
-beforeunload = (
-    '        window.addEventListener("beforeunload", '
-    'UI.handleBeforeUnload);\n'
+def replace_pattern_once(content, pattern, replacement, description):
+    content, count = re.subn(
+        pattern,
+        replacement,
+        content,
+        count=1,
+        flags=re.MULTILINE | re.DOTALL,
+    )
+
+    if count != 1:
+        raise SystemExit(
+            f"ERROR: expected one {description}, found {count}"
+        )
+
+    return content
+
+
+beforeunload_pattern = (
+    r'^[ \t]*window\.addEventListener\('
+    r'["\']beforeunload["\'],[ \t]*UI\.handleBeforeUnload'
+    r'\);[ \t]*\n'
 )
 
-ui = replace_once(
+ui = replace_pattern_once(
     ui,
-    beforeunload,
+    beforeunload_pattern,
     "",
     "noVNC beforeunload handler",
 )
 
-original_reconnect = '''    reconnect() {
-        UI.reconnectCallback = null;
-        // if reconnect has been disabled in the meantime, do nothing.
-        if (UI.inhibitReconnect) {
-            return;
-        }
-
-        UI.connect(null, UI.reconnectPassword);
-    },'''
+reconnect_pattern = (
+    r'^    reconnect\(\)[ \t]*\{.*?'
+    r'^    \},[ \t]*\n'
+    r'(?=[ \t]*\n^    cancelReconnect\(\)[ \t]*\{)'
+)
 
 patched_reconnect = '''    async reconnect() {
         UI.reconnectCallback = null;
@@ -98,11 +113,12 @@ patched_reconnect = '''    async reconnect() {
         }
 
         UI.connect(null, UI.reconnectPassword);
-    },'''
+    },
+'''
 
-ui = replace_once(
+ui = replace_pattern_once(
     ui,
-    original_reconnect,
+    reconnect_pattern,
     patched_reconnect,
     "noVNC reconnect function",
 )
