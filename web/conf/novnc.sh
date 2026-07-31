@@ -168,9 +168,46 @@ html = replace_once(
     "noVNC logo",
 )
 
+audio_script = '    <script src="audio-plugin.js"></script>\n'
+
+if audio_script not in html:
+    html = replace_once(
+        html,
+        '</head>',
+        f'{audio_script}</head>',
+        "noVNC closing head tag",
+    )
+
+audio_marker = '''                            <li>
+                                <label>
+                                    <input id="noVNC_setting_show_dot" type="checkbox"'''
+
+audio_controls = '''                            <li id="noVNC_setting_audio_row"
+                                class="noVNC_hidden">
+                                <label>
+                                    <input id="noVNC_setting_audio" type="checkbox"
+                                           class="toggle">
+                                    Audio
+                                </label>
+                            </li>
+                            <li id="noVNC_setting_audio_separator"
+                                class="noVNC_hidden"><hr></li>
+                            <li>
+                                <label>
+                                    <input id="noVNC_setting_show_dot" type="checkbox"'''
+
+html = replace_once(
+    html,
+    audio_marker,
+    audio_controls,
+    "noVNC settings menu",
+)
+
 ui_file.write_text(ui, encoding="utf-8")
 html_file.write_text(html, encoding="utf-8")
 PY
 
 cd "$SOURCE_DIR"
 mv app core vendor package.json ./*.html "$INSTALL_DIR"
+
+ln -sf /var/www/js/audio.js "$INSTALL_DIR/audio-plugin.js"
