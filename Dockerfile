@@ -7,6 +7,7 @@ ARG VERSION_ARG="0.0"
 ARG VERSION_QMP="0.0.6"
 ARG VERSION_UTK="1.2.0"
 ARG VERSION_VNC="1.7.0"
+ARG VERSION_OVMF="2025.11-5"
 ARG VERSION_PASST="2026_07_28"
 
 ARG DEBCONF_NOWARNINGS="yes"
@@ -24,7 +25,6 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     tini \
     wget \
     7zip \
-    ovmf \
     curl \
     aria2 \
     fdisk \
@@ -60,6 +60,10 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   # Install Passt package
   wget "https://github.com/qemus/passt/releases/download/v${VERSION_PASST}/passt_${VERSION_PASST}_${TARGETARCH}.deb" -O /tmp/passt.deb -q --timeout=10
   dpkg -i /tmp/passt.deb
+
+  # Install OVMF package
+  wget "https://deb.debian.org/debian/pool/main/e/edk2/ovmf-generic_${VERSION_OVMF}_all.deb" -O /tmp/ovmf.deb -q --timeout=10
+  dpkg -i /tmp/ovmf.deb
 
   apt-get clean
 
