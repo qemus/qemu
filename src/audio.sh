@@ -10,7 +10,6 @@ AUDIO_LOG="/var/log/audio.log"
 AUDIO_PID="$QEMU_DIR/audio.pid"
 AUDIO_FIFO="$QEMU_DIR/audio.fifo"
 AUDIO_SOCKET="$QEMU_DIR/audio.sock"
-AUDIO_PLUGIN="/var/www/js/audio.js"
 
 supportsAudio() {
 
@@ -25,66 +24,32 @@ supportsAudio() {
   return 1
 }
 
-installAudioPlugin() {
-
-  [ -f "$AUDIO_PLUGIN" ] || {
-    error "Audio plugin not found: $AUDIO_PLUGIN"
-    return 1
-  }
+showAudioControl() {
 
   [ -f "$NOVNC_HTML" ] || {
     error "noVNC page not found: $NOVNC_HTML"
     return 1
   }
 
-  if ! cp -f "$AUDIO_PLUGIN" "$NOVNC/audio-plugin.js"; then
-    error "Failed to install audio plugin!"
+  if ! grep -Fq \
+    'id="noVNC_setting_audio_row"' \
+    "$NOVNC_HTML"; then
+    error "noVNC audio control not found!"
     return 1
   fi
 
-  if ! grep -Fq 'src="audio-plugin.js"' "$NOVNC_HTML"; then
-    if ! sed -i \
-      's#</head>#    <script src="audio-plugin.js"></script>\n</head>#' \
-      "$NOVNC_HTML"; then
-      error "Failed to add audio plugin to noVNC page!"
-      return 1
-    fi
+  if ! grep -Fq \
+    'id="noVNC_setting_audio_separator"' \
+    "$NOVNC_HTML"; then
+    error "noVNC audio separator not found!"
+    return 1
   fi
 
-  if grep -Fq 'id="noVNC_setting_audio"' "$NOVNC_HTML"; then
-    return 0
-  fi
-
-  if ! python3 - "$NOVNC_HTML" <<'PY'
-from pathlib import Path
-import sys
-
-path = Path(sys.argv[1])
-content = path.read_text()
-
-marker = '''                            <li>
-                                <label>
-                                    <input id="noVNC_setting_show_dot" type="checkbox"'''
-
-replacement = '''                            <li>
-                                <label>
-                                    <input id="noVNC_setting_audio" type="checkbox"
-                                           class="toggle">
-                                    Audio
-                                </label>
-                            </li>
-                            <li><hr></li>
-                            <li>
-                                <label>
-                                    <input id="noVNC_setting_show_dot" type="checkbox"'''
-
-if marker not in content:
-    raise SystemExit("Unable to locate the noVNC settings menu")
-
-path.write_text(content.replace(marker, replacement, 1))
-PY
-  then
-    error "Failed to add audio controls to noVNC page!"
+  if ! sed -i \
+    -e 's#id="noVNC_setting_audio_row"[[:space:]]*class="noVNC_hidden"#id="noVNC_setting_audio_row"#' \
+    -e 's#id="noVNC_setting_audio_separator"[[:space:]]*class="noVNC_hidden"#id="noVNC_setting_audio_separator"#' \
+    "$NOVNC_HTML"; then
+    error "Failed to show noVNC audio controls!"
     return 1
   fi
 
@@ -211,9 +176,9 @@ if ! supportsAudio; then
 fi
 
 if backupHtml &&
-  installAudioPlugin &&
   startAudioRelay &&
-  startAudioServer
+  startAudioServer &&
+  showAudioControl
 then
   return 0
 fi
