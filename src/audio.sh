@@ -26,32 +26,10 @@ supportsAudio() {
 
 showAudioControl() {
 
-  [ -f "$NOVNC_HTML" ] || {
-    error "noVNC page not found: $NOVNC_HTML"
-    return 1
-  }
-
-  if ! grep -Fq \
-    'id="noVNC_setting_audio_row"' \
-    "$NOVNC_HTML"; then
-    error "noVNC audio control not found!"
-    return 1
-  fi
-
-  if ! grep -Fq \
-    'id="noVNC_setting_audio_separator"' \
-    "$NOVNC_HTML"; then
-    error "noVNC audio separator not found!"
-    return 1
-  fi
-
-  if ! sed -i \
-    -e 's#id="noVNC_setting_audio_row"[[:space:]]*class="noVNC_hidden"#id="noVNC_setting_audio_row"#' \
-    -e 's#id="noVNC_setting_audio_separator"[[:space:]]*class="noVNC_hidden"#id="noVNC_setting_audio_separator"#' \
-    "$NOVNC_HTML"; then
-    error "Failed to show noVNC audio controls!"
-    return 1
-  fi
+  sed -i \
+    -e 's/id="noVNC_setting_audio_row" hidden/id="noVNC_setting_audio_row"/' \
+    -e 's/id="noVNC_setting_audio_separator" hidden/id="noVNC_setting_audio_separator"/' \
+    "$NOVNC_HTML"
 
   return 0
 }
