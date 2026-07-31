@@ -168,6 +168,29 @@ html = replace_once(
     "noVNC logo",
 )
 
+original_clipboard = (
+    '<input type="image" alt="Clipboard" '
+    'src="app/images/clipboard.svg"\n'
+    '                id="noVNC_clipboard_button" '
+    'class="noVNC_button"\n'
+    '                title="Clipboard">'
+)
+
+patched_clipboard = (
+    '<input type="image" alt="Clipboard" '
+    'src="app/images/clipboard.svg"\n'
+    '                id="noVNC_clipboard_button" '
+    'class="noVNC_button noVNC_hidden"\n'
+    '                title="Clipboard">'
+)
+
+html = replace_once(
+    html,
+    original_clipboard,
+    patched_clipboard,
+    "noVNC clipboard button",
+)
+
 audio_script = '    <script src="audio-plugin.js"></script>\n'
 
 if audio_script not in html:
