@@ -159,6 +159,17 @@ ui = replace_once(
     "noVNC connecting visual state",
 )
 
+clipboard_unhide = '''            document.getElementById('noVNC_clipboard_button')
+                .classList.remove('noVNC_hidden');
+'''
+
+ui = replace_once(
+    ui,
+    clipboard_unhide,
+    "",
+    "noVNC clipboard unhide operation",
+)
+
 original_favicon = (
     '<link rel="icon" type="image/x-icon" '
     'href="app/images/icons/novnc.ico">'
@@ -233,16 +244,14 @@ audio_marker = '''                            <li>
                                 <label>
                                     <input id="noVNC_setting_show_dot" type="checkbox"'''
 
-audio_controls = '''                            <li id="noVNC_setting_audio_row"
-                                class="noVNC_hidden">
+audio_controls = '''                            <li id="noVNC_setting_audio_row" hidden>
                                 <label>
                                     <input id="noVNC_setting_audio" type="checkbox"
                                            class="toggle">
                                     Audio
                                 </label>
                             </li>
-                            <li id="noVNC_setting_audio_separator"
-                                class="noVNC_hidden"><hr></li>
+                            <li id="noVNC_setting_audio_separator" hidden><hr></li>
                             <li>
                                 <label>
                                     <input id="noVNC_setting_show_dot" type="checkbox"'''
