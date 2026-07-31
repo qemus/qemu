@@ -120,7 +120,7 @@ patched_reconnect = '''    async reconnect() {
             return;
         }
 
-        UI.connect(null, UI.reconnectPassword);
+        UI.connect(null, UI.reconnectPassword, true);
     },
 '''
 
@@ -129,6 +129,34 @@ ui = replace_pattern_once(
     reconnect_pattern,
     patched_reconnect,
     "noVNC reconnect function",
+)
+
+connect_signature = '''    connect(event, password) {
+'''
+
+patched_connect_signature = '''    connect(event, password, reconnecting = false) {
+'''
+
+ui = replace_once(
+    ui,
+    connect_signature,
+    patched_connect_signature,
+    "noVNC connect function signature",
+)
+
+connecting_state = '''        UI.updateVisualState('connecting');
+'''
+
+patched_connecting_state = '''        UI.updateVisualState(
+            reconnecting ? 'reconnecting' : 'connecting'
+        );
+'''
+
+ui = replace_once(
+    ui,
+    connecting_state,
+    patched_connecting_state,
+    "noVNC connecting visual state",
 )
 
 original_favicon = (
