@@ -90,15 +90,23 @@ reconnect_pattern = (
 
 patched_reconnect = '''    async reconnect() {
         UI.reconnectCallback = null;
+
         // if reconnect has been disabled in the meantime, do nothing.
         if (UI.inhibitReconnect) {
             return;
         }
 
         try {
-            const response = await fetch(`/msg.html?_=${Date.now()}`, {
-                cache: 'no-store',
-            });
+            const path = window.location.pathname
+                .replace(/[^/]*$/, '')
+                .replace(/\\/$/, '');
+            const response = await fetch(
+                `${path}/msg.html?_=${Date.now()}`,
+                {
+                    cache: 'no-store',
+                },
+            );
+
             if (response.ok) {
                 window.location.reload();
                 return;
