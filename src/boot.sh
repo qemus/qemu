@@ -39,7 +39,7 @@ configureBootMode() {
       [ -z "$SMM" ] && SMM="Y"
 
       ROM="OVMF_CODE_4M.secboot.fd"
-      VARS="OVMF_VARS_4M.secboot.fd" ;;
+      VARS="OVMF_VARS_4M.fd" ;;
 
     "windows" | "windows_plain" )
 
@@ -66,7 +66,7 @@ configureBootMode() {
       BOOT_DESC=" (legacy)"
 
       [ -z "$SMM" ] && SMM="Y"
-      [ -z "${HV:-}" ] && HV="N"      
+      [ -z "${HV:-}" ] && HV="N"
       [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci" ;;
 
     "legacy" )
@@ -252,8 +252,8 @@ checkClocksource() {
     "${CLOCKSOURCE,,}" ) ;;
     "kvm-clock" ) info "Nested KVM virtualization detected.." ;;
     "hyperv_clocksource_tsc_page" ) info "Nested Hyper-V virtualization detected.." ;;
-    "hpet" ) warn "unsupported clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
-    *) warn "unexpected clock source ﻿detected﻿: '$result'. Please﻿ ﻿set host clock source to '$CLOCKSOURCE'." ;;
+    "hpet" ) warn "unsupported clock source detected: '$result'. Please set host clock source to '$CLOCKSOURCE'." ;;
+    *) warn "unexpected clock source detected: '$result'. Please set host clock source to '$CLOCKSOURCE'." ;;
   esac
 
   return 0
