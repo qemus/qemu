@@ -210,13 +210,22 @@ function resizeProgress() {
     document.body.appendChild(measurement);
 
     var textWidth = measurement.getBoundingClientRect().width;
+    var loading = info.getElementsByClassName("loading").length > 0;
+    var dotsWidth = 0;
+
+    if (loading) {
+        dotsWidth = parseFloat(style.fontSize) * 0.75;
+    }
 
     measurement.remove();
 
     var maximumWidth = window.innerWidth * 0.8;
-    var width = Math.min(textWidth + 100, maximumWidth);
+    var width = Math.min(textWidth + dotsWidth + 100, maximumWidth);
 
     progress.style.width = width + "px";
+    progress.style.transform = loading
+        ? "translateX(" + (dotsWidth / 2) + "px)"
+        : "";
 
     return true;
 }
