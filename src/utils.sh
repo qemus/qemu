@@ -1675,16 +1675,6 @@ downloadRetry() {
 
   fi
 
-  # Status 2 indicates a failure that retrying cannot resolve.
-  if (( rc == 2 )); then
-
-    if ! rm -f -- "$dest" "$dest.aria2"; then
-      warn "failed to remove failed download \"$dest\"!"
-    fi
-
-    return 2
-  fi
-
   delay "$seconds"
 
   # A multi-connection partial file can contain non-sequential
