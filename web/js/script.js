@@ -182,6 +182,27 @@ function parseProgress(msg) {
     };
 }
 
+function resizeProgress() {
+
+    var info = document.getElementById("info");
+    var progress = document.getElementById("progress");
+
+    if (!info || !progress || progress.hidden) {
+        return false;
+    }
+
+    var range = document.createRange();
+    range.selectNodeContents(info);
+
+    var textWidth = range.getBoundingClientRect().width;
+    var maximumWidth = window.innerWidth * 0.8;
+    var width = Math.min(textWidth + 100, maximumWidth);
+
+    progress.style.width = width + "px";
+
+    return true;
+}
+
 function setProgress(value) {
 
     var progress = document.getElementById("progress");
@@ -189,14 +210,16 @@ function setProgress(value) {
 
     if (value == null) {
         progress.hidden = true;
-        fill.style.width = "0%";
+        progress.removeAttribute("title");
         progress.removeAttribute("aria-valuenow");
+        fill.style.width = "0%";
         return true;
     }
 
     progress.hidden = false;
-    fill.style.width = value + "%";
+    progress.title = value + "%";
     progress.setAttribute("aria-valuenow", value);
+    fill.style.width = value + "%";
 
     return true;
 }
@@ -215,6 +238,7 @@ function setInfo(msg, loading, error) {
         var el = document.getElementById("info");
 
         if (el.innerText == msg || el.innerHTML == msg) {
+            resizeProgress();
             return true;
         }
 
@@ -236,11 +260,13 @@ function setInfo(msg, loading, error) {
         if (msg.includes(p)) {
             if (el.innerHTML.includes(p)) {
                 el.getElementsByClassName('loading')[0].textContent = extractContent(msg);
+                resizeProgress();
                 return true;
             }
         }
 
         el.innerHTML = msg;
+        resizeProgress();
         return true;
 
     } catch (e) {
@@ -319,6 +345,8 @@ function connect() {
         window.location.reload();
     };
 }
+
+window.addEventListener("resize", resizeProgress);
 
 schedule();
 connect();
