@@ -351,7 +351,10 @@ function setInfo(msg, loading, error) {
         var el = document.getElementById("info");
 
         if (el.innerText == msg || el.innerHTML == msg) {
-            resizeProgress();
+            var progressEl = document.getElementById("progress");
+            if (progressEl && !progressEl.hidden && !progressEl.style.width) {
+                resizeProgress();
+            }
             return true;
         }
 
