@@ -164,12 +164,22 @@ function parseSize(value, unit) {
 function estimateProgress(bytes) {
 
     var boundary = 512 * 1024 * 1024;
+    var previousBoundary = 0;
 
     while (bytes > boundary) {
+        previousBoundary = boundary;
         boundary *= 2;
     }
 
-    return Math.min(bytes / boundary * 100, 100);
+    if (previousBoundary === 0) {
+        return Math.min(bytes / boundary * 100, 100);
+    }
+
+    var rangeProgress =
+        (bytes - previousBoundary) /
+        (boundary - previousBoundary);
+
+    return 33 + rangeProgress * 67;
 }
 
 function parseProgress(msg) {
