@@ -191,10 +191,28 @@ function resizeProgress() {
         return false;
     }
 
-    var range = document.createRange();
-    range.selectNodeContents(info);
+    var style = window.getComputedStyle(info);
+    var measurement = document.createElement("span");
 
-    var textWidth = range.getBoundingClientRect().width;
+    measurement.textContent = info.innerText;
+    measurement.style.position = "fixed";
+    measurement.style.left = "-9999px";
+    measurement.style.top = "-9999px";
+    measurement.style.visibility = "hidden";
+    measurement.style.whiteSpace = "nowrap";
+    measurement.style.fontFamily = style.fontFamily;
+    measurement.style.fontSize = style.fontSize;
+    measurement.style.fontWeight = style.fontWeight;
+    measurement.style.fontStyle = style.fontStyle;
+    measurement.style.letterSpacing = style.letterSpacing;
+    measurement.style.textTransform = style.textTransform;
+
+    document.body.appendChild(measurement);
+
+    var textWidth = measurement.getBoundingClientRect().width;
+
+    measurement.remove();
+
     var maximumWidth = window.innerWidth * 0.8;
     var width = Math.min(textWidth + 100, maximumWidth);
 
