@@ -128,6 +128,50 @@ function extractContent(s) {
     return span.textContent || span.innerText;
 };
 
+function parseSize(value, unit) {
+
+    var powers = {
+        "B": 0,
+        "KB": 1,
+        "KIB": 1,
+        "MB": 2,
+        "MIB": 2,
+        "GB": 3,
+        "GIB": 3,
+        "TB": 4,
+        "TIB": 4,
+        "PB": 5,
+        "PIB": 5,
+        "EB": 6,
+        "EIB": 6
+    };
+
+    unit = unit.toUpperCase();
+
+    if (!Object.prototype.hasOwnProperty.call(powers, unit)) {
+        return null;
+    }
+
+    var bytes = Number(value) * Math.pow(1024, powers[unit]);
+
+    if (!Number.isFinite(bytes) || bytes < 0) {
+        return null;
+    }
+
+    return bytes;
+}
+
+function estimateProgress(bytes) {
+
+    var boundary = 512 * 1024 * 1024;
+
+    while (bytes > boundary) {
+        boundary *= 2;
+    }
+
+    return Math.min(bytes / boundary * 100, 100);
+}
+
 function parseProgress(msg) {
 
     var container = document.createElement("div");
@@ -150,35 +194,59 @@ function parseProgress(msg) {
     if (!lastNode) {
         return {
             message: msg,
-            progress: null
+            progress: null,
+            size: null
         };
     }
 
-    var match = lastNode.nodeValue.match(
+    var percentMatch = lastNode.nodeValue.match(
         /\s+\((\d+(?:\.\d+)?)%\)\s*$/
     );
 
-    if (!match) {
-        return {
-            message: msg,
-            progress: null
-        };
+    if (percentMatch) {
+        var progress = Number(percentMatch[1]);
+
+        if (Number.isFinite(progress) && progress >= 0 && progress <= 100) {
+            lastNode.nodeValue = lastNode.nodeValue.slice(
+                0,
+                percentMatch.index
+            );
+
+            return {
+                message: container.innerHTML,
+                progress: progress,
+                size: null
+            };
+        }
     }
 
-    var progress = Number(match[1]);
+    var sizeMatch = lastNode.nodeValue.match(
+        /\s+\((\d+(?:\.\d+)?)\s+([KMGTPE]?i?B)\)\s*$/i
+    );
 
-    if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
-        return {
-            message: msg,
-            progress: null
-        };
+    if (sizeMatch) {
+        var bytes = parseSize(sizeMatch[1], sizeMatch[2]);
+
+        if (bytes != null) {
+            var size = sizeMatch[1] + " " + sizeMatch[2];
+
+            lastNode.nodeValue = lastNode.nodeValue.slice(
+                0,
+                sizeMatch.index
+            );
+
+            return {
+                message: container.innerHTML,
+                progress: estimateProgress(bytes),
+                size: size
+            };
+        }
     }
-
-    lastNode.nodeValue = lastNode.nodeValue.slice(0, match.index);
 
     return {
-        message: container.innerHTML,
-        progress: progress
+        message: msg,
+        progress: null,
+        size: null
     };
 }
 
@@ -230,7 +298,7 @@ function resizeProgress() {
     return true;
 }
 
-function setProgress(value) {
+function setProgress(value, size) {
 
     var progress = document.getElementById("progress");
     var fill = document.getElementById("progress-fill");
@@ -239,13 +307,21 @@ function setProgress(value) {
         progress.hidden = true;
         progress.removeAttribute("title");
         progress.removeAttribute("aria-valuenow");
+        progress.removeAttribute("aria-valuetext");
         fill.style.width = "0%";
         return true;
     }
 
     progress.hidden = false;
-    progress.title = value + "%";
+    progress.title = size != null ? size : value + "%";
     progress.setAttribute("aria-valuenow", value);
+
+    if (size != null) {
+        progress.setAttribute("aria-valuetext", size);
+    } else {
+        progress.removeAttribute("aria-valuetext");
+    }
+
     fill.style.width = value + "%";
 
     return true;
@@ -260,7 +336,7 @@ function setInfo(msg, loading, error) {
 
         var parsed = parseProgress(msg);
         msg = parsed.message;
-        setProgress(parsed.progress);
+        setProgress(parsed.progress, parsed.size);
 
         var el = document.getElementById("info");
 
