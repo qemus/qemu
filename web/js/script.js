@@ -128,12 +128,89 @@ function extractContent(s) {
     return span.textContent || span.innerText;
 };
 
+function parseProgress(msg) {
+
+    var container = document.createElement("div");
+    container.innerHTML = msg;
+
+    var walker = document.createTreeWalker(
+        container,
+        NodeFilter.SHOW_TEXT
+    );
+
+    var node;
+    var lastNode = null;
+
+    while ((node = walker.nextNode())) {
+        if (node.nodeValue.trim() !== "") {
+            lastNode = node;
+        }
+    }
+
+    if (!lastNode) {
+        return {
+            message: msg,
+            progress: null
+        };
+    }
+
+    var match = lastNode.nodeValue.match(
+        /\s+\((\d+(?:\.\d+)?)%\)\s*$/
+    );
+
+    if (!match) {
+        return {
+            message: msg,
+            progress: null
+        };
+    }
+
+    var progress = Number(match[1]);
+
+    if (!Number.isFinite(progress) || progress < 0 || progress > 100) {
+        return {
+            message: msg,
+            progress: null
+        };
+    }
+
+    lastNode.nodeValue = lastNode.nodeValue.slice(0, match.index);
+
+    return {
+        message: container.innerHTML,
+        progress: progress
+    };
+}
+
+function setProgress(value) {
+
+    var progress = document.getElementById("progress");
+    var fill = document.getElementById("progress-fill");
+
+    if (value == null) {
+        progress.hidden = true;
+        fill.style.width = "0%";
+        progress.removeAttribute("aria-valuenow");
+        return true;
+    }
+
+    progress.hidden = false;
+    fill.style.width = value + "%";
+    progress.setAttribute("aria-valuenow", value);
+
+    return true;
+}
+
 function setInfo(msg, loading, error) {
     try {
 
         if (msg == null || msg.length == 0) {
             return false;
         }
+
+        var parsed = parseProgress(msg);
+        msg = parsed.message;
+        setProgress(parsed.progress);
 
         var el = document.getElementById("info");
 
