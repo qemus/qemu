@@ -18,7 +18,9 @@ body {
 }
 
 #progress {
-	width: min(500px, 80vw);
+	width: 0;
+	min-width: 250px;
+	max-width: 80vw;
 	height: 15px;
 	overflow: hidden;
 	margin: 20px auto 0;
