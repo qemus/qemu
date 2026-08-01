@@ -179,7 +179,7 @@ function estimateProgress(bytes) {
         (bytes - previousBoundary) /
         (boundary - previousBoundary);
 
-    return 33 + rangeProgress * 67;
+    return 30 + Math.pow(rangeProgress, 2) * 70;
 }
 
 function parseProgress(msg) {
