@@ -155,9 +155,24 @@ configureAudio() {
   return 0
 }
 
+configureCompatibility() {
+
+  CMP_OPTS=""
+
+  case "${BOOT_MODE,,}" in
+    "legacy" | "windows_legacy" | "custom" )
+      return 0 ;;
+  esac
+
+  CMP_OPTS="-fw_cfg name=opt/org.tianocore/UninstallMemAttrProtocol,string=y"
+  CMP_OPTS+=" -fw_cfg name=opt/ovmf/PcdSetNxForStack,string=no"
+
+  return 0
+}
+
 buildArguments() {
 
-  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $ARGUMENTS"
+  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
   ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 
   return 0
@@ -173,6 +188,7 @@ configureVirtioDevices
 configureSharedFolder
 configureUsb
 configureAudio
+configureCompatibility
 
 buildArguments
 
