@@ -708,15 +708,18 @@ if ! hasDisk; then
 fi
 
 name=$(getURL "$BOOT" "name") || exit 34
+download_name="$name"
 
 if [ -n "$name" ]; then
 
   msg="Retrieving latest $name version..."
   info "$msg" && html "$msg..."
 
-  url=$(getURL "$BOOT" "url") || exit 34
+  result=$(getURL "$BOOT" "download") || exit 34
+  IFS=$'\t' read -r url release <<< "$result"
 
   [ -n "$url" ] && BOOT="$url"
+  [ -n "$release" ] && download_name+=" $release"
 
 fi
 
@@ -749,11 +752,11 @@ downloadRetry \
   "$STORAGE/$base" \
   "$CONNECTIONS" \
   "5" \
-  "${name:-$base}" \
+  "${download_name:-$base}" \
   "100000" \
   "$BOOT" \
   "$base" \
-  "$name" \
+  "$download_name" \
   "0" || exit 60
 
 case "${base,,}" in

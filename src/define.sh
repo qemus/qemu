@@ -22,12 +22,17 @@ pipe() {
 
 getURL() {
   local id="${1/ /}"
-  local ret="$2"
+  local ret="${2,,}"
+  local output="$ret"
   local url=""
   local arm=""
   local name=""
   local body=""
   local version=""
+  local image=""
+  local release=""
+
+  [[ "$output" == "download" ]] && ret="url"
 
   case "${id,,}" in
     "alma" | "almalinux" | "alma-linux" )
@@ -211,11 +216,11 @@ getURL() {
       fi ;;
   esac
 
-  case "${ret,,}" in
+  case "$output" in
     "name" )
       echo "$name"
       ;;
-    "url" )
+    "url" | "download" )
 
       [[ "$url" == "null" ]] && url=""
       [[ "$arm" == "null" ]] && arm=""
@@ -233,10 +238,21 @@ getURL() {
       fi
 
       if [[ "${PLATFORM,,}" != "arm64" ]]; then
-        echo "$url"
+        image="$url"
       else
-        echo "$arm"
-      fi ;;
+        image="$arm"
+      fi
+
+      if [[ "$output" == "url" ]]; then
+        echo "$image"
+      else
+        release="$version"
+        if [[ ! "$release" =~ ^[0-9]+([._-][0-9A-Za-z]+)*$ ]]; then
+          release=""
+        fi
+        printf '%s\t%s\n' "$image" "$release"
+      fi
+      ;;
   esac
 
   return 0
