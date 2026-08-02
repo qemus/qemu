@@ -30,6 +30,7 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     aria2 \
     fdisk \
     nginx \
+    ovmf \
     swtpm \
     procps \
     ipcalc \
@@ -66,9 +67,10 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   wget "https://deb.debian.org/debian/pool/main/s/seabios/seabios_${VERSION_SEABIOS}_all.deb" -O /tmp/seabios.deb -q --timeout=10
   dpkg -i /tmp/seabios.deb
 
-  # Install OVMF package
+  # Install newer Microsoft Secure Boot variables from SID
   wget "https://deb.debian.org/debian/pool/main/e/edk2/ovmf-generic_${VERSION_OVMF}_all.deb" -O /tmp/ovmf.deb -q --timeout=10
-  dpkg -i /tmp/ovmf.deb
+  dpkg-deb -x /tmp/ovmf.deb /tmp/ovmf
+  install -m 0644 /tmp/ovmf/usr/share/OVMF/OVMF_VARS_4M.ms.fd /usr/share/OVMF/OVMF_VARS_4M.ms.fd
 
   apt-get clean
 
