@@ -148,7 +148,7 @@ prepareUefiRom() {
 
   if ! disabled "$LOGO" &&
      ! /run/boot-logo "$logo" "$rom" --output "$DEST.tmp" -q; then
-    warn "failed to add custom logo ($logo) to BIOS!"
+    warn "failed to add custom logo ($logo) to UEFI firmware!"
     rm -f "$DEST.tmp"
   fi
 
