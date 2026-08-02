@@ -48,7 +48,7 @@ configureMonitor() {
   MON_OPTS="-monitor $MONITOR"
 
   if enabled "$SHUTDOWN" && [ -n "${ACPI_SOCKET:-}" ]; then
-    MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server,wait=off,nodelay"
+    MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server=on,wait=off,nodelay=on"
   fi
 
   MON_OPTS+=" -name $PROCESS,process=$PROCESS,debug-threads=on"
@@ -84,7 +84,7 @@ configureVirtioDevices() {
     if ! enabled "${BALLOONING:-}"; then
       DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=$bus"
     else
-      MON_OPTS+=" -qmp unix:${BALLOONING_SOCKET},server,nowait"
+      MON_OPTS+=" -qmp unix:${BALLOONING_SOCKET},server=on,wait=off"
       DEV_OPTS+=" -device virtio-balloon-pci,free-page-reporting=on,guest-stats-polling-interval=1,id=balloon0,bus=$bus"
     fi
   fi
