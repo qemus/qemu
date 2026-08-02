@@ -112,7 +112,9 @@ checkStorage() {
   # Check folder
 
   if [[ "${STORAGE,,}" != "/storage" ]]; then
-    mkdir -p "$STORAGE"
+    if ! mkdir -p -- "$STORAGE"; then
+      error "Cannot create storage folder ($STORAGE)!" && exit 13
+    fi
   fi
 
   if [ ! -d "$STORAGE" ]; then
