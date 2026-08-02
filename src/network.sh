@@ -559,7 +559,7 @@ getReservedPorts() {
   local display="${DISPLAY:-}"
 
   # Reserve the DNS port while the internal dnsmasq resolver is active.
-  if ! enabled "${DNSMASQ_DISABLE:-}"; then
+  if ! enabled "${DNSMASQ_DISABLE:-}" && ! isNAT; then
     list+="53/tcp,53/udp,"
   fi
 
