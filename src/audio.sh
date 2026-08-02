@@ -16,9 +16,8 @@ supportsAudio() {
   isQ35 && return 0
 
   case "${MACHINE,,}" in
-    pc|pc-i440fx-*|virt)
-      return 0
-      ;;
+    "pc" | "pc-i440fx-"* | "virt"* )
+      return 0 ;;
   esac
 
   return 1
