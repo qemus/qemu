@@ -96,7 +96,7 @@ COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
 COPY --chmod=644 ./web/img/favicon.svg /usr/share/novnc/app/images/favicon.svg
 
-ADD --chmod=755 "https://github.com/qemus/boot-logo/releases/download/v${VERSION_UTK}/boot-logo-_${_${TARGETARCH}.bin" /run
+ADD --chmod=755 "https://github.com/qemus/boot-logo/releases/download/v${VERSION_UTK}/boot-logo-_${TARGETARCH}.bin" /run
 
 VOLUME /storage
 EXPOSE 22 5900 8006
