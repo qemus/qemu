@@ -135,27 +135,21 @@ prepareUefiRom() {
 
   [ ! -s "$OVMF/$ROM" ] && error "UEFI boot file ($OVMF/$ROM) not found!" && exit 44
 
-  local logo="/var/www/img/${PROCESS,,}.ffs"
-  [ ! -s "$logo" ] && logo="/var/www/img/qemu.ffs"
+  local logo="/var/www/img/${PROCESS,,}.bmp"
+  [ ! -s "$logo" ] && logo="/var/www/img/qemu.bmp"
   [ ! -s "$logo" ] && LOGO="N"
 
   rm -f "$DEST.tmp"
 
-  if disabled "$LOGO"; then
-    if ! cp "$OVMF/$ROM" "$DEST.tmp"; then
-      rm -f "$DEST.tmp"
-      error "Failed to copy UEFI boot file to $DEST.tmp" && exit 44
-    fi
-  else
-    if ! /run/boot-logo.bin "$logo" "$OVMF/$ROM" --output "$DEST.tmp"; then
-      warn "failed to add custom logo to BIOS!"
-      rm -f "$DEST.tmp"
+  if ! disabled "$LOGO" &&
+     ! /run/boot-logo.bin "$logo" "$OVMF/$ROM" --output "$DEST.tmp"; then
+    warn "failed to add custom logo to BIOS!"
+    rm -f "$DEST.tmp"
+  fi
 
-      if ! cp "$OVMF/$ROM" "$DEST.tmp"; then
-        rm -f "$DEST.tmp"
-        error "Failed to copy UEFI boot file to $DEST.tmp" && exit 44
-      fi
-    fi
+  if [[ ! -f "$DEST.tmp" ]] && ! cp "$OVMF/$ROM" "$DEST.tmp"; then
+    rm -f "$DEST.tmp"
+    error "Failed to copy UEFI boot file to $DEST.tmp" && exit 44
   fi
 
   if ! mv "$DEST.tmp" "$DEST.rom"; then
