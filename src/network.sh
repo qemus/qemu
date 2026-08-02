@@ -580,7 +580,7 @@ getReservedPorts() {
   fi
 
   normalizePorts "$list" "$mode"
-  return 0
+  return $?
 }
 
 getCustomHostPorts() {
@@ -598,7 +598,7 @@ getCustomHostPorts() {
   done
 
   normalizePorts "$ports" "$mode"
-  return 0
+  return $?
 }
 
 getHostPorts() {
@@ -610,9 +610,9 @@ getHostPorts() {
   # User entries already covered by an internal reservation are silently ignored.
   reserved=$(getReservedPorts "all")
   custom=$(getCustomHostPorts "all")
-  normalizePorts "$reserved,$custom" "$mode"
 
-  return 0
+  normalizePorts "$reserved,$custom" "$mode"
+  return $?
 }
 
 getUserPorts() {
