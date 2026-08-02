@@ -7,8 +7,8 @@ set -Eeuo pipefail
 : "${SOUND:="intel-hda"}"
 : "${SERIAL:="mon:stdio"}"
 : "${USB:="qemu-xhci,id=xhci,p2=7,p3=7"}"
-: "${MONITOR:="unix:$QEMU_DIR/monitor.sock,server,wait=off,nodelay"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
+: "${MONITOR:="unix:$QEMU_DIR/monitor.sock,server=on,wait=off,nodelay=on"}"
 
 msg="Configuring QEMU..."
 enabled "$DEBUG" && echo "$msg"
