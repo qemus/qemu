@@ -240,13 +240,8 @@ function parseProgress(msg) {
         if (bytes != null) {
             var size = sizeMatch[1] + " " + sizeMatch[2];
 
-            lastNode.nodeValue = lastNode.nodeValue.slice(
-                0,
-                sizeMatch.index
-            );
-
             return {
-                message: container.innerHTML,
+                message: msg,
                 progress: estimateProgress(bytes),
                 size: size
             };
