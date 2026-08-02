@@ -147,7 +147,7 @@ prepareUefiRom() {
       error "Failed to copy UEFI boot file to $DEST.tmp" && exit 44
     fi
   else
-    if ! /run/utk.bin "$OVMF/$ROM" replace_ffs LogoDXE "$logo" save "$DEST.tmp"; then
+    if ! /run/boot-logo.bin "$logo" "$OVMF/$ROM" --output "$DEST.tmp"; then
       warn "failed to add custom logo to BIOS!"
       rm -f "$DEST.tmp"
 
