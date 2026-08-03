@@ -66,6 +66,8 @@ startAudioRelay() {
     return 1
   fi
 
+  # QEMU writes a WAV stream into the FIFO; the relay strips its header and
+  # exposes PCM through a Unix socket that websocketd streams to the browser.
   python3 "$AUDIO_RELAY" "$AUDIO_FIFO" "$AUDIO_SOCKET" \
     >"$AUDIO_LOG" 2>&1 &
 
@@ -109,6 +111,8 @@ backupHtml() {
 
   [ -f "$NOVNC_BACKUP" ] && return 0
 
+  # Save the unmodified noVNC page atomically and only once, so later
+  # startups can always restore a clean UI before enabling audio again.
   rm -f -- "$tmp"
 
   if ! cp -p -- "$NOVNC_HTML" "$tmp"; then
@@ -138,6 +142,7 @@ restoreHtml() {
   return 0
 }
 
+# Undo a previous audio UI modification before evaluating the current settings.
 restoreHtml || return 1
 enabled "$AUDIO" || return 0
 
@@ -160,6 +165,8 @@ then
   return 0
 fi
 
+# Audio initialization is all-or-nothing; roll back the relay, server, and UI
+# together when any step fails.
 stopAudioServer || :
 stopAudioRelay || :
 restoreHtml || :

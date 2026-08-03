@@ -20,6 +20,8 @@ finish() {
   local reason="$1"
   local failed=0
 
+  # A nonzero exit is unexpected only when no shutdown path created QEMU_END
+  # beforehand.
   if [ ! -f "$QEMU_END" ] && (( reason != 0 )); then
     failed=1
   fi
@@ -49,12 +51,15 @@ gracefulShutdown() {
   local sig="$1"
   local pid code
 
+  # Traps are inherited by subshells; only the shell that registered them may
+  # coordinate the global shutdown sequence.
   [[ $BASHPID != "$TRAP_PID" ]] && return
 
   code=$(signalCode "$sig")
 
   if [ -f "$QEMU_END" ]; then
 
+    # A second Ctrl+C stops the graceful wait loop and advances to forced cleanup.
     if (( code == 130 && SHUTDOWN_SIGNAL == code )); then
       SHUTDOWN_SKIP=1
       echo && info "Received SIGINT again, forcing shutdown..."
@@ -65,6 +70,8 @@ gracefulShutdown() {
     return
   fi
 
+  # Shutdown handlers must continue through missing processes and failed cleanup
+  # commands instead of being aborted by errexit.
   set +e
   SHUTDOWN_SIGNAL=$code
 
@@ -72,6 +79,8 @@ gracefulShutdown() {
   echo && info "Received $sig signal, sending ACPI shutdown signal..."
 
   if ! readQemuPid pid; then
+    # Interactive startup briefly runs before the supervisor has written QEMU's
+    # PID, so allow a short race only in that mode.
     if ! interactive || ! waitQemuPid pid; then
       warn "QEMU PID file does not exist?"
       finish "$code"

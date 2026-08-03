@@ -3,6 +3,8 @@ set -Eeuo pipefail
 
 getBase() {
 
+  # Derive a safe local filename by dropping the query string, URL-decoding the
+  # basename, and replacing characters unsuitable for a storage path.
   local base="${1%%\?*}"
   base=$(basename "$base")
   printf -v base '%b' "${base//%/\\x}"
@@ -26,6 +28,8 @@ getFolder() {
     base=$(getBase "$result")
     result="${base%.*}"
 
+    # Compressed downloads use the underlying image name as their storage folder,
+    # so strip both the archive and image extensions when both are present.
     case "${base,,}" in
 
       *".gz" | *".gzip" | *".xz" | *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
@@ -53,6 +57,8 @@ bootFile() {
     return 0
   fi
 
+  # Root-level bind-mounted media must remain in place; downloaded files are
+  # moved to a canonical persistent boot filename instead.
   if [[ "${file,,}" == "/boot.${ext,,}" || "${file,,}" == "/custom.${ext,,}" ]]; then
     BOOT="$file"
     return 0
@@ -135,6 +141,8 @@ isLegacyIso() {
     return 2
   fi
 
+  # Exit 0 means BIOS-only, 1 confirms UEFI support, and 3 means the ISO layout
+  # did not provide enough information to choose safely.
   awk '
     $1 == "El" &&
     $2 == "Torito" &&
@@ -216,6 +224,8 @@ detectQcow2Mode() {
     return 1
   fi
 
+  # Inspect only the raw sectors needed for MBR/GPT detection instead of
+  # converting or mounting the complete QCOW2 image.
   if ! readQcow2Sectors "$file" 0 2 "$tmp"; then
     rm -f "$tmp"
     error "Failed to inspect QCOW2 image!"
@@ -404,6 +414,8 @@ detectType() {
     * ) return 1 ;;
   esac
 
+  # Automatic firmware detection is performed only when the user has not chosen
+  # a boot mode explicitly.
   if [ -z "$BOOT_MODE" ]; then
     if [[ "${file,,}" != *".iso" ]]; then
 
@@ -480,6 +492,8 @@ convertImage() {
     return 0
   fi
 
+  # Convert beside the destination and publish it only after qemu-img completes;
+  # the original source remains available throughout the conversion.
   local tmp_file="$dst_file.tmp"
   dir=$(dirname "$tmp_file")
 
@@ -587,6 +601,8 @@ findFile() {
   dir=$(find / -maxdepth 1 -type d -iname "$fname" -print -quit)
   [ ! -d "$dir" ] && dir=$(find "$STORAGE" -maxdepth 1 -type d -iname "$fname" -print -quit)
 
+  # A directory at a file bind path usually means the host source did not exist
+  # when the container runtime created the mount point.
   if [ -d "$dir" ]; then
 
     hasData && return 1
@@ -630,6 +646,8 @@ findArchiveImage() {
       ;;
   esac
 
+  # Prefer the archive member matching the archive basename before falling back
+  # to the first supported image found anywhere in the extracted tree.
   if [ -z "$img" ]; then
     for ext in "${exts[@]}"; do
       if [ -s "$tmp/${base%.*}.$ext" ]; then
@@ -652,6 +670,8 @@ findArchiveImage() {
 
 findBootFile && return 0
 
+# An existing non-empty data disk takes precedence over BOOT media; detect its
+# firmware requirements and start it directly.
 if hasData; then
 
   if [ -z "$BOOT_MODE" ]; then
@@ -680,6 +700,8 @@ fi
 
 if ! hasDisk; then
 
+  # When no managed disk exists yet, namespace storage by the requested image so
+  # multiple BOOT choices can coexist without overwriting each other.
   folder=$(getFolder "$BOOT")
   STORAGE="$STORAGE/$folder"
 
@@ -857,6 +879,8 @@ case "${base,,}" in
 
 esac
 
+# Native QEMU formats boot directly; foreign virtual-disk formats are converted
+# to the configured managed disk format before firmware detection.
 target_ext="img"
 target_fmt="${DISK_FMT:-raw}"
 target_fmt="${target_fmt,,}"

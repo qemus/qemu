@@ -48,6 +48,8 @@ detectRootless() {
 
   uid_map=$(awk '{$1=$1; print}' /proc/self/uid_map 2>/dev/null || true)
 
+  # An identity UID mapping means real container root; any remapped range is a
+  # rootless/user-namespace environment.
   if [[ "$uid_map" == "0 0 4294967295" ]]; then
     ROOTLESS="N"
   else
@@ -71,6 +73,8 @@ checkPrivileged() {
   # Calculate the maximum capability value
   local max_cap=$(((1 << (last_cap + 1)) - 1))
 
+  # A privileged container exposes the complete kernel capability bounding set,
+  # not merely the smaller set Docker grants by default.
   if [ "$cap_bnd" -eq "$max_cap" ]; then
     PRIVILEGED="Y"
   fi
@@ -104,6 +108,8 @@ checkStorage() {
   if [ ! -d "/dev/shm" ]; then
     error "Directory /dev/shm not found!" && exit 14
   else
+    # Keep runtime sockets and PID files on shared memory even on images where
+    # /run/shm is absent but /dev/shm is available.
     [ ! -d "$QEMU_DIR" ] && ln -s /dev/shm "$QEMU_DIR"
   fi
 
@@ -133,6 +139,8 @@ checkStorage() {
 finiteMemoryLimit() {
 
   local limit="$1"
+  # cgroup v1 commonly reports this enormous sentinel for an unlimited memory
+  # limit; compare as decimal strings to avoid shell integer overflow.
   local sentinel="4611686018427387904"
   local i
 
@@ -173,6 +181,8 @@ getMemoryInfo() {
     current=$(< /sys/fs/cgroup/memory/memory.usage_in_bytes)
   fi
 
+  # Use the tighter of host availability and the container's remaining cgroup
+  # allowance so RAM sizing cannot exceed either boundary.
   if finiteMemoryLimit "$limit" && [[ "$current" =~ ^[0-9]+$ ]]; then
     (( limit < RAM_TOTAL )) && RAM_TOTAL="$limit"
 
@@ -198,6 +208,8 @@ normalizeRamSize() {
 
   if [[ "${RAM_SIZE,,}" != "max" && "${RAM_SIZE,,}" != "half" ]]; then
 
+    # Bare values below 130 are interpreted as GiB for convenience; larger bare
+    # values are treated as MiB to preserve historical configurations.
     if [ -z "${RAM_SIZE//[0-9. ]}" ]; then
       [ "${RAM_SIZE%%.*}" -lt "130" ] && RAM_SIZE="${RAM_SIZE}G" || RAM_SIZE="${RAM_SIZE}M"
     fi
@@ -265,6 +277,8 @@ checkKvm() {
             error "KVM acceleration is not available $KVM_ERR, this will cause the machine to run about 10 times slower."
             error "See the FAQ for possible causes, or disable acceleration by adding the \"KVM=N\" variable (not recommended)." ;;
         esac
+        # DEBUG mode deliberately permits a slow TCG fallback so diagnostics can
+        # continue even when KVM setup is broken.
         enabled "$DEBUG" || exit 88
       fi
     fi
@@ -357,6 +371,8 @@ rm -rf "$STORAGE/tmp"
 rm -f "$QEMU_DIR"/{qemu.*,*.{pid,sock,pipe}}
 
 # Helper processes terminated during shutdown
+# Store variable names rather than current values because many helper PID paths
+# are assigned later during startup and resolved only during cleanup.
 HELPER_PIDS=(
   TPM_PID
   WSD_PID

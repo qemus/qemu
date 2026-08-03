@@ -75,6 +75,8 @@ readPidFile() {
 
 readQemuPid() {
 
+  # Prefer the supervisor-created PID during startup; fall back to QEMU's own
+  # pidfile once it becomes available.
   readPidFile "$1" "$QEMU_START_PID" && return 0
   readPidFile "$1" "$QEMU_PID"
 }
@@ -208,6 +210,8 @@ startQemu() {
   (
     trap '' INT QUIT
 
+    # setsid detaches QEMU from the interactive process group. The wrapper records
+    # the actual QEMU PID and propagates its exit status to the parent shell.
     # shellcheck disable=SC2016
     exec setsid -f -w sh -c '
       file=$1
@@ -245,6 +249,8 @@ normalizeTimeout() {
     cleanup_grace=4
   fi
 
+  # Reserve separate portions of TIMEOUT for SIGTERM escalation and final helper
+  # cleanup instead of spending the entire budget on ACPI waiting.
   local min=$((term_grace + cleanup_grace + 1))
   (( TIMEOUT < min )) && (( TIMEOUT = min ))
 
@@ -354,6 +360,8 @@ getPciBus() {
 
 interactive() {
 
+  # Reopening /dev/tty verifies that the terminal is genuinely usable, not just
+  # that stdin happens to report itself as a TTY.
   [ -t 0 ] && : 2>/dev/null </dev/tty >/dev/tty
 
 }
@@ -558,6 +566,8 @@ setOwner() {
   [ ! -f "$file" ] && return 1
 
   dir=$(dirname -- "$file")
+  # Generated files inherit ownership from their containing bind mount so they
+  # remain manageable by the host user.
   uid=$(stat -c '%u' "$dir") || return 1
   gid=$(stat -c '%g' "$dir") || return 1
 
@@ -594,6 +604,8 @@ stateFile() {
   local name="$1"
   local prefix="${2:-$PROCESS}"
 
+  # A name containing a slash is already an explicit path; simple names are
+  # namespaced by process under the storage directory.
   [[ "$name" == */* ]] && printf '%s\n' "$name" && return 0
 
   printf '%s/%s.%s\n' "$STORAGE" "$prefix" "$name"
@@ -685,6 +697,8 @@ restoreState() {
   local prefix="${4:-$PROCESS}"
   local value
 
+  # Persisted state fills only unset variables by default, preserving explicit
+  # environment choices unless the caller requests a forced restore.
   if ! enabled "$force"; then
     [ -z "${!var:-}" ] || return 0
   fi
@@ -709,6 +723,8 @@ mergeState() {
 
   [ -n "$value" ] || return 0
 
+  # Put current configuration first so user-provided flags precede and therefore
+  # take priority over supplemental values restored from state.
   if [ -n "$current" ]; then
     value="$current$separator$value"
   fi
@@ -765,6 +781,8 @@ html() {
   HTML="${HTML/\[4\]/$footer}"
   HTML="${HTML/\[5\]/$FOOTER2}"
 
+  # Publish both the complete page and the live message atomically because the
+  # web server and websocket helper may read them concurrently.
   writeAtomic "$PAGE" "$HTML" || return 1
   writeAtomic "$INFO" "$body" || return 1
 
@@ -817,6 +835,8 @@ getDisk() {
 
   enabled "${DISK_DISABLE:-}" && return 1
 
+  # Disk discovery prefers an explicitly configured block device, then legacy
+  # device paths, and finally managed image files.
   if [ -n "${DEVICE:-}" ]; then
     [ -b "$DEVICE" ] || return 1
     printf '%s\n' "$DEVICE"
@@ -885,6 +905,8 @@ hasData() {
 
   fi
 
+  # Treat a disk as empty only when its first 100 KiB are all zero. Inspection
+  # failures are conservative and assume data is present to prevent replacement.
   cmp -s -n "$bytes" "$source" /dev/zero || rc=$?
   [ -n "$tmp" ] && rm -f "$tmp"
 
@@ -919,7 +941,8 @@ getAgent() {
 
   local browser_version
 
-  # Approximate Firefox version, increasing every two weeks
+    # Advance the synthetic browser version periodically so download endpoints do
+  # not reject a permanently stale user agent.
   browser_version="$((152 + ($(date +%s) - 1781568000) / 1209600))"
   echo "Mozilla/5.0 (X11; Linux x86_64; rv:${browser_version}.0) Gecko/20100101 Firefox/${browser_version}.0"
 
@@ -1044,6 +1067,8 @@ filterAriaOutput() {
   # RETURN runs while status_tmp is still in the function's local scope.
   trap 'rm -f -- "$status_tmp"; trap - RETURN' RETURN
 
+  # aria2 redraws one console line with carriage returns, so consume characters
+  # rather than normal newline-delimited records.
   while IFS= read -r -N 1 char; do
     case "$char" in
       $'\r' | $'\n' )
@@ -1211,6 +1236,8 @@ downloadWithAria() {
   local int_trap term_trap total
   local cancel_signal_value=""
 
+  # Use a dedicated descriptor for aria2 stderr so progress filtering can finish
+  # independently and the downloader's exit status remains available.
   if ! exec {aria_fd}> >(filterAriaOutput "$status" "$aria_display"); then
     error "Failed to create aria2 output filter!"
     return 2
@@ -1220,6 +1247,8 @@ downloadWithAria() {
   int_trap=$(trap -p INT)
   term_trap=$(trap -p TERM)
 
+  # Forward cancellation to aria2 while retaining the caller's original traps;
+  # they are restored after the filter and downloader have exited.
   trap '
     cancel_signal_value="INT"
     [ -n "$download_pid" ] &&
@@ -1654,6 +1683,8 @@ downloadRetry() {
     return 2
   fi
 
+  # Retry policy intentionally starts clean: deterministic validation failures
+  # and stale aria metadata must never be resumed as if they were valid data.
   # Always start without stale partial or aria control files.
   if ! rm -f -- "$dest" "$dest.aria2"; then
     error "Failed to remove previous download \"$dest\"!"

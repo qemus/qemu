@@ -48,6 +48,8 @@ removeCpuArgument() {
 
   local args=" ${ARGUMENTS:-} "
 
+  # Remove every raw -cpu argument because QEMU accepts only one effective CPU
+  # definition and an extra user argument could silently override this logic.
   while [[ "$args" =~ [[:space:]]-cpu([[:space:]][^[:space:]]+|=[^[:space:]]+)? ]]; do
     local cpu="${BASH_REMATCH[0]}"
     args="${args/$cpu/ }"
@@ -65,6 +67,8 @@ configureKvmCpuModel() {
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
 
   if [ -z "$CPU_MODEL" ]; then
+    # Host passthrough is intentionally non-migratable so QEMU exposes the full
+    # local CPU feature set instead of a migration-safe subset.
     CPU_MODEL="host"
     CPU_FEATURES+=",migratable=no"
   fi
@@ -106,6 +110,8 @@ configureHyperVFeatures() {
 
   disabled "$HV" && return 0
 
+  # Start with Hyper-V passthrough, then remove enlightenments the host cannot
+  # accelerate safely on the detected CPU/vendor combination.
   HV_FEATURES="hv_passthrough"
 
   if isAmdCpu; then
@@ -176,6 +182,8 @@ configureTcgCpuModel() {
     return 0
   fi
 
+  # TCG can use max for general amd64 guests, but Windows needs conservative
+  # vendor-specific models with known-problematic features disabled.
   if [[ "$ARCH" == "amd64" ]]; then
 
     if ! isWindowsBoot; then

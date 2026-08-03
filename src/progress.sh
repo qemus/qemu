@@ -22,6 +22,8 @@ writeInfo() {
 
   local content="$1"
 
+  # Publish progress with an atomic rename so websocket readers never observe a
+  # partially written HTML fragment.
   if ! printf '%s\n' "$content" > "$info_tmp"; then
     rm -f -- "$info_tmp"
     return 1
@@ -41,6 +43,8 @@ getBytes() {
   local mode="$2"
   local bytes="0"
 
+  # Counter mode reads aria2's completed/total byte pair; filesystem modes
+  # measure either apparent or actually allocated storage.
   if [[ "$mode" == "counter" ]]; then
     if [ -r "$path" ]; then
       read -r bytes < "$path" || bytes="0"
@@ -159,6 +163,7 @@ stopProgress() {
     exit 0
   fi
 
+  # TERM requests one final measurement and web update before the loop exits.
   stopping="Y"
   return 0
 }
@@ -249,6 +254,8 @@ while true; do
     log_mode="percent"
   fi
 
+  # Suppress startup noise from empty files and filesystem metadata until the
+  # operation has produced a meaningful amount of data.
   if (( bytes > 4096 )); then
 
     write_html="Y"
