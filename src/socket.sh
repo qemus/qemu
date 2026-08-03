@@ -18,6 +18,8 @@ refresh() {
   [[ "$msg" == "$lastmsg" ]] && return 0
 
   lastmsg="$msg"
+  # The noVNC client consumes a tiny line protocol: s updates the status message
+  # and c below requests a switch to the VNC canvas.
   echo "s: $msg"
 
   return 0
@@ -25,6 +27,8 @@ refresh() {
 
 refresh
 
+# Watch the directory rather than only the file because writers publish updates
+# through atomic rename, which appears as moved_to.
 inotifywait \
   -m -q \
   -e close_write,moved_to,delete \

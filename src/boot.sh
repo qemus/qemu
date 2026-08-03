@@ -17,6 +17,8 @@ TPM_SOCKET="/tmp/swtpm.sock"
 
 configureBootMode() {
 
+  # Supplying BIOS explicitly overrides BOOT_MODE so the custom firmware path
+  # cannot accidentally be combined with an OVMF configuration.
   [ -n "$BIOS" ] && BOOT_MODE="custom"
 
   case "${BOOT_MODE,,}" in
@@ -100,6 +102,8 @@ addWindowsBootOptions() {
 
   if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
 
+    # Windows expects a local-time hardware clock, and disabling S3/S4 avoids
+    # sleep states that cannot be resumed reliably in this container setup.
     BOOT_OPTS+=" -rtc base=localtime"
 
     if isQ35; then
@@ -114,6 +118,8 @@ addWindowsBootOptions() {
 
 clearNvram() {
 
+  # Keep firmware variables and TPM state isolated per boot mode so switching
+  # between plain, secure, and legacy configurations cannot mix their state.
   DEST="$STORAGE/${BOOT_MODE,,}"
 
   if enabled "$CLEAR"; then
@@ -144,6 +150,8 @@ prepareUefiRom() {
     warn "boot logo file ($logo) not found!"
   fi
 
+  # Build the firmware copy through a temporary file so an interrupted logo
+  # patch never replaces the last usable ROM.
   rm -f "$DEST.tmp"
 
   if ! disabled "$LOGO" &&
@@ -227,6 +235,8 @@ enableIgnoreMsrs() {
   result=$(<"$MSRS")
   result="${result//[![:print:]]/}"
 
+  # This host KVM setting is best-effort: unsupported MSR accesses should not
+  # terminate guests, but containers may lack permission to change the module.
   if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
     echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
@@ -266,6 +276,8 @@ detectSmbiosSerial() {
 
   if [ -r "$PS" ]; then
 
+    # Reuse the host product serial as a stable SMBIOS identity after stripping
+    # characters that cannot safely appear in the QEMU argument.
     BIOS_SERIAL=$(<"$PS")
     BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
 
@@ -322,6 +334,8 @@ startTpm() {
     rc=$?
   fi
 
+  # TPM is optional. Failure disables it for this run instead of preventing the
+  # virtual machine from booting.
   if (( rc != 0 )); then
     stopTpm
     error "Failed to start TPM emulator, reason: $rc"

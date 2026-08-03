@@ -52,7 +52,8 @@ configureAuthentication() {
   [ -n "${USERNAME:-}" ] && user="$USERNAME"
   [ -n "${PASSWORD:-}" ] && pass="$PASSWORD"
 
-  # Backwards compatibility
+  # PASS is the legacy web-password variable and intentionally overrides the
+  # newer general PASSWORD value for backwards compatibility.
   [ -n "${PASS:-}" ] && pass="$PASS"
 
   # Set password
@@ -88,6 +89,8 @@ configureIpv6Listen() {
 
   if [ -f /proc/net/if_inet6 ] && [[ "$(cat /proc/sys/net/ipv6/conf/all/disable_ipv6 2>/dev/null)" != "1" ]]; then
 
+    # Use one dual-stack socket when IPv6 is available; ipv6only=off keeps IPv4
+    # clients working on the same configured WEB_PORT.
     if ! sed -i \
       "s/listen $WEB_PORT default_server;/listen [::]:$WEB_PORT default_server ipv6only=off;/g" \
       /etc/nginx/sites-enabled/web.conf; then
@@ -169,6 +172,8 @@ startWebsocketServer() {
     return 1
   fi
 
+  # A short survival check catches immediate websocketd configuration failures
+  # before startup is reported as successful.
   local i
   for (( i = 1; i <= 5; i++ )); do
 

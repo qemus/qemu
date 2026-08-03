@@ -8,6 +8,8 @@ cd /run
 . utils.sh      # Load functions
 
 [ -f "/run/shm/qemu.end" ] && echo "QEMU is shutting down..." && exit 1
+# Treat the startup window as healthy so container health checks do not restart
+# the service before QEMU has had time to publish its PID.
 [ ! -s "/run/shm/qemu.pid" ] && echo "QEMU is not running yet..." && exit 0
 
 if disabled "$NETWORK"; then

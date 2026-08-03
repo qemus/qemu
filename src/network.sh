@@ -120,6 +120,8 @@ gatewayMAC() {
 
   local mac="$1"
 
+  # Derive a stable locally administered gateway MAC from the guest MAC so the
+  # guest does not discover a different router on every start.
   echo "$mac" | md5sum | sed 's/^\(..\)\(..\)\(..\)\(..\)\(..\).*$/02:\1:\2:\3:\4:\5/'
 }
 
@@ -194,6 +196,8 @@ upstreamIP() {
 
   last="${broadcast##*.}"
 
+  # Reserve a high unused address for system.lan, avoiding the guest and bridge
+  # gateway addresses at the bottom of the subnet.
   for (( last--; last>=2; last-- )); do
     candidate="${broadcast%.*}.$last"
     [[ "$candidate" == "$guest" || "$candidate" == "$gateway" ]] && continue
@@ -374,6 +378,8 @@ natGuestIP() {
     local start="30"
   fi
 
+  # Rotate through 172.30.0.0/16 to 172.254.0.0/16 and reject any candidate that
+  # overlaps an existing route inside the container.
   for (( second=start; second<=254; second++ )); do
     guest=$(guestIP "172.$second.$third.0" 2)
     subnet=$(networkCIDR "$guest") || return 1
@@ -617,6 +623,8 @@ getHostPorts() {
 
 getUserPorts() {
 
+  # User-mode networking exposes SSH by default, or RDP over both TCP and UDP for
+  # Windows, while excluding ports already owned by the container.
   local defaults="22"
   [[ "${BOOT_MODE:-}" == "windows"* ]] && defaults="3389/tcp,3389/udp"
   local list="$defaults,${USER_PORTS// /},"
@@ -818,6 +826,8 @@ configureVTAP() {
     (( rc != 0 )) && error "Cannot mknod: $TAP_PATH ($rc)" && return 1
   fi
 
+  # Keep the macvtap and vhost file descriptors open in this shell so QEMU can
+  # inherit them by their fixed descriptor numbers.
   { exec 30>>"$TAP_PATH"; rc=$?; } 2>/dev/null || :
 
   if (( rc != 0 )); then
@@ -861,6 +871,8 @@ configureSlirp() {
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
   if ! enabled "${DNSMASQ_DISABLE:-}"; then
+    # Preserve the original resolver, then point the container at local dnsmasq so
+    # host.lan resolves consistently for both the guest and helper processes.
     if [ ! -f /etc/resolv.dnsmasq ] && ! cp /etc/resolv.conf /etc/resolv.dnsmasq; then
       error "Failed to backup /etc/resolv.conf."
       return 1
@@ -945,6 +957,8 @@ configurePasst() {
 
   [ ! -f "$PASST" ] && cp /usr/bin/passt* /run
 
+  # Try passt quietly first; on failure rerun without quiet mode to capture a
+  # useful diagnostic before deciding whether to fall back to slirp.
   if ! "$PASST" ${PASST_OPTS:+$PASST_OPTS} >/dev/null 2>&1; then
 
     rm -f "$log"
@@ -1708,6 +1722,8 @@ addUpstream() {
   [ -n "$upstream" ] || return 1
   [ -n "$GATEWAY" ] || return 1
 
+  # system.lan is a synthetic /32 on the VM bridge and is DNATed to the real
+  # container gateway, avoiding a route through the guest itself.
   if ! ip address add "$upstream/32" dev "$BRIDGE"; then
     if ! enabled "$ROOTLESS" || enabled "$DEBUG"; then
       warn "failed to add the system.lan address; access through that name will be unavailable."
@@ -1867,6 +1883,8 @@ closeNetwork() {
 
   disabled "$NETWORK" && return 0
 
+  # Tear down artifacts from an earlier initialization before selecting and
+  # configuring the current network mode.
   closeInterfaces
 
   return 0

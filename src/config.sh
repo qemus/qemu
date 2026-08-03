@@ -33,6 +33,8 @@ configureMemory() {
 
 configureSerial() {
 
+  # Interactive graceful shutdown needs a socket-backed serial relay; otherwise
+  # QEMU may own the terminal directly through the configured SERIAL backend.
   if enabled "${SHUTDOWN:-}" && interactive; then
     SERIAL_OPTS="-chardev socket,id=console0,path=$CONSOLE_SOCKET,reconnect-ms=1000"
     SERIAL_OPTS+=" -serial chardev:console0"
@@ -80,6 +82,8 @@ configureVirtioDevices() {
   DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
   DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$bus"
 
+  # Windows receives no balloon device by default because the guest driver is not
+  # guaranteed to be present; explicitly enabling ballooning opts into it.
   if [[ "${BOOT_MODE,,}" != "windows"* ]] || enabled "${BALLOONING:-}"; then
     if ! enabled "${BALLOONING:-}"; then
       DEV_OPTS+=" -device virtio-balloon-pci,id=balloon0,bus=$bus"
@@ -126,6 +130,8 @@ configureAudio() {
 
   AUDIO_OPTS+=" -audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
 
+  # A USB audio device needs a compatible controller even when the main USB
+  # setting uses EHCI or is disabled.
   if [[ "$model" == usb-* ]]; then
     case "${USB,,}" in
       *xhci*|*ohci*|*uhci*)
@@ -164,6 +170,8 @@ configureCompatibility() {
       return 0 ;;
   esac
 
+  # OVMF guests receive the TianoCore memory-attribute compatibility switch;
+  # legacy and custom firmware do not implement this fw_cfg option.
   CMP_OPTS="-fw_cfg name=opt/org.tianocore/UninstallMemAttrProtocol,string=y"
 
   return 0
@@ -171,6 +179,8 @@ configureCompatibility() {
 
 buildArguments() {
 
+  # Keep the final command as a normalized argument string because entry.sh
+  # intentionally expands user-supplied ARGUMENTS together with generated flags.
   ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
   ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 

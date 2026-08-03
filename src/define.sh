@@ -5,6 +5,8 @@ pipe() {
   local code="99"
   local msg="Failed to connect to $1, reason:"
 
+  # Code 99 is an internal success sentinel, kept outside curl's normal exit
+  # statuses so the request result can be classified after the command.
   curl --disable --silent --max-time 15 --fail --location "${1}" || {
     code="$?"
   }
@@ -32,6 +34,8 @@ getURL() {
   local image=""
   local release=""
 
+  # The download form resolves the same URL as the url form, but later appends
+  # a sanitized release token for user-facing progress messages.
   [[ "$output" == "download" ]] && ret="url"
 
   case "${id,,}" in
@@ -225,6 +229,8 @@ getURL() {
       [[ "$url" == "null" ]] && url=""
       [[ "$arm" == "null" ]] && arm=""
   
+      # A recognized distribution without an image for the selected architecture
+      # is an explicit error rather than silently using the other architecture.
       if [[ "${PLATFORM,,}" != "arm64" ]]; then
         if [ -n "$name" ] && [ -z "$url" ]; then
           error "No image for $name available!"

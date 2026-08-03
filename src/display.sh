@@ -39,12 +39,16 @@ case "${DISPLAY,,}" in
     ;;
 esac
 
+# The current virgl host path is limited to Intel-compatible amd64 render nodes;
+# all other hosts retain the normal software/VNC display configuration.
 if ! enabled "$GPU" || isAmdCpu || [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
 case "${APP:-}" in
   "Windows" | "macOS" )
+    # Windows and macOS acceleration remains experimental; DEBUG=Y deliberately
+    # allows advanced users to force the path for diagnostics.
     if ! enabled "$DEBUG"; then
       warn "GPU acceleration is not supported under $APP, ignoring GPU=Y."
       return 0
@@ -69,6 +73,8 @@ DISPLAY_OPTS+=" -device $VGA"
 CARD_NUMBER=$(echo "$RENDERNODE" | grep -oP '(?<=renderD)\d+')
 CARD_DEVICE="/dev/dri/card$((CARD_NUMBER - 128))"
 
+# Containers normally have no udev, so reconstruct the matching DRM card and
+# render character devices from the render-node minor number when necessary.
 if [ ! -c "$CARD_DEVICE" ]; then
   if mknod "$CARD_DEVICE" c 226 $((CARD_NUMBER - 128)); then
     chmod 666 "$CARD_DEVICE"

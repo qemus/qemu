@@ -113,6 +113,8 @@ allocateRaw() {
     return $?
   fi
 
+  # Prefer normal preallocation, then keep-size allocation, and finally a sparse
+  # truncate so filesystems with limited fallocate support can still work.
   fallocate -l "$dataSize" "$diskFile" &>/dev/null && return 0
   fallocate -l -x "$dataSize" "$diskFile" && return 0
   truncate -s "$dataSize" "$diskFile" || return 1
@@ -126,6 +128,8 @@ getDiskOptions() {
   local diskFmt="$2"
   local diskParam="$DISK_ALLOC"
 
+  # qcow2 on a copy-on-write filesystem would otherwise add a second COW layer;
+  # request NOCOW for the image when the backend supports it.
   isCow "$fs" && diskParam+=",nocow=on"
 
   if [[ "${diskFmt,,}" != "raw" ]]; then
@@ -145,6 +149,8 @@ normalizeSize() {
   local free dataSize
   local spare=1073741824
 
+  # Dynamic sizes are based on current free space. max leaves a 1 GiB reserve,
+  # while half intentionally consumes only half of what is available.
   if [[ "${diskSpace,,}" == "max" || "${diskSpace,,}" == "half" ]]; then
 
     free=$(df --output=avail -B 1 "$dir" | tail -n 1)
@@ -256,6 +262,8 @@ createDisk() {
   case "${diskFmt,,}" in
     raw)
 
+      # The NOCOW attribute must be applied before allocating a raw file; setting
+      # it after blocks exist would not disable COW for those blocks.
       if isCow "$fs"; then
         if ! touch "$diskFile"; then
           error "$failure" && exit 77
@@ -356,6 +364,8 @@ convertDisk() {
   local diskBase="$5"
   local diskDesc="$6"
   local fs="$7"
+  # Convert into a sibling temporary file and replace the source only after the
+  # destination is complete, preventing a failed conversion from losing the disk.
   local tmpFile="$diskBase.tmp"
 
   local gb dir base attributes
@@ -634,6 +644,8 @@ finishDisks () {
 
   local type
 
+  # The shared iothread object is added only when at least one selected device
+  # type actually references it.
   [ -z "$IOTHREAD_OPT" ] && return 0
 
   for type in "${DISK_TYPE,,}" "${MEDIA_TYPE,,}"; do
@@ -687,6 +699,8 @@ addDisk () {
 
   if [ ! -f "$diskFile" ] || [ ! -s "$diskFile" ]; then
 
+    # If the requested format is missing but the same managed disk exists in the
+    # opposite format, convert it instead of creating a blank replacement.
     if [[ "${diskFmt,,}" != "raw" ]]; then
       local previousFmt="raw"
     else
@@ -727,6 +741,8 @@ addDisk () {
 
   fi
 
+  # Sparse images can advertise more capacity than the host can currently hold;
+  # warn when future guest growth would exceed the remaining filesystem space.
   if [ -f "$diskFile" ] && disabled "$ALLOCATE"; then
 
     currentSize=$(getSize "$diskFile") || exit 73
@@ -829,6 +845,8 @@ addDevice () {
     physical="${physical%% *}"
   fi
 
+  # Report non-512 physical geometry to QEMU so guests align I/O correctly;
+  # the normal 512-byte case needs no explicit device option.
   if [ -z "$logical" ] || [ -z "$physical" ]; then
     warn "Failed to determine the sector size for $diskDev"
   elif [[ "$physical" != "512" ]]; then
@@ -861,6 +879,8 @@ fi
 IOTHREAD_OPT=",iothread=io2"
 [[ "${BOOT_MODE,,}" == "windows_legacy" ]] && IOTHREAD_OPT=""
 
+# Native AIO requires direct I/O. Buffered cache modes are automatically moved
+# to the thread backend rather than constructing an invalid QEMU combination.
 if [[ "${DISK_IO,,}" == "native" && "${DISK_CACHE,,}" != "none" && "${DISK_CACHE,,}" != "directsync" ]]; then
   warn "DISK_IO=native requires direct I/O caching, using DISK_IO=threads with DISK_CACHE=$DISK_CACHE."
   DISK_IO="threads"
@@ -898,6 +918,8 @@ if [[ "$DISK_OPTIONS" =~ [[:space:]] ]]; then
   exit 78
 fi
 
+# Choose a conservative removable-media controller for each platform; Windows
+# legacy mode lets QEMU select the controller automatically.
 if [[ "${PLATFORM,,}" != "arm64" ]]; then
   FALLBACK="ide"
 else
@@ -926,6 +948,8 @@ fi
 if [ -s "$BOOT" ]; then
   case "${BOOT,,}" in
     *".iso" )
+        # Hybrid ISOs contain an MBR signature and must be attached as USB disks;
+        # Windows install media is kept on its expected optical-media path.
         if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
           hybrid="0000"
         else
@@ -1085,6 +1109,8 @@ DISK_SIZES=( "$DISK_SIZE" "$DISK2_SIZE" "$DISK3_SIZE" "$DISK4_SIZE" "$DISK5_SIZE
 DISK_INDEXES=( "3" "4" "5" "6" "7" "8" )
 DISK_ADDRESSES=( "0xa" "0xb" "0xc" "0xd" "0xe" "0xf" )
 
+# Source precedence is explicit block device, then bind-mounted image, then the
+# managed image created under the corresponding storage directory.
 for i in "${!DISK_FILES[@]}"; do
 
   if [ -n "${DISK_DEVICES[i]}" ]; then
