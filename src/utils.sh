@@ -599,6 +599,18 @@ makeDir() {
   return 0
 }
 
+memoryName() {
+
+  local name="$APP"
+
+  if [[ "$name" == "QEMU" ]]; then
+    name="the virtual machine"
+  fi
+
+  echo "$name"
+  return 0
+}
+
 finiteMemoryLimit() {
 
   local limit="$1"
