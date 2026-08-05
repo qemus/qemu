@@ -144,6 +144,15 @@ normalizeRamSize() {
   RAM_SPARE=500000000
   RAM_MINIMUM="${RAM_MINIMUM:-136314880}"
 
+  RAM_MINIMUM=$(strip "$RAM_MINIMUM")
+  RAM_MINIMUM="${RAM_MINIMUM// /}"
+  RAM_MINIMUM=$(echo "${RAM_MINIMUM^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+  numfmt --from=iec "$RAM_MINIMUM" &>/dev/null || {
+    error "Invalid RAM_MINIMUM: $RAM_MINIMUM"
+    exit 16
+  }
+  RAM_MINIMUM=$(numfmt --from=iec "$RAM_MINIMUM")
+
   RAM_SIZE=$(strip "$RAM_SIZE")
   RAM_SIZE="${RAM_SIZE// /}"
   [ -z "$RAM_SIZE" ] && RAM_SIZE="2G"
@@ -165,7 +174,7 @@ normalizeRamSize() {
     wanted=$(numfmt --from=iec "$RAM_SIZE")
 
     if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
-      error "$(memoryName) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but RAM_SIZE is set to $(formatBytes "$wanted")."
+      error "$(app) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but RAM_SIZE is set to $(formatBytes "$wanted")."
       exit 16
     fi
 
