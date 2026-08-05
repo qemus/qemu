@@ -57,7 +57,7 @@ gracefulShutdown() {
 
   code=$(signalCode "$sig")
 
-  if [ -n "${SHUTDOWN_SIGNAL:-}" ]; then
+  if (( SHUTDOWN_SIGNAL != 0 )); then
 
     # A second Ctrl+C stops the graceful wait loop and advances to forced cleanup.
     if (( code == 130 && SHUTDOWN_SIGNAL == code )); then
