@@ -200,7 +200,7 @@ normalizeRamSize() {
   getMemoryInfo
 
   RAM_SPARE=500000000
-  RAM_MINIMUM=136314880
+  RAM_MINIMUM="${RAM_MINIMUM:-136314880}"
 
   RAM_SIZE=$(strip "$RAM_SIZE")
   RAM_SIZE="${RAM_SIZE// /}"
