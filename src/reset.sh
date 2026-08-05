@@ -157,9 +157,17 @@ normalizeRamSize() {
     fi
 
     RAM_SIZE=$(echo "${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
-    numfmt --from=iec "$RAM_SIZE" &>/dev/null || { error "Invalid RAM_SIZE: $RAM_SIZE" && exit 16; }
+    numfmt --from=iec "$RAM_SIZE" &>/dev/null || {
+      error "Invalid RAM_SIZE: $RAM_SIZE"
+      exit 16
+    }
+
     wanted=$(numfmt --from=iec "$RAM_SIZE")
-    [ "$wanted" -lt "$RAM_MINIMUM" ] && error "RAM_SIZE is too low: $RAM_SIZE" && exit 16
+
+    if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
+      error "$(memoryName) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but RAM_SIZE is set to $(formatBytes "$wanted")."
+      exit 16
+    fi
 
   fi
 
