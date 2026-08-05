@@ -603,7 +603,7 @@ findFile() {
 
   # A directory at a file bind path usually means the host source did not exist
   # when the container runtime created the mount point.
-  if [ -d "$dir" ] && ! hasDisk; then
+  if [ -d "$dir" ] && ! hasData; then
     error "The path $dir maps to a file that does not exist!"
     exit 37
   fi
