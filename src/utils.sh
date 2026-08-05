@@ -599,7 +599,7 @@ makeDir() {
   return 0
 }
 
-memoryName() {
+app() {
 
   local name="$APP"
 
