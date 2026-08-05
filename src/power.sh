@@ -57,7 +57,7 @@ gracefulShutdown() {
 
   code=$(signalCode "$sig")
 
-  if [ -f "$QEMU_END" ]; then
+  if (( SHUTDOWN_SIGNAL != 0 )); then
 
     # A second Ctrl+C stops the graceful wait loop and advances to forced cleanup.
     if (( code == 130 && SHUTDOWN_SIGNAL == code )); then
@@ -70,12 +70,13 @@ gracefulShutdown() {
     return
   fi
 
+  SHUTDOWN_SIGNAL=$code
+
   # Shutdown handlers must continue through missing processes and failed cleanup
   # commands instead of being aborted by errexit.
   set +e
-  SHUTDOWN_SIGNAL=$code
-
   touch "$QEMU_END"
+
   echo && info "Received $sig signal, sending ACPI shutdown signal..."
 
   if ! readQemuPid pid; then
