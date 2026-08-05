@@ -30,11 +30,11 @@ checkConfiguredMemory() {
       warn "$msg it will automatically be adjusted to a lower amount."
 
     fi
-  
+
   else
 
     if (( (wanted + (RAM_SPARE * 3)) > RAM_AVAIL )); then
-  
+
       local msg="your configured RAM_SIZE of ${RAM_SIZE/G/ GB} is very close to the $avail_mem of free memory available,"
 
       if [[ "${FS,,}" == "zfs" ]]; then
@@ -42,9 +42,9 @@ checkConfiguredMemory() {
       else
         warn "$msg please consider a lower amount."
       fi
-  
+
     fi
-  
+
   fi
 
   return 0
