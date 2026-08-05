@@ -64,7 +64,7 @@ configureHalfMemory() {
     local target=$(( wanted / 1048577 ))
     RAM_SIZE="${target}M"
 
-    info "Allocated $(formatBytes "$wanted") of RAM for $(memoryName)."
+    info "Allocated $(formatBytes "$wanted") of RAM for $(app)."
 
   else
 
@@ -101,7 +101,7 @@ configureMaxMemory() {
   local target=$(( wanted / 1048577 ))
   RAM_SIZE="${target}M"
 
-  info "Allocated $(formatBytes "$wanted") of RAM for $(memoryName)."
+  info "Allocated $(formatBytes "$wanted") of RAM for $(app)."
 
   return 0
 }
@@ -112,7 +112,7 @@ checkMinimumMemory() {
   wanted=$(numfmt --from=iec "$RAM_SIZE")
 
   if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
-    error "$(memoryName) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but only $(formatBytes "$wanted") can be allocated."
+    error "$(app) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but only $(formatBytes "$wanted") can be allocated."
     exit 16
   fi
 
