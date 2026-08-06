@@ -4,6 +4,9 @@ set -Eeuo pipefail
 msg="Checking memory..."
 enabled "$DEBUG" && echo "$msg"
 
+RAM_WARNING=""
+RAM_ALLOCATION=""
+
 checkConfiguredMemory() {
 
   if disabled "$RAM_CHECK" || [[ "${RAM_SIZE,,}" == "max" || "${RAM_SIZE,,}" == "half" ]]; then
@@ -27,7 +30,7 @@ checkConfiguredMemory() {
     else
 
       RAM_SIZE="max"
-      warn "$msg it will automatically be adjusted to a lower amount."
+      RAM_WARNING="$msg it will automatically be adjusted to a lower amount."
 
     fi
 
@@ -63,8 +66,7 @@ configureHalfMemory() {
     # Divide by one byte more than a MiB to round down
     local target=$(( wanted / 1048577 ))
     RAM_SIZE="${target}M"
-
-    info "Allocated $(formatBytes "$wanted") of RAM for $(app)."
+    RAM_ALLOCATION="$wanted"
 
   else
 
@@ -100,8 +102,7 @@ configureMaxMemory() {
   # Divide by one byte more than a MiB to round down
   local target=$(( wanted / 1048577 ))
   RAM_SIZE="${target}M"
-
-  info "Allocated $(formatBytes "$wanted") of RAM for $(app)."
+  RAM_ALLOCATION="$wanted"
 
   return 0
 }
@@ -125,5 +126,8 @@ checkConfiguredMemory
 configureHalfMemory
 configureMaxMemory
 checkMinimumMemory
+
+[ -n "$RAM_WARNING" ] && warn "$RAM_WARNING"
+[ -n "$RAM_ALLOCATION" ] && info "Allocated $(formatBytes "$RAM_ALLOCATION") of RAM for $(app)."
 
 return 0
