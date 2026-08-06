@@ -74,16 +74,8 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
 
   apt-get clean
 
-  # Configure QEMU
-  mkdir -p /etc/qemu
-  echo "allow br0" > /etc/qemu/bridge.conf
-
   # Install noVNC
   sh /run/novnc.sh "$VERSION_VNC"
-
-  # Configure nginx
-  unlink /etc/nginx/sites-enabled/default
-  sed -i 's/^worker_processes.*/worker_processes 1;/' /etc/nginx/nginx.conf
 
   # Set version file
   echo "$VERSION_ARG" > /etc/version
