@@ -6,7 +6,7 @@ enabled "$DEBUG" && echo "$msg"
 
 normalizeMemory() {
 
-  local wanted
+  local name="${1:-$(app)}"
 
   RAM_SPARE=500000000
   RAM_MINIMUM="${RAM_MINIMUM:-136314880}"
@@ -38,10 +38,11 @@ normalizeMemory() {
       exit 16
     }
 
+    local wanted
     wanted=$(numfmt --from=iec "$RAM_SIZE")
 
     if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
-      error "$(app) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but RAM_SIZE is set to $(formatBytes "$wanted")."
+      error "$name requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but RAM_SIZE is set to $(formatBytes "$wanted")."
       exit 16
     fi
 
@@ -176,12 +177,13 @@ showMemoryLimitHint() {
 
 checkMinimumMemory() {
 
+  local name="${1:-$(app)}"
   local wanted
   wanted=$(numfmt --from=iec "$RAM_SIZE")
 
   if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
 
-    error "$(app) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but only $(formatBytes "$wanted") can be allocated."
+    error "$name requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but only $(formatBytes "$wanted") can be allocated."
 
     showMemoryLimitHint
 
@@ -191,12 +193,13 @@ checkMinimumMemory() {
   return 0
 }
 
-checkMemory() {
+checkMemoryAllocation() {
 
   local final="${1:-N}"
+  local name="${2:-${RAM_NAME:-$(app)}}"
   local configured
 
-  normalizeMemory
+  normalizeMemory "$name"
   configured="$RAM_SIZE"
 
   RAM_WARNING=""
@@ -207,7 +210,7 @@ checkMemory() {
 
   configureHalfMemory
   configureMaxMemory
-  checkMinimumMemory
+  checkMinimumMemory "$name"
 
   if enabled "$final"; then
     [ -n "$RAM_WARNING" ] && warn "$RAM_WARNING"
@@ -219,6 +222,25 @@ checkMemory() {
   return 0
 }
 
-checkMemory
+checkMemoryRequirement() {
+
+  local name="${1:-$(app)}"
+
+  # Retain the description so the final check uses the same error message.
+  RAM_NAME="$name"
+
+  checkMemoryAllocation "N" "$name"
+
+  return 0
+}
+
+finalizeMemory() {
+
+  checkMemoryAllocation "Y" "${RAM_NAME:-$(app)}"
+
+  return 0
+}
+
+checkMemoryRequirement
 
 return 0
