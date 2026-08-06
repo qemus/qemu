@@ -189,8 +189,8 @@ buildArguments() {
 
 finalizeMemory
 
-configureSerial
 configureMemory
+configureSerial
 configureMonitor
 configureMachine
 configureProcessor
