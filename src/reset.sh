@@ -101,8 +101,11 @@ checkCores() {
 
 checkSockets() {
 
-  if grep -qi "socket(s)" <<< "$(lscpu)"; then
-    SOCKETS=$(lscpu | grep -m 1 -i 'socket(s)' | awk '{print $2}')
+  local lscpu_out
+  lscpu_out=$(lscpu 2>/dev/null || true)
+
+  if grep -qi "socket(s)" <<< "$lscpu_out"; then
+    SOCKETS=$(grep -m 1 -i 'socket(s)' <<< "$lscpu_out" | awk '{print $2}')
     [ -z "${SOCKETS##*[!0-9]*}" ] && SOCKETS=1
     [ "$SOCKETS" -lt "1" ] && SOCKETS=1
   fi
