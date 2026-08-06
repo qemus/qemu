@@ -202,5 +202,6 @@ configureAudio
 configureCompatibility
 
 buildArguments
+enableTrap
 
 return 0
