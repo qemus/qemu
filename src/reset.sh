@@ -82,18 +82,45 @@ checkPrivileged() {
   return 0
 }
 
-normalizeCpuCores() {
+checkCores() {
 
   CPU_CORES=$(strip "$CPU_CORES")
   [ -z "$CPU_CORES" ] && CPU_CORES=2
   [[ "${CPU_CORES,,}" == "max" ]] && CPU_CORES="$CORES"
   [[ "${CPU_CORES,,}" == "half" ]] && CPU_CORES=$(( CORES / 2 ))
   [ -z "${CPU_CORES##*[!0-9]*}" ] && error "Invalid amount of CPU_CORES: $CPU_CORES" && exit 15
-
   [ "$CPU_CORES" -lt "1" ] && CPU_CORES=1
+
   if [ "$CPU_CORES" -gt "$CORES" ]; then
     warn "The amount for CPU_CORES (${CPU_CORES}) exceeds the amount of logical cores available (${CORES}) and will be limited."
     CPU_CORES="$CORES"
+  fi
+
+  return 0
+}
+
+checkSockets() {
+
+  if grep -qi "socket(s)" <<< "$(lscpu)"; then
+    SOCKETS=$(lscpu | grep -m 1 -i 'socket(s)' | awk '{print $2}')
+    [ -z "${SOCKETS##*[!0-9]*}" ] && SOCKETS=1
+    [ "$SOCKETS" -lt "1" ] && SOCKETS=1
+  fi
+
+  return 0
+}
+
+checkHost() {
+
+  if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
+    DISK_IO="threads"
+    DISK_CACHE="writeback"
+  fi
+
+  if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
+    if [[ "${FS,,}" == "btrfs" ]]; then
+      warn "you are using the BTRFS filesystem for /storage, this might introduce issues with Windows Setup!"
+    fi
   fi
 
   return 0
@@ -136,7 +163,7 @@ checkStorage() {
   return 0
 }
 
-normalizeRamSize() {
+checkRam() {
 
   # Read host and container memory limits.
   getMemoryInfo
@@ -284,15 +311,10 @@ ARCH=$(dpkg --print-architecture)
 CORES=$(grep -c '^processor' /proc/cpuinfo)
 IFS=. read -r KERNEL MINOR _ <<< "$SYS"
 
-if grep -qi "socket(s)" <<< "$(lscpu)"; then
-  SOCKETS=$(lscpu | grep -m 1 -i 'socket(s)' | awk '{print $2}')
-  [ -z "${SOCKETS##*[!0-9]*}" ] && SOCKETS=1
-  [ "$SOCKETS" -lt "1" ] && SOCKETS=1
-fi
-
-normalizeCpuCores
+checkSockets
+checkCores
 checkStorage
-normalizeRamSize
+checkRam
 
 # Print system info
 SYS="${SYS/-generic/}"
@@ -310,17 +332,7 @@ echo
 
 # Check compatibility
 
-if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
-  DISK_IO="threads"
-  DISK_CACHE="writeback"
-fi
-
-if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
-  if [[ "${FS,,}" == "btrfs" ]]; then
-    warn "you are using the BTRFS filesystem for /storage, this might introduce issues with Windows Setup!"
-  fi
-fi
-
+checkHost
 checkKvm
 
 # Cleanup dirs
