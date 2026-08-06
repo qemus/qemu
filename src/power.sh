@@ -103,6 +103,8 @@ enableTrap() {
 
   enabled "$SHUTDOWN" || return 0
 
+  # Keep Ctrl-C available to interactive users without installing an unnecessary
+  # SIGINT handler for background/container execution.
   if interactive; then
     _trap gracefulShutdown SIGINT
   fi
