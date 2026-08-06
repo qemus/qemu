@@ -157,7 +157,7 @@ showMemoryLimitHint() {
   local kernel
   kernel=$(uname -r)
 
-  if [[ "${kernel,,}" == *microsoft-standard-wsl2* ]]; then
+  if [[ "${kernel,,}" == *-wsl2* ]]; then
     info "WSL2 detected. Increase its memory limit in \"%UserProfile%\\.wslconfig\" by setting \"memory=<size>\" under \"[wsl2]\"."
     info "Then close Docker Desktop, run \"wsl --shutdown\" in PowerShell and restart Docker Desktop for the new limit to take effect."
   fi
