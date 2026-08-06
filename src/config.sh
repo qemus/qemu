@@ -187,6 +187,8 @@ buildArguments() {
   return 0
 }
 
+checkMemory "Y"
+
 configureSerial
 configureMemory
 configureMonitor
