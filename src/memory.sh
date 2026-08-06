@@ -45,6 +45,11 @@ normalizeMemory() {
       exit 16
     fi
 
+    # QEMU requires a whole-number memory value, so convert decimal sizes to MiB.
+    if [[ "$RAM_SIZE" == *.* ]]; then
+      RAM_SIZE="$(( wanted / 1048576 ))M"
+    fi
+
   fi
 
   return 0
