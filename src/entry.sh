@@ -9,7 +9,7 @@ cd /run
 
 . start.sh      # Startup hook
 . utils.sh      # Load functions
-. reset.sh      # Initialize system
+. init.sh       # Initialize system
 . memory.sh     # Check memory
 . server.sh     # Start webserver
 . define.sh     # Define images
