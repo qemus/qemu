@@ -26,7 +26,7 @@ case "${DISPLAY,,}" in
     DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} -vga ${VGA}"
     ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:${port},websocket=${WSS_PORT}${LOSSY_OPT} -vga ${VGA}"
+    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} -vga ${VGA}"
     ;;
   "disabled" )
     DISPLAY_OPTS="-display none -vga ${VGA}"
@@ -65,7 +65,7 @@ DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
 
 [[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :${port}${LOSSY_OPT}"
-[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :${port},websocket=${WSS_PORT}${LOSSY_OPT}"
+[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT}"
 
 [ ! -d /dev/dri ] && mkdir -m 755 /dev/dri
 
