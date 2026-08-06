@@ -158,8 +158,12 @@ showMemoryLimitHint() {
   kernel=$(uname -r)
 
   if [[ "${kernel,,}" == *-wsl2* ]]; then
-    info "WSL2 detected. Increase its memory limit in \"%UserProfile%\\.wslconfig\" by setting \"memory=<size>\" under \"[wsl2]\"."
-    info "Then close Docker Desktop, run \"wsl --shutdown\" in PowerShell and restart Docker Desktop for the new limit to take effect."
+    echo
+    info "Docker Desktop (WSL2) is detected, follow these instructions:"
+    info ""
+    info "Increase the memory limit in \"%UserProfile%\\.wslconfig\" by setting \"memory=<size>\" under \"[wsl2]\"."
+    info "Then run \"wsl --shutdown\" in PowerShell and restart Docker Desktop for the new limit to take effect."
+    echo
   fi
 
   return 0
@@ -173,7 +177,7 @@ checkMinimumMemory() {
   if [ "$wanted" -lt "$RAM_MINIMUM" ]; then
 
     error "$(app) requires at least $(formatBytes "$RAM_MINIMUM") of RAM, but only $(formatBytes "$wanted") can be allocated."
-    echo
+
     showMemoryLimitHint
 
     exit 16
