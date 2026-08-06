@@ -1467,6 +1467,7 @@ downloadToFile() {
   local wget_resume=()
   local aria_display="N"
   local aria_resume="false"
+  local allocation="none"
   local default_interval=536870912
   local interval="$default_interval"
   local progress_pid status log
@@ -1474,6 +1475,7 @@ downloadToFile() {
   local agent custom_agent="N"
   local output="" reason=""
   local cancel_signal=""
+  local probe=""
 
   if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
     error "Invalid connection count: $connections"
@@ -1528,6 +1530,20 @@ downloadToFile() {
       error "aria2c is required when using multiple download connections."
       return 1
     fi
+
+    # Test the destination filesystem directly instead of maintaining an
+    # incomplete filesystem blacklist. Unsupported filesystems fall back to
+    # no preallocation while retaining multi-connection downloads.
+    if command -v fallocate >/dev/null &&
+        probe=$(mktemp -p "$dir" .fallocate.XXXXXX 2>/dev/null); then
+
+      if fallocate -l 1048576 "$probe" 2>/dev/null; then
+        allocation="falloc"
+      fi
+
+      rm -f -- "$probe" || :
+    fi
+
   elif ! command -v wget >/dev/null; then
     error "The wget command was not found."
     return 2
@@ -1576,7 +1592,7 @@ downloadToFile() {
       --out="$file" \
       --split="$connections" \
       --max-connection-per-server="$connections" \
-      --file-allocation=falloc \
+      --file-allocation="$allocation" \
       --continue="$aria_resume" \
       --always-resume=false \
       --allow-overwrite=true \
