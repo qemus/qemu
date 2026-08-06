@@ -7,6 +7,18 @@ info () { printf "%b%s%b" "\E[1;34m❯ \E[1;36m" "${1:-}" "\E[0m\n"; }
 error () { printf "%b%s%b" "\E[1;31m❯ " "ERROR: ${1:-}" "\E[0m\n" >&2; }
 warn () { printf "%b%s%b" "\E[1;31m❯ " "Warning: ${1:-}" "\E[0m\n" >&2; }
 
+app() {
+
+  local name="$APP"
+
+  if [[ "$name" == "QEMU" ]]; then
+    name="the virtual machine"
+  fi
+
+  echo "$name"
+  return 0
+}
+
 _trap() {
 
   local func="$1"; shift
@@ -596,18 +608,6 @@ makeDir() {
     return 0
   fi
 
-  return 0
-}
-
-app() {
-
-  local name="$APP"
-
-  if [[ "$name" == "QEMU" ]]; then
-    name="the virtual machine"
-  fi
-
-  echo "$name"
   return 0
 }
 

@@ -99,12 +99,19 @@ gracefulShutdown() {
   finish "$code"
 }
 
-enabled "$SHUTDOWN" || return 0
+enableTrap() {
 
-if interactive; then
-  _trap gracefulShutdown SIGINT
-fi
+  enabled "$SHUTDOWN" || return 0
 
-_trap gracefulShutdown SIGTERM SIGHUP SIGABRT SIGQUIT
+  # Keep Ctrl-C available to interactive users without installing an unnecessary
+  # SIGINT handler for background/container execution.
+  if interactive; then
+    _trap gracefulShutdown SIGINT
+  fi
+
+  _trap gracefulShutdown SIGTERM SIGHUP SIGABRT SIGQUIT
+
+  return 0
+}
 
 return 0
