@@ -574,10 +574,6 @@ getReservedPorts() {
     [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT/tcp,"
   fi
 
-  if [[ "${display,,}" == "web" ]] || ! disabled "${WEB:-}"; then
-    [ -n "${WSS_PORT:-}" ] && list+="$WSS_PORT/tcp,"
-  fi
-
   # Reserve every port used by the web server and its internal proxy routes.
   if ! disabled "${WEB:-}"; then
     [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT/tcp,"
@@ -989,6 +985,17 @@ configurePasst() {
   fi
 
   IP="$ip"
+  return 0
+}
+
+configureBridge() {
+
+  local file="/etc/qemu/bridge.conf"
+
+  [ -e "$file" ] && return 0
+  mkdir -p "${file%/*}" || return 0
+  echo "allow br0" > "$file" || return 0
+
   return 0
 }
 
@@ -2267,6 +2274,7 @@ initializeNetwork() {
 
   configureMTU
   configureMAC
+  configureBridge
 
   showHostInfo
 
