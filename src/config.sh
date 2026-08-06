@@ -187,7 +187,7 @@ buildArguments() {
   return 0
 }
 
-checkMemory "Y"
+finalizeMemory
 
 configureSerial
 configureMemory
