@@ -2220,7 +2220,7 @@ showHostInfo() {
     echo "❯ DNS: $nameservers"
   fi
 
-  enabled "$DEBUG' && echo
+  enabled "$DEBUG" && echo
   return 0
 }
 
