@@ -574,11 +574,9 @@ getReservedPorts() {
     [ -n "${VNC_PORT:-}" ] && list+="$VNC_PORT/tcp,"
   fi
 
-  # Reserve every port used by the web server and its internal proxy routes.
+  # Reserve the public web server port.
   if ! disabled "${WEB:-}"; then
     [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT/tcp,"
-    [ -n "${WSD_PORT:-}" ] && list+="$WSD_PORT/tcp,"
-    [ -n "${AUX_PORT:-}" ] && list+="$AUX_PORT/tcp,"
   fi
 
   normalizePorts "$list" "$mode"

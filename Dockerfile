@@ -5,6 +5,7 @@ FROM debian:trixie-slim
 ARG TARGETARCH
 ARG VERSION_ARG="0.0"
 ARG VERSION_QMP="0.0.6"
+ARG VERSION_WSD="0.4.2"
 ARG VERSION_UTK="1.2.0"
 ARG VERSION_VNC="1.7.0"
 ARG VERSION_OVMF="2025.11-5"
@@ -46,7 +47,6 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     diffutils \
     qemu-utils \
     util-linux \
-    websocketd \
     iputils-ping \
     genisoimage \
     inotify-tools \
@@ -66,6 +66,10 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   # Install SeaBIOS package
   wget "https://deb.debian.org/debian/pool/main/s/seabios/seabios_${VERSION_SEABIOS}_all.deb" -O /tmp/seabios.deb -q --timeout=10
   dpkg -i /tmp/seabios.deb
+
+  # Install websocketd package
+  wget "https://github.com/qemus/websocketd/releases/download/v${VERSION_WSD}/websocketd-${VERSION_WSD}_${TARGETARCH}.deb" -O /tmp/wsd.deb -q --timeout=10
+  dpkg -i /tmp/wsd.deb
 
   # Install newer Microsoft Secure Boot variables from SID
   wget "https://deb.debian.org/debian/pool/main/e/edk2/ovmf-generic_${VERSION_OVMF}_all.deb" -O /tmp/ovmf.deb -q --timeout=10
