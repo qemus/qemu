@@ -25,10 +25,14 @@ supportsAudio() {
 
 showAudioControl() {
 
-  sed -i \
+  if ! sed -i \
     -e 's/id="noVNC_setting_audio_row" hidden/id="noVNC_setting_audio_row"/' \
     -e 's/id="noVNC_setting_audio_separator" hidden/id="noVNC_setting_audio_separator"/' \
     "$NOVNC_HTML"
+  then
+    error "Failed to update noVNC audio controls!"
+    return 1
+  fi
 
   return 0
 }
