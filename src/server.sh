@@ -187,23 +187,32 @@ startWebsocketServer() {
     return 1
   fi
 
-  # A short survival check catches immediate websocketd configuration failures
-  # before startup is reported as successful.
   local i
-  for (( i = 1; i <= 5; i++ )); do
+  for (( i = 1; i <= 50; i++ )); do
 
     if ! isAlive "$pid"; then
-      rm -f -- "$WSD_PID"
+      rm -f -- "$WSD_PID" "$WSD_SOCKET"
       [ -s "$WSD_LOG" ] && cat "$WSD_LOG" >&2
       error "Failed to start websocket server!"
       return 1
     fi
 
+    [ -S "$WSD_SOCKET" ] && return 0
+
     sleep 0.1
 
   done
 
-  return 0
+  pKill "$pid" 2
+
+  if isAlive "$pid"; then
+    kill -9 -- "$pid" 2>/dev/null || :
+  fi
+
+  rm -f -- "$WSD_PID" "$WSD_SOCKET"
+  [ -s "$WSD_LOG" ] && cat "$WSD_LOG" >&2
+  error "Websocket server did not create its socket!"
+  return 1
 }
 
 stopAudioServer() {
@@ -240,20 +249,31 @@ startAudioServer() {
   fi
 
   local i
-  for (( i = 1; i <= 5; i++ )); do
+  for (( i = 1; i <= 50; i++ )); do
 
     if ! isAlive "$pid"; then
-      rm -f -- "$AUX_PID"
+      rm -f -- "$AUX_PID" "$AUX_SOCKET"
       [ -s "$AUX_LOG" ] && cat "$AUX_LOG" >&2
       error "Failed to start audio websocket server!"
       return 1
     fi
 
+    [ -S "$AUX_SOCKET" ] && return 0
+
     sleep 0.1
 
   done
 
-  return 0
+  pKill "$pid" 2
+
+  if isAlive "$pid"; then
+    kill -9 -- "$pid" 2>/dev/null || :
+  fi
+
+  rm -f -- "$AUX_PID" "$AUX_SOCKET"
+  [ -s "$AUX_LOG" ] && cat "$AUX_LOG" >&2
+  error "Audio websocket server did not create its socket!"
+  return 1
 }
 
 validateVncPort
