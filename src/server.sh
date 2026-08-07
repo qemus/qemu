@@ -3,19 +3,18 @@ set -Eeuo pipefail
 
 : "${VNC_PORT:="5900"}"    # VNC port
 : "${WEB_PORT:="8006"}"    # Webserver port
-: "${WSD_PORT:="8004"}"    # Websockets port
-: "${AUX_PORT:="8003"}"    # Audio streaming
 
 # Sanitize port variables
 VNC_PORT=$(strip "$VNC_PORT")
 WEB_PORT=$(strip "$WEB_PORT")
-WSD_PORT=$(strip "$WSD_PORT")
-AUX_PORT=$(strip "$AUX_PORT")
 
 WEB_PID="/run/nginx.pid"
 WSD_PID="$QEMU_DIR/websocketd.pid"
 AUX_PID="$QEMU_DIR/audio-websocketd.pid"
+
 WSS_SOCKET="$QEMU_DIR/vnc-ws.sock"
+AUX_SOCKET="$QEMU_DIR/audio-ws.sock"
+WSD_SOCKET="$QEMU_DIR/status-ws.sock"
 
 WSD_LOG="/var/log/websocketd.log"
 AUX_LOG="/var/log/audio-socket.log"
@@ -33,7 +32,10 @@ validateVncPort() {
 prepareWebFiles() {
 
   cp -r /var/www/* "$QEMU_DIR" || return 1
-  rm -f -- "$WSD_PID" "$AUX_PID" "$WEB_PID" "$WSD_LOG" "$AUX_LOG" || return 1
+  rm -f -- \
+    "$WSD_PID" "$AUX_PID" "$WEB_PID" \
+    "$WSD_SOCKET" "$AUX_SOCKET" \
+    "$WSD_LOG" "$AUX_LOG" || return 1
 
   return 0
 }
@@ -72,11 +74,9 @@ configureAuthentication() {
 configureWebPorts() {
 
   if ! sed -i \
-    -e "s|listen 8006 default_server;|listen $WEB_PORT default_server;|g" \
-    -e "s|proxy_pass http://127.0.0.1:8004/;|proxy_pass http://127.0.0.1:$WSD_PORT/;|g" \
-    -e "s|proxy_pass http://127.0.0.1:8003/;|proxy_pass http://127.0.0.1:$AUX_PORT/;|g" \
+    "s|listen 8006 default_server;|listen $WEB_PORT default_server;|g" \
     /etc/nginx/sites-enabled/web.conf; then
-    error "Failed to configure webserver ports!"
+    error "Failed to configure webserver port!"
     return 1
   fi
 
@@ -106,7 +106,7 @@ configureNginx() {
   mkdir -p /etc/nginx/sites-enabled || return 1
   rm -f /etc/nginx/sites-enabled/default || return 1
 
-  # TODO: Use setfacl to grant www-data access to QEMU's Unix socket
+  # TODO: Use setfacl to grant www-data access to the Unix sockets
   # and restore unprivileged nginx workers.
   if ! sed -i \
     -e 's/^user .*/user root;/' \
@@ -167,7 +167,7 @@ stopWebsocketServer() {
     fi
   fi
 
-  rm -f -- "$WSD_PID"
+  rm -f -- "$WSD_PID" "$WSD_SOCKET"
   return 0
 }
 
@@ -175,8 +175,7 @@ startWebsocketServer() {
 
   # Start websocket server
   websocketd \
-    --address 127.0.0.1 \
-    --port="$WSD_PORT" \
+    --unixsocket="$WSD_SOCKET" \
     /run/socket.sh \
     >"$WSD_LOG" 2>&1 &
 
@@ -219,7 +218,7 @@ stopAudioServer() {
     fi
   fi
 
-  rm -f -- "$AUX_PID"
+  rm -f -- "$AUX_PID" "$AUX_SOCKET"
   return 0
 }
 
@@ -227,8 +226,7 @@ startAudioServer() {
 
   # Start audio websocket server
   websocketd \
-    --address 127.0.0.1 \
-    --port="$AUX_PORT" \
+    --unixsocket="$AUX_SOCKET" \
     --binary=true \
     nc -U "$AUDIO_SOCKET" \
     >"$AUX_LOG" 2>&1 &
