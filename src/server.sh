@@ -5,18 +5,17 @@ set -Eeuo pipefail
 : "${WEB_PORT:="8006"}"    # Webserver port
 : "${WSD_PORT:="8004"}"    # Websockets port
 : "${AUX_PORT:="8003"}"    # Audio streaming
-: "${WSS_PORT:="5700"}"    # Websockets port
 
 # Sanitize port variables
 VNC_PORT=$(strip "$VNC_PORT")
 WEB_PORT=$(strip "$WEB_PORT")
 WSD_PORT=$(strip "$WSD_PORT")
 AUX_PORT=$(strip "$AUX_PORT")
-WSS_PORT=$(strip "$WSS_PORT")
 
 WEB_PID="/run/nginx.pid"
 WSD_PID="$QEMU_DIR/websocketd.pid"
 AUX_PID="$QEMU_DIR/audio-websocketd.pid"
+WSS_SOCKET="$QEMU_DIR/vnc-ws.sock"
 
 WSD_LOG="/var/log/websocketd.log"
 AUX_LOG="/var/log/audio-socket.log"
@@ -74,7 +73,6 @@ configureWebPorts() {
 
   if ! sed -i \
     -e "s|listen 8006 default_server;|listen $WEB_PORT default_server;|g" \
-    -e "s|proxy_pass http://127.0.0.1:5700/;|proxy_pass http://127.0.0.1:$WSS_PORT/;|g" \
     -e "s|proxy_pass http://127.0.0.1:8004/;|proxy_pass http://127.0.0.1:$WSD_PORT/;|g" \
     -e "s|proxy_pass http://127.0.0.1:8003/;|proxy_pass http://127.0.0.1:$AUX_PORT/;|g" \
     /etc/nginx/sites-enabled/web.conf; then
@@ -103,11 +101,29 @@ configureIpv6Listen() {
   return 0
 }
 
-configureWebServer() {
+configureNginx() {
 
-  mkdir -p /etc/nginx/sites-enabled
+  mkdir -p /etc/nginx/sites-enabled || return 1
+  rm -f /etc/nginx/sites-enabled/default || return 1
+
+  # TODO: Use setfacl to grant www-data access to QEMU's Unix socket
+  # and restore unprivileged nginx workers.
+  if ! sed -i \
+    -e 's/^user .*/user root;/' \
+    -e 's/^worker_processes.*/worker_processes 1;/' \
+    /etc/nginx/nginx.conf; then
+    error "Failed to configure nginx!"
+    return 1
+  fi
+
   cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
 
+  return 0
+}
+
+configureWebServer() {
+
+  configureNginx || return 1
   configureAuthentication || return 1
   configureWebPorts || return 1
   configureIpv6Listen || return 1
