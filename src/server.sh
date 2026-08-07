@@ -116,15 +116,14 @@ configureNginx() {
     return 1
   fi
 
+  cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
+
   return 0
 }
 
 configureWebServer() {
 
   configureNginx || return 1
-
-  cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf
-
   configureAuthentication || return 1
   configureWebPorts || return 1
   configureIpv6Listen || return 1
