@@ -421,32 +421,6 @@ disabled() {
   esac
 }
 
-formatBytes() {
-
-  local result
-
-  if ! result=$(numfmt --to=iec --suffix=B "$1" | sed -r 's/([A-Z])/ \1/' | sed 's/ B/ bytes/g;'); then
-    return 1
-  fi
-
-  local unit="${result//[0-9. ]}"
-  result="${result//[a-zA-Z ]/}"
-
-  if [[ "${2:-}" == "up" ]]; then
-    if [[ "$result" == *"."* ]]; then
-      result="${result%%.*}"
-      result=$((result+1))
-    fi
-  else
-    if [[ "${2:-}" == "down" ]]; then
-      result="${result%%.*}"
-    fi
-  fi
-
-  echo "$result $unit"
-  return 0
-}
-
 isAlive() {
 
   local pid="$1"
@@ -894,6 +868,48 @@ cpu() {
   [ -z "${cpu// /}" ] && cpu="Unknown"
 
   echo "$cpu"
+  return 0
+}
+
+baseDir() {
+
+  local path="${1%/}"
+
+  [[ -z "$path" || "$path" == "/" ]] && {
+    echo "/"
+    return 0
+  }
+
+  path="${path#/}"
+  path="${path%%/*}"
+
+  echo "/$path"
+  return 0
+}
+
+formatBytes() {
+
+  local result
+
+  if ! result=$(numfmt --to=iec --suffix=B "$1" | sed -r 's/([A-Z])/ \1/' | sed 's/ B/ bytes/g;'); then
+    return 1
+  fi
+
+  local unit="${result//[0-9. ]}"
+  result="${result//[a-zA-Z ]/}"
+
+  if [[ "${2:-}" == "up" ]]; then
+    if [[ "$result" == *"."* ]]; then
+      result="${result%%.*}"
+      result=$((result+1))
+    fi
+  else
+    if [[ "${2:-}" == "down" ]]; then
+      result="${result%%.*}"
+    fi
+  fi
+
+  echo "$result $unit"
   return 0
 }
 
