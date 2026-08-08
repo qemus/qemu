@@ -544,47 +544,6 @@ mKill() {
   return 0
 }
 
-setOwner() {
-
-  local file="$1"
-  local dir uid gid
-
-  [ ! -f "$file" ] && return 1
-
-  dir=$(dirname -- "$file")
-  # Generated files inherit ownership from their containing bind mount so they
-  # remain manageable by the host user.
-  uid=$(stat -c '%u' "$dir") || return 1
-  gid=$(stat -c '%g' "$dir") || return 1
-
-  chown "$uid:$gid" "$file" || return 1
-
-  return 0
-}
-
-makeDir() {
-
-  local path="$1"
-  local dir uid gid
-
-  [ -d "$path" ] && return 0
-  mkdir -p "$path" || return 1
-
-  dir=$(dirname -- "$path")
-
-  if ! uid=$(stat -c '%u' "$dir") || ! gid=$(stat -c '%g' "$dir"); then
-    warn "failed to determine the owner for \"$path\"."
-    return 0
-  fi
-
-  if ! chown "$uid:$gid" "$path"; then
-    warn "failed to set the owner for \"$path\"."
-    return 0
-  fi
-
-  return 0
-}
-
 finiteMemoryLimit() {
 
   local limit="$1"
@@ -638,6 +597,47 @@ getMemoryInfo() {
     local available=$(( limit - current ))
     (( available < 0 )) && available=0
     (( available < RAM_AVAIL )) && RAM_AVAIL="$available"
+  fi
+
+  return 0
+}
+
+setOwner() {
+
+  local file="$1"
+  local dir uid gid
+
+  [ ! -f "$file" ] && return 1
+
+  dir=$(dirname -- "$file")
+  # Generated files inherit ownership from their containing bind mount so they
+  # remain manageable by the host user.
+  uid=$(stat -c '%u' "$dir") || return 1
+  gid=$(stat -c '%g' "$dir") || return 1
+
+  chown "$uid:$gid" "$file" || return 1
+
+  return 0
+}
+
+makeDir() {
+
+  local path="$1"
+  local dir uid gid
+
+  [ -d "$path" ] && return 0
+  mkdir -p "$path" || return 1
+
+  dir=$(dirname -- "$path")
+
+  if ! uid=$(stat -c '%u' "$dir") || ! gid=$(stat -c '%g' "$dir"); then
+    warn "failed to determine the owner for \"$path\"."
+    return 0
+  fi
+
+  if ! chown "$uid:$gid" "$path"; then
+    warn "failed to set the owner for \"$path\"."
+    return 0
   fi
 
   return 0
