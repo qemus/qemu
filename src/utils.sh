@@ -1682,7 +1682,7 @@ downloadToFile() {
   elif (( connections > 1 && rc == 9 )); then
     error "$failure because there was not enough disk space."
   elif [ -n "$reason" ]; then
-    error "$failure: ${reason%.}."
+    error "$failure : ${reason%.}."
   elif (( rc == 0 )); then
     error "$failure because no output file was created."
   else
