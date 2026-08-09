@@ -8,7 +8,7 @@ set -Eeuo pipefail
 : "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
 : "${DISK_OFFSET:=""}"            # Number of disk slots to reserve from the PCI address range
-: "${DISK_MINIMUM:=""}"           # Require all disks to have at least this minimum size
+: "${DISK_MINIMUM:=""}"           # Require the primary data disk to have at least this size
 : "${DISK_OPTIONS:=""}"           # Specifies additional options for the QEMU disk device
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="unmap"}"      # Controls whether unmap (TRIM) commands are passed to the host.
@@ -191,7 +191,12 @@ normalizeSize() {
   [ -z "$diskSpace" ] && diskSpace="${DISK_SIZE// /}"
 
   space=$(normalizeDiskSize "$diskSpace" "$dir")
-  minimum=$(normalizeDiskSize "$DISK_MINIMUM" "$dir")
+
+  if [[ "$diskDesc" == "disk" ]]; then
+    minimum=$(normalizeDiskSize "$DISK_MINIMUM" "$dir")
+  else
+    minimum="100M"
+  fi
 
   if ! numfmt --from=iec "$space" &>/dev/null; then
     error "Invalid value for ${diskDesc^^}_SIZE: $diskSpace" && exit 73
@@ -428,7 +433,8 @@ convertDisk() {
   if [[ "$destinationFmt" == "raw" ]]; then
     if ! disabled "$ALLOCATE"; then
 
-      # Work around qemu-img bug
+      # qemu-img may leave converted raw output sparse despite requested
+      # preallocation, so allocate its final length explicitly afterward.
       if ! currentSize=$(stat -c%s "$tmpFile"); then
         error "Failed to determine converted image size: $tmpFile"
         exit 79
@@ -442,6 +448,8 @@ convertDisk() {
     fi
   fi
 
+  # Publish the converted image before deleting the original so a failed
+  # conversion or rename never destroys the only usable disk.
   if ! mv "$tmpFile" "$destinationFile"; then
     error "Failed to move converted $diskDesc image to $destinationFile."
     exit 79
@@ -486,6 +494,8 @@ checkFS () {
     warn "the filesystem of $base is FUSE, this extra layer will negatively affect performance!"
   fi
 
+  # Filesystems without O_DIRECT support require threaded I/O and writeback
+  # caching; native AIO with cache=none would fail at runtime.
   if ! supportsDirect "$fs"; then
     warn "the filesystem of $base is $fs, which does not support O_DIRECT mode, adjusting settings..."
   fi
@@ -655,8 +665,9 @@ finishDisks () {
 
   local type
 
-  # The shared iothread object is added only when at least one selected device
-  # type actually references it.
+  # VirtIO block and SCSI devices share one dedicated I/O thread, which
+  # must be declared exactly once regardless of disk count.
+
   [ -z "$IOTHREAD_OPT" ] && return 0
 
   for type in "${DISK_TYPE,,}" "${MEDIA_TYPE,,}"; do
