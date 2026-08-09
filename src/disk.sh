@@ -151,6 +151,9 @@ normalizeSize() {
   local free dataSize
   local spare=1073741824
 
+  diskSpace="${diskSpace// /}"
+  [ -z "$diskSpace" ] && diskSpace="${DISK_SIZE// /}"
+
   # Dynamic sizes are based on current free space. max leaves a 1 GiB reserve,
   # while half intentionally consumes only half of what is available.
   if [[ "${diskSpace,,}" == "max" || "${diskSpace,,}" == "half" ]]; then
@@ -170,7 +173,6 @@ normalizeSize() {
   fi
 
   local space="${diskSpace// /}"
-  [ -z "$space" ] && space="64G"
   [ -z "${space//[0-9. ]}" ] && space="${space}G"
   space=$(echo "${space^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
 
@@ -661,6 +663,7 @@ addDisk () {
   local diskExt dataSize
   local available currentSize
   local previousExt
+  local explicitSize="${diskSpace// /}"
 
   diskExt=$(fmt2ext "$diskFmt")
   local diskFile="$diskBase.$diskExt"
@@ -708,13 +711,15 @@ addDisk () {
 
     if (( dataSize > currentSize )); then
 
-      resizeDisk "$diskFile" "$space" "$diskDesc" "$diskFmt" "$fs" || exit $?
+      if [ -n "$explicitSize" ]; then
+        resizeDisk "$diskFile" "$space" "$diskDesc" "$diskFmt" "$fs" || exit $?
+      fi
 
     else
 
       if (( dataSize < currentSize )); then
 
-        if [[ "${diskSpace,,}" != "max" && "${diskSpace,,}" != "half" ]]; then
+        if [ -n "$explicitSize" ] && [[ "${diskSpace,,}" != "max" && "${diskSpace,,}" != "half" ]]; then
           info "You decreased the ${diskDesc^^}_SIZE variable to ${diskSpace/G/ GB} but shrinking disks is not supported, will be ignored..."
         fi
 
