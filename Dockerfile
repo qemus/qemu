@@ -12,6 +12,7 @@ ARG VERSION_OVMF="2025.11-5"
 ARG VERSION_PASST="2026_07_28"
 ARG VERSION_SEABIOS="1.17.0-1"
 ARG VERSION_QEMU="1:11.0.2+ds-2"
+ARG DEBIAN_SNAPSHOT="20260720T000000Z"
 
 ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -47,16 +48,24 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     net-tools \
     e2fsprogs \
     diffutils \
-    qemu-utils \
     util-linux \
     iputils-ping \
     genisoimage \
     inotify-tools \
     netcat-openbsd \
     ca-certificates \
-    qemu-system-x86 \
     python3 \
     python3-pip
+
+  # Install QEMU 11 from Debian SID
+  echo "deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ sid main" \
+    > /etc/apt/sources.list.d/qemu-snapshot.list
+
+  apt-get update
+  apt-get --no-install-recommends -y -t sid install \
+    "seabios=${VERSION_SEABIOS}" \
+    "qemu-utils=${VERSION_QEMU}" \
+    "qemu-system-x86=${VERSION_QEMU}"
 
   # Install QMP
   pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore "qemu.qmp==${VERSION_QMP}"
@@ -65,19 +74,16 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   wget "https://github.com/qemus/passt/releases/download/v${VERSION_PASST}/passt_${VERSION_PASST}_${TARGETARCH}.deb" -O /tmp/passt.deb -q --timeout=10
   dpkg -i /tmp/passt.deb
 
-  # Install SeaBIOS package
-  wget "https://deb.debian.org/debian/pool/main/s/seabios/seabios_${VERSION_SEABIOS}_all.deb" -O /tmp/seabios.deb -q --timeout=10
-  dpkg -i /tmp/seabios.deb
-
   # Install websocketd package
   wget "https://github.com/qemus/websocketd/releases/download/v${VERSION_WSD}/websocketd-${VERSION_WSD}_${TARGETARCH}.deb" -O /tmp/wsd.deb -q --timeout=10
   dpkg -i /tmp/wsd.deb
 
-  # Install newer Microsoft Secure Boot variables from SID
+  # Install newer Microsoft Secure Boot variables from OVMF in SID
   wget "https://deb.debian.org/debian/pool/main/e/edk2/ovmf-generic_${VERSION_OVMF}_all.deb" -O /tmp/ovmf.deb -q --timeout=10
   dpkg-deb -x /tmp/ovmf.deb /tmp/ovmf
   install -m 0644 /tmp/ovmf/usr/share/OVMF/OVMF_VARS_4M.ms.fd /usr/share/OVMF/OVMF_VARS_4M.ms.fd
 
+  rm -f /etc/apt/sources.list.d/qemu-snapshot.list
   apt-get clean
 
   # Install noVNC
