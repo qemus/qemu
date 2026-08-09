@@ -1,6 +1,8 @@
 var timer;
+var failureTimer;
 var request;
 var interval = 1000;
+var stopped = "The container has stopped. Check the container logs for details.";
 
 var webSocketFactory = {
     connect: function(url) {
@@ -29,6 +31,31 @@ function abortRequest() {
     request.onreadystatechange = null;
     request.abort();
     request = null;
+
+    return true;
+}
+
+function connectionLost() {
+
+    if (failureTimer) {
+        return false;
+    }
+
+    failureTimer = setTimeout(function() {
+        setError(stopped);
+    }, interval * 3);
+
+    return true;
+}
+
+function connectionRestored() {
+
+    if (!failureTimer) {
+        return false;
+    }
+
+    clearTimeout(failureTimer);
+    failureTimer = null;
 
     return true;
 }
@@ -86,13 +113,15 @@ function processInfo() {
         var status = response.status;
 
         if (status == 502 || status == 503 || status == 504) {
+            connectionLost();
             schedule();
             return true;
         }
 
         var msg = response.responseText;
         if (msg == null || msg.length == 0) {
-            window.location.reload();
+            connectionLost();
+            schedule();
             return false;
         }
 
@@ -102,6 +131,7 @@ function processInfo() {
             if (msg.toLowerCase().indexOf("<html>") !== -1) {
                 notFound = true;
             } else {
+                connectionRestored();
                 setInfo(msg);
                 schedule();
                 return true;
@@ -109,6 +139,7 @@ function processInfo() {
         }
 
         if (notFound) {
+            connectionRestored();
             redirect();
             return true;
         }
@@ -402,7 +433,13 @@ function connect() {
     var wsUrl = getURL() + "/status";
     var ws = new WebSocket(wsUrl);
 
+    ws.onopen = function(e) {
+        connectionRestored();
+    };
+
     ws.onmessage = function(e) {
+
+        connectionRestored();
 
         var pos = e.data.indexOf(":");
         var cmd = e.data.substring(0, pos);
@@ -446,14 +483,15 @@ function connect() {
     };
 
     ws.onclose = function(e) {
+        connectionLost();
         setTimeout(function() {
             connect();
         }, interval);
     };
 
     ws.onerror = function(e) {
+        connectionLost();
         ws.close();
-        window.location.reload();
     };
 }
 
