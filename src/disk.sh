@@ -8,6 +8,7 @@ set -Eeuo pipefail
 : "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
 : "${DISK_OFFSET:=""}"            # Number of disk slots to reserve from the PCI address range
+: "${DISK_MINIMUM:=""}"           # Require all disks to have at least this minimum size
 : "${DISK_OPTIONS:=""}"           # Specifies additional options for the QEMU disk device
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="unmap"}"      # Controls whether unmap (TRIM) commands are passed to the host.
@@ -20,6 +21,7 @@ DISK_TYPE=$(strip "$DISK_TYPE")
 DISK_CACHE=$(strip "$DISK_CACHE")
 DISK_FLAGS=$(strip "$DISK_FLAGS")
 DISK_OFFSET=$(strip "$DISK_OFFSET")
+DISK_MINIMUM=$(strip "$DISK_MINIMUM")
 DISK_OPTIONS=$(strip "$DISK_OPTIONS")
 DISK_DISCARD=$(strip "$DISK_DISCARD")
 DISK_ROTATION=$(strip "$DISK_ROTATION")
@@ -142,17 +144,14 @@ getDiskOptions() {
   return 0
 }
 
-normalizeSize() {
+normalizeDiskSize() {
 
   local diskSpace="$1"
-  local diskDesc="$2"
-  local dir="$3"
+  local dir="$2"
 
-  local free dataSize
-  local spare=1073741824
+  local spare=1073741824 free
 
   diskSpace="${diskSpace// /}"
-  [ -z "$diskSpace" ] && diskSpace="${DISK_SIZE// /}"
 
   # Dynamic sizes are based on current free space. max leaves a 1 GiB reserve,
   # while half intentionally consumes only half of what is available.
@@ -172,18 +171,42 @@ normalizeSize() {
 
   fi
 
-  local space="${diskSpace// /}"
-  [ -z "${space//[0-9. ]}" ] && space="${space}G"
-  space=$(echo "${space^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+  [ -z "${diskSpace//[0-9. ]}" ] && diskSpace="${diskSpace}G"
+  diskSpace=$(echo "${diskSpace^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+
+  echo "$diskSpace"
+  return 0
+}
+
+normalizeSize() {
+
+  local diskSpace="$1"
+  local diskDesc="$2"
+  local dir="$3"
+
+  local space minimum
+  local dataSize minimumSize
+
+  diskSpace="${diskSpace// /}"
+  [ -z "$diskSpace" ] && diskSpace="${DISK_SIZE// /}"
+
+  space=$(normalizeDiskSize "$diskSpace" "$dir")
+  minimum=$(normalizeDiskSize "$DISK_MINIMUM" "$dir")
 
   if ! numfmt --from=iec "$space" &>/dev/null; then
     error "Invalid value for ${diskDesc^^}_SIZE: $diskSpace" && exit 73
   fi
 
-  dataSize=$(numfmt --from=iec "$space")
+  if ! numfmt --from=iec "$minimum" &>/dev/null; then
+    error "Invalid value for DISK_MINIMUM: $DISK_MINIMUM" && exit 73
+  fi
 
-  if (( dataSize < 104857600 )); then
-    error "Please increase the ${diskDesc^^}_SIZE variable to at least 100 MB." && exit 73
+  dataSize=$(numfmt --from=iec "$space")
+  minimumSize=$(numfmt --from=iec "$minimum")
+
+  if (( dataSize < minimumSize )); then
+    error "Please increase the ${diskDesc^^}_SIZE variable to at least $(formatBytes "$minimumSize")."
+    exit 73
   fi
 
   echo "$space"
@@ -854,6 +877,7 @@ addDevice () {
 [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
 [ -z "${DISK_OFFSET:-}" ] && DISK_OFFSET="0"
 [ -z "${DISK_DISABLE:-}" ] && DISK_DISABLE=""
+[ -z "${DISK_MINIMUM:-}" ] && DISK_MINIMUM="100M"
 
 if ! enabled "$DISK_DISABLE"; then
   msg="Initializing disks..."
