@@ -72,7 +72,10 @@ configureMachine() {
 
   MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off"
   MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
-  disabled "$USB" && MAC_OPTS+=",usb=off"
+
+  if disabled "$USB" || [ -z "$USB" ]; then
+    MAC_OPTS+=",usb=off"
+  fi
 
   UUID=$(strip "$UUID")
   [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
@@ -128,6 +131,7 @@ configureAudio() {
   enabled "${AUDIO:-N}" || return 0
 
   if [ -z "${AUDIO_FIFO:-}" ] || [ ! -p "$AUDIO_FIFO" ]; then
+    AUDIO="N"
     warn "Audio support failed to initialize, ignoring AUDIO=Y."
     return 0
   fi
@@ -137,9 +141,16 @@ configureAudio() {
 
   AUDIO_OPTS+=" -audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
 
-  # A USB audio device needs a compatible controller even when the main USB
-  # setting uses EHCI or is disabled.
+  # A USB audio device needs a compatible controller even when the main USB setting uses EHCI.
   if [[ "$model" == usb-* ]]; then
+
+    if disabled "$USB" || [ -z "$USB" ]; then
+      AUDIO="N"
+      AUDIO_OPTS=""
+      warn "Cannot initialize audio device $model as USB is disabled, ignoring AUDIO=Y."
+      return 0
+    fi
+
     case "${USB,,}" in
       *xhci*|*ohci*|*uhci*)
         ;;
@@ -152,6 +163,7 @@ configureAudio() {
         [[ ",$sound," == *,bus=* ]] || sound+=",bus=audio-xhci.0"
         ;;
     esac
+
   fi
 
   case "$model" in
