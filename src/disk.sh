@@ -7,6 +7,7 @@ set -Eeuo pipefail
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
 : "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
+: "${DISK_OFFSET:="0"}"           # Number of disk slots to reserve from the PCI address range
 : "${DISK_OPTIONS:=""}"           # Specifies additional options for the QEMU disk device
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="unmap"}"      # Controls whether unmap (TRIM) commands are passed to the host.
@@ -21,6 +22,7 @@ DISK_OPTIONS=$(strip "$DISK_OPTIONS")
 DISK_CACHE=$(strip "$DISK_CACHE")
 DISK_DISCARD=$(strip "$DISK_DISCARD")
 DISK_ROTATION=$(strip "$DISK_ROTATION")
+DISK_OFFSET=$(strip "$DISK_OFFSET")
 
 fmt2ext() {
   local diskFmt="$1"
@@ -887,6 +889,11 @@ if [[ ! "$DISK_ROTATION" =~ ^[0-9]+$ ]]; then
   DISK_ROTATION="1"
 fi
 
+if [[ ! "$DISK_OFFSET" =~ ^[0-5]$ ]]; then
+  error "Invalid DISK_OFFSET value '$DISK_OFFSET', must be between 0 and 5."
+  exit 78
+fi
+
 if ! validDiskType "$DISK_TYPE"; then
   error "Invalid DISK_TYPE specified, value \"$DISK_TYPE\" is not recognized!"
   exit 80
@@ -1045,7 +1052,7 @@ DISK_IMAGES=()
 DISK_DEVICES=()
 DISK_DEVICE_VARS=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
 
-for i in "${!DISK_DEVICE_VARS[@]}"; do
+for (( i=0; i<6-DISK_OFFSET; i++ )); do
 
   diskNumber=$(( i + 1 ))
 
@@ -1095,14 +1102,14 @@ DISK_ADDRESSES=( "0xa" "0xb" "0xc" "0xd" "0xe" "0xf" )
 
 # Source precedence is explicit block device, then bind-mounted image, then the
 # managed image created under the corresponding storage directory.
-for i in "${!DISK_FILES[@]}"; do
+for (( i=0; i<6-DISK_OFFSET; i++ )); do
 
   if [ -n "${DISK_DEVICES[i]}" ]; then
-    addDevice "${DISK_DEVICES[i]}" "$DISK_TYPE" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
+    addDevice "${DISK_DEVICES[i]}" "$DISK_TYPE" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" || exit $?
   elif [ -n "${DISK_IMAGES[i]}" ]; then
-    addImage "${DISK_IMAGES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
+    addImage "${DISK_IMAGES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" || exit $?
   else
-    addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+    addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
   fi
 
 done
