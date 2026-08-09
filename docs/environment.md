@@ -144,3 +144,4 @@ Also see [Dynamic memory allocation](ballooning.md) for usage instructions and i
 | `TRACE` | `N` | Enables shell command tracing. |
 | `SERIAL` | `mon:stdio` | QEMU serial device configuration. |
 | `MONITOR` |  | QEMU monitor configuration. |
+| `QMP` |  | QEMU Machine Protocol configuration. |
