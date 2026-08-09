@@ -1,6 +1,6 @@
 var timer;
-var failureTimer;
 var request;
+var failureTimer;
 var interval = 1000;
 var stopped = "The container has stopped. Check the container logs for details.";
 
@@ -35,20 +35,7 @@ function abortRequest() {
     return true;
 }
 
-function connectionLost() {
-
-    if (failureTimer) {
-        return false;
-    }
-
-    failureTimer = setTimeout(function() {
-        setError(stopped);
-    }, interval * 3);
-
-    return true;
-}
-
-function connectionRestored() {
+function clearFailure() {
 
     if (!failureTimer) {
         return false;
@@ -57,6 +44,37 @@ function connectionRestored() {
     clearTimeout(failureTimer);
     failureTimer = null;
 
+    return true;
+}
+
+function connectionLost() {
+
+    if (document.hidden || failureTimer) {
+        return false;
+    }
+
+    failureTimer = setTimeout(function() {
+
+        if (document.hidden) {
+            failureTimer = null;
+            return;
+        }
+
+        setError(stopped);
+    }, interval * 3);
+
+    return true;
+}
+
+function visibilityChanged() {
+
+    clearFailure();
+
+    if (document.hidden) {
+        return false;
+    }
+
+    getInfo();
     return true;
 }
 
@@ -131,7 +149,7 @@ function processInfo() {
             if (msg.toLowerCase().indexOf("<html>") !== -1) {
                 notFound = true;
             } else {
-                connectionRestored();
+                clearFailure();
                 setInfo(msg);
                 schedule();
                 return true;
@@ -139,7 +157,7 @@ function processInfo() {
         }
 
         if (notFound) {
-            connectionRestored();
+            clearFailure();
             redirect();
             return true;
         }
@@ -434,12 +452,12 @@ function connect() {
     var ws = new WebSocket(wsUrl);
 
     ws.onopen = function(e) {
-        connectionRestored();
+        clearFailure();
     };
 
     ws.onmessage = function(e) {
 
-        connectionRestored();
+        clearFailure();
 
         var pos = e.data.indexOf(":");
         var cmd = e.data.substring(0, pos);
@@ -496,6 +514,7 @@ function connect() {
 }
 
 window.addEventListener("resize", resizeProgress);
+document.addEventListener("visibilitychange", visibilityChanged);
 
 schedule();
 connect();
