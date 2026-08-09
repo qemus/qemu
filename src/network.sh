@@ -86,8 +86,7 @@ getMTU() {
 
 minMTU() {
 
-  local mtu
-  local min=""
+  local mtu min=""
 
   for mtu in "$@"; do
     [[ -z "$mtu" || "$mtu" == "0" ]] && continue
@@ -2331,6 +2330,9 @@ else
 
     # Configure tap interface
     if ! configureNAT; then
+
+      # NAT setup failure is recoverable: tear down partial interfaces and
+      # continue with the default user-mode backend.
 
       closeInterfaces
       NETWORK="user"
