@@ -75,7 +75,7 @@ configureAuthentication() {
 configureWebPorts() {
 
   if ! sed -i \
-    "s|listen 8006 default_server;|listen $WEB_PORT default_server;|g" \
+    -E "s|listen [0-9]+ default_server;|listen $WEB_PORT default_server;|g" \
     /etc/nginx/sites-enabled/web.conf; then
     error "Failed to configure webserver port!"
     return 1
