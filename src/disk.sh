@@ -7,7 +7,7 @@ set -Eeuo pipefail
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
 : "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
-: "${DISK_OFFSET:="0"}"           # Number of disk slots to reserve from the PCI address range
+: "${DISK_OFFSET:=""}"            # Number of disk slots to reserve from the PCI address range
 : "${DISK_OPTIONS:=""}"           # Specifies additional options for the QEMU disk device
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="unmap"}"      # Controls whether unmap (TRIM) commands are passed to the host.
