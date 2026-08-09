@@ -49,14 +49,14 @@ if ! enabled "$GPU" || isAmdCpu || [[ "$ARCH" != "amd64" ]]; then
 fi
 
 case "${APP:-}" in
+
   "Windows" | "macOS" )
-    # Windows and macOS acceleration remains experimental; DEBUG=Y deliberately
-    # allows advanced users to force the path for diagnostics.
+
     if ! enabled "$DEBUG"; then
       warn "GPU acceleration is not supported under $APP, ignoring GPU=Y."
       return 0
-    fi
-    ;;
+    fi ;;
+
 esac
 
 msg="Configuring display drivers..."
