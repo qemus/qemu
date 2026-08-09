@@ -56,7 +56,7 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     python3 \
     python3-pip
 
-  # Install QEMU 11 from Debian SID
+  # Install QEMU 11 and OVMF UEFI firmware from Debian Sid
   echo "deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ sid main" \
     > /etc/apt/sources.list.d/qemu-snapshot.list
 
