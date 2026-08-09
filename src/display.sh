@@ -7,13 +7,16 @@ set -Eeuo pipefail
 : "${VGA:="virtio"}"    # VGA adaptor
 : "${DISPLAY:="web"}"   # Display type
 : "${LOSSY:="N"}"       # Lossy VNC compression
+: "${VNC_PORT:="5900"}" # VNC port
 : "${RENDERNODE:="/dev/dri/renderD128"}"  # Render node
 
 # Sanitize variables
 VGA=$(strip "$VGA")
 LOSSY=$(strip "$LOSSY")
 DISPLAY=$(strip "$DISPLAY")
+VNC_PORT=$(strip "$VNC_PORT")
 RENDERNODE=$(strip "$RENDERNODE")
+WSS_SOCKET="${WSS_SOCKET:-$QEMU_DIR/vnc-ws.sock}"
 
 port=$(( VNC_PORT - 5900 ))
 [[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
