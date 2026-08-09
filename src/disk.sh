@@ -17,12 +17,12 @@ set -Eeuo pipefail
 DISK_IO=$(strip "$DISK_IO")
 DISK_FMT=$(strip "$DISK_FMT")
 DISK_TYPE=$(strip "$DISK_TYPE")
-DISK_FLAGS=$(strip "$DISK_FLAGS")
-DISK_OPTIONS=$(strip "$DISK_OPTIONS")
 DISK_CACHE=$(strip "$DISK_CACHE")
+DISK_FLAGS=$(strip "$DISK_FLAGS")
+DISK_OFFSET=$(strip "$DISK_OFFSET")
+DISK_OPTIONS=$(strip "$DISK_OPTIONS")
 DISK_DISCARD=$(strip "$DISK_DISCARD")
 DISK_ROTATION=$(strip "$DISK_ROTATION")
-DISK_OFFSET=$(strip "$DISK_OFFSET")
 
 fmt2ext() {
   local diskFmt="$1"
@@ -852,6 +852,7 @@ addDevice () {
 [ -z "${DISK_OPTS:-}" ] && DISK_OPTS=""
 [ -z "${DISK_TYPE:-}" ] && DISK_TYPE="scsi"
 [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
+[ -z "${DISK_OFFSET:-}" ] && DISK_OFFSET="0"
 [ -z "${DISK_DISABLE:-}" ] && DISK_DISABLE=""
 
 if ! enabled "$DISK_DISABLE"; then
