@@ -19,27 +19,26 @@ RENDERNODE=$(strip "$RENDERNODE")
 WSS_SOCKET="${WSS_SOCKET:-$QEMU_DIR/vnc-ws.sock}"
 
 port=$(( VNC_PORT - 5900 ))
+
+# Preserve the historic :0 setting as an alias for the managed web display.
 [[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
 
 LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
 case "${DISPLAY,,}" in
+
   "vnc" )
-    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} -vga ${VGA}" ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} -vga ${VGA}" ;;
   "disabled" )
-    DISPLAY_OPTS="-display none -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display none -vga ${VGA}" ;;
   "none" )
-    DISPLAY_OPTS="-display none -vga none"
-    ;;
+    DISPLAY_OPTS="-display none -vga none" ;;
   *)
-    DISPLAY_OPTS="-display ${DISPLAY} -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display ${DISPLAY} -vga ${VGA}" ;;
+
 esac
 
 # The current virgl host path is limited to Intel-compatible amd64 render nodes;
