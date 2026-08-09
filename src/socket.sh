@@ -13,6 +13,25 @@ page="$dir/index.html"
 vnc="$dir/vnc-ws.sock"
 vnc_name=$(basename -- "$vnc")
 
+writeAtomic() {
+
+  local file="$1"
+  local value="$2"
+  local tmp="${file}.tmp.$$"
+
+  if ! printf '%s\n' "$value" > "$tmp"; then
+    rm -f -- "$tmp"
+    return 1
+  fi
+
+  if ! mv -f -- "$tmp" "$file"; then
+    rm -f -- "$tmp"
+    return 1
+  fi
+
+  return 0
+}
+
 refresh() {
 
   [ ! -f "$path" ] && return 0
@@ -56,7 +75,9 @@ transition() {
 
   transitioned="Y"
   rm -f -- "$path" "$page"
-  echo "c: vnc"
+
+  writeAtomic "$command" "vnc" || return 1
+  refreshCommand
 
   return 0
 }
