@@ -850,6 +850,9 @@ addDevice () {
   [ -z "$diskDev" ] && return 0
   [ ! -b "$diskDev" ] && error "Device $diskDev cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
 
+  local devType
+  devType=$(lsblk -no TYPE "$diskDev" 2>/dev/null | head -n1)
+
   local result
   result=$(fdisk -l "$diskDev" 2>/dev/null | grep -m 1 -o "(logical/physical): .*" | cut -c 21- || true)
 
@@ -859,12 +862,17 @@ addDevice () {
     physical="${physical%% *}"
   fi
 
-  # Report non-512 physical geometry to QEMU so guests align I/O correctly;
-  # the normal 512-byte case needs no explicit device option.
+  # Report non-512 physical geometry to QEMU so guests align I/O correctly.
+  # Legacy whole-disk 512e passthrough omits it for compatibility, while
+  # partitions, modern boot modes and non-512 logical sectors keep the real geometry.
   if [ -z "$logical" ] || [ -z "$physical" ]; then
     warn "Failed to determine the sector size for $diskDev"
   elif [[ "$physical" != "512" ]]; then
-    sectors=",logical_block_size=$logical,physical_block_size=$physical"
+    if [[ "$devType" != "disk" ||
+          ( "${BOOT_MODE,,}" != "legacy" && "${BOOT_MODE,,}" != "windows_legacy" ) ||
+          "$logical" != "512" ]]; then
+      sectors=",logical_block_size=$logical,physical_block_size=$physical"
+    fi
   fi
 
   DISK_OPTS+=$(createDevice "$diskDev" "$diskType" "$diskIndex" "$diskAddress" "raw" "$DISK_IO" "$DISK_CACHE" "" "$sectors")
