@@ -581,8 +581,8 @@ getReservedPorts() {
   fi
 
   # Reserve the public web server port.
-  if ! disabled "${WEB:-}"; then
-    [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT/tcp,"
+  if ! disabled "${WEB:-}" && [ -n "${WEB_PORT:-}" ]; then
+    [[ "$WEB_PORT" != "5000" ]] && list+="$WEB_PORT/tcp,"
   fi
 
   normalizePorts "$list" "$mode"
