@@ -62,8 +62,8 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
 
   apt-get update
   apt-get --no-install-recommends -y -t sid install \
-    "ovmf=${VERSION_OVMF}" \
     "seabios=${VERSION_SEABIOS}" \
+    "ovmf-generic=${VERSION_OVMF}" \
     "qemu-utils=${VERSION_QEMU}" \
     "qemu-system-x86=${VERSION_QEMU}"
 
