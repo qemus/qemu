@@ -2,6 +2,7 @@ var timer;
 var request;
 var failureTimer;
 var interval = 1000;
+var lastStatus = "";
 var stopped = "The container has stopped. Check the container logs for details.";
 
 var webSocketFactory = {
@@ -60,7 +61,7 @@ function connectionLost() {
             return;
         }
 
-        setError(stopped);
+        setStopped();
     }, interval * 3);
 
     return true;
@@ -150,6 +151,7 @@ function processInfo() {
                 notFound = true;
             } else {
                 clearFailure();
+                rememberStatus(msg);
                 setInfo(msg);
                 schedule();
                 return true;
@@ -176,6 +178,23 @@ function extractContent(s) {
     span.innerHTML = s;
     return span.textContent || span.innerText;
 };
+
+function escapeContent(s) {
+    var span = document.createElement('span');
+    span.textContent = s;
+    return span.innerHTML;
+}
+
+function rememberStatus(msg) {
+
+    var text = extractContent(msg).trim();
+    if (text.length == 0) {
+        return false;
+    }
+
+    lastStatus = text;
+    return true;
+}
 
 function parseSize(value, unit) {
 
@@ -440,6 +459,16 @@ function setError(text) {
     return setInfo(text, false, true);
 }
 
+function setStopped() {
+
+    var msg = stopped;
+    if (lastStatus.length > 0) {
+        msg += "<br>(Last status: " + escapeContent(lastStatus) + ")";
+    }
+
+    return setError(msg);
+}
+
 function schedule() {
 
     clearTimeout(timer);
@@ -470,6 +499,7 @@ function connect() {
                     schedule();
                 }
 
+                rememberStatus(msg);
                 setInfo(msg);
                 break;
 
@@ -491,6 +521,7 @@ function connect() {
                     schedule();
                 }
 
+                rememberStatus(msg);
                 setError(msg);
                 break;
 
@@ -515,6 +546,8 @@ function connect() {
 
 window.addEventListener("resize", resizeProgress);
 document.addEventListener("visibilitychange", visibilityChanged);
+
+rememberStatus(document.getElementById("info").innerHTML);
 
 schedule();
 connect();
