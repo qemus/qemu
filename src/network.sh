@@ -2376,7 +2376,7 @@ else
 
   showGuestInfo
 
-  if isUserMode && { [ -z "$USER_PORTS" ] || [[ "$USER_PORTS" == "5000/tcp,5001/tcp" ]]; }; then
+  if isUserMode && { [ -z "$USER_PORTS" ] || [[ "$APP" == "Virtual DSM" ]]; }; then
     desc="$APP"
     [[ "${desc,,}" == "qemu" ]] && desc="the VM"
     info "Notice: because user-mode networking is active, when you need to forward custom ports to $desc, add them to the \"USER_PORTS\" variable."
