@@ -1,6 +1,9 @@
 var timer;
 var request;
+var failureTimer;
 var interval = 1000;
+var lastStatus = "";
+var stopped = "The container has stopped. Check the container logs for details.";
 
 var webSocketFactory = {
     connect: function(url) {
@@ -30,6 +33,49 @@ function abortRequest() {
     request.abort();
     request = null;
 
+    return true;
+}
+
+function clearFailure() {
+
+    if (!failureTimer) {
+        return false;
+    }
+
+    clearTimeout(failureTimer);
+    failureTimer = null;
+
+    return true;
+}
+
+function connectionLost() {
+
+    if (document.hidden || failureTimer) {
+        return false;
+    }
+
+    failureTimer = setTimeout(function() {
+
+        if (document.hidden) {
+            failureTimer = null;
+            return;
+        }
+
+        setStopped();
+    }, interval * 3);
+
+    return true;
+}
+
+function visibilityChanged() {
+
+    clearFailure();
+
+    if (document.hidden) {
+        return false;
+    }
+
+    getInfo();
     return true;
 }
 
@@ -86,13 +132,15 @@ function processInfo() {
         var status = response.status;
 
         if (status == 502 || status == 503 || status == 504) {
+            connectionLost();
             schedule();
             return true;
         }
 
         var msg = response.responseText;
         if (msg == null || msg.length == 0) {
-            window.location.reload();
+            connectionLost();
+            schedule();
             return false;
         }
 
@@ -102,6 +150,8 @@ function processInfo() {
             if (msg.toLowerCase().indexOf("<html>") !== -1) {
                 notFound = true;
             } else {
+                clearFailure();
+                rememberStatus(msg);
                 setInfo(msg);
                 schedule();
                 return true;
@@ -109,6 +159,7 @@ function processInfo() {
         }
 
         if (notFound) {
+            clearFailure();
             redirect();
             return true;
         }
@@ -127,6 +178,23 @@ function extractContent(s) {
     span.innerHTML = s;
     return span.textContent || span.innerText;
 };
+
+function escapeContent(s) {
+    var span = document.createElement('span');
+    span.textContent = s;
+    return span.innerHTML;
+}
+
+function rememberStatus(msg) {
+
+    var text = extractContent(msg).trim();
+    if (text.length == 0) {
+        return false;
+    }
+
+    lastStatus = text;
+    return true;
+}
 
 function parseSize(value, unit) {
 
@@ -391,6 +459,16 @@ function setError(text) {
     return setInfo(text, false, true);
 }
 
+function setStopped() {
+
+    var msg = stopped;
+    if (lastStatus.length > 0) {
+        msg += "<br>(Last status: " + escapeContent(lastStatus) + ")";
+    }
+
+    return setError(msg);
+}
+
 function schedule() {
 
     clearTimeout(timer);
@@ -402,7 +480,13 @@ function connect() {
     var wsUrl = getURL() + "/status";
     var ws = new WebSocket(wsUrl);
 
+    ws.onopen = function(e) {
+        clearFailure();
+    };
+
     ws.onmessage = function(e) {
+
+        clearFailure();
 
         var pos = e.data.indexOf(":");
         var cmd = e.data.substring(0, pos);
@@ -415,6 +499,7 @@ function connect() {
                     schedule();
                 }
 
+                rememberStatus(msg);
                 setInfo(msg);
                 break;
 
@@ -436,6 +521,7 @@ function connect() {
                     schedule();
                 }
 
+                rememberStatus(msg);
                 setError(msg);
                 break;
 
@@ -446,18 +532,22 @@ function connect() {
     };
 
     ws.onclose = function(e) {
+        connectionLost();
         setTimeout(function() {
             connect();
         }, interval);
     };
 
     ws.onerror = function(e) {
+        connectionLost();
         ws.close();
-        window.location.reload();
     };
 }
 
 window.addEventListener("resize", resizeProgress);
+document.addEventListener("visibilitychange", visibilityChanged);
+
+rememberStatus(document.getElementById("info").innerHTML);
 
 schedule();
 connect();

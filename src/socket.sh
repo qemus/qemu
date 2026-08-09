@@ -2,9 +2,13 @@
 set -Eeuo pipefail
 
 lastmsg=""
+transitioned="N"
 path="/run/shm/msg.html"
 dir=$(dirname -- "$path")
 name=$(basename -- "$path")
+page="$dir/index.html"
+vnc="$dir/vnc-ws.sock"
+vnc_name=$(basename -- "$vnc")
 
 refresh() {
 
@@ -25,22 +29,43 @@ refresh() {
   return 0
 }
 
+transition() {
+
+  [[ "$transitioned" == "Y" ]] && return 0
+  [ ! -S "$vnc" ] && return 0
+
+  transitioned="Y"
+  rm -f -- "$path" "$page"
+  echo "c: vnc"
+
+  return 0
+}
+
 refresh
+transition
 
 # Watch the directory rather than only the file because writers publish updates
 # through atomic rename, which appears as moved_to.
 inotifywait \
   -m -q \
-  -e close_write,moved_to,delete \
+  -e close_write,moved_to,create,delete \
   --format '%e %f' \
   "$dir" |
   while read -r event file; do
+
+    if [[ "$file" == "$vnc_name" ]]; then
+      case "${event,,}" in
+        "create"* | "moved_to"* )
+          transition ;;
+      esac
+      continue
+    fi
 
     [[ "$file" == "$name" ]] || continue
 
     case "${event,,}" in
       "delete"* )
-        echo "c: vnc" ;;
+        transition ;;
       "close_write"* | "moved_to"* )
         refresh ;;
     esac
