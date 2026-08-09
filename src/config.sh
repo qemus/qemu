@@ -71,6 +71,7 @@ configureMachine() {
   enabled "$SMM" && smm="on"
 
   MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off"
+  disabled "$USB" && MAC_OPTS+=",usb=off"
   MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 
   UUID=$(strip "$UUID")
