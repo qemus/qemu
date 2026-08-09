@@ -7,36 +7,38 @@ set -Eeuo pipefail
 : "${VGA:="virtio"}"    # VGA adaptor
 : "${DISPLAY:="web"}"   # Display type
 : "${LOSSY:="N"}"       # Lossy VNC compression
+: "${VNC_PORT:="5900"}" # VNC port
 : "${RENDERNODE:="/dev/dri/renderD128"}"  # Render node
 
 # Sanitize variables
 VGA=$(strip "$VGA")
 LOSSY=$(strip "$LOSSY")
 DISPLAY=$(strip "$DISPLAY")
+VNC_PORT=$(strip "$VNC_PORT")
 RENDERNODE=$(strip "$RENDERNODE")
+WSS_SOCKET="${WSS_SOCKET:-$QEMU_DIR/vnc-ws.sock}"
 
 port=$(( VNC_PORT - 5900 ))
+
+# Preserve the historic :0 setting as an alias for the managed web display.
 [[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
 
 LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
 case "${DISPLAY,,}" in
+
   "vnc" )
-    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} -vga ${VGA}" ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} -vga ${VGA}" ;;
   "disabled" )
-    DISPLAY_OPTS="-display none -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display none -vga ${VGA}" ;;
   "none" )
-    DISPLAY_OPTS="-display none -vga none"
-    ;;
+    DISPLAY_OPTS="-display none -vga none" ;;
   *)
-    DISPLAY_OPTS="-display ${DISPLAY} -vga ${VGA}"
-    ;;
+    DISPLAY_OPTS="-display ${DISPLAY} -vga ${VGA}" ;;
+
 esac
 
 # The current virgl host path is limited to Intel-compatible amd64 render nodes;
@@ -46,14 +48,14 @@ if ! enabled "$GPU" || isAmdCpu || [[ "$ARCH" != "amd64" ]]; then
 fi
 
 case "${APP:-}" in
+
   "Windows" | "macOS" )
-    # Windows and macOS acceleration remains experimental; DEBUG=Y deliberately
-    # allows advanced users to force the path for diagnostics.
+
     if ! enabled "$DEBUG"; then
       warn "GPU acceleration is not supported under $APP, ignoring GPU=Y."
       return 0
-    fi
-    ;;
+    fi ;;
+
 esac
 
 msg="Configuring display drivers..."

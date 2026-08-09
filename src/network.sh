@@ -86,8 +86,7 @@ getMTU() {
 
 minMTU() {
 
-  local mtu
-  local min=""
+  local mtu min=""
 
   for mtu in "$@"; do
     [[ -z "$mtu" || "$mtu" == "0" ]] && continue
@@ -294,26 +293,6 @@ detectAdapter() {
   return 0
 }
 
-containerID() {
-
-  local id
-
-  id=$(hostname -s 2>/dev/null || true)
-
-  if [ -z "$id" ] && [ -s /etc/machine-id ]; then
-    id=$(< /etc/machine-id)
-  fi
-
-  if [ -z "$id" ] && [ -r /proc/sys/kernel/random/boot_id ]; then
-    id=$(< /proc/sys/kernel/random/boot_id)
-  fi
-
-  [ -z "$id" ] && id="unknown"
-
-  echo "$id"
-  return 0
-}
-
 canBindPrivilegedPort() {
 
   local port="$1"
@@ -450,6 +429,11 @@ configureDNS() {
   local upstream="${7:-}"
   local arguments="$DNSMASQ_OPTS"
   local pid
+
+  if ! echo "$gateway" > "$QEMU_DIR/qemu.gw"; then
+    error "Failed to write QEMU gateway file!"
+    return 1
+  fi
 
   enabled "${DNSMASQ_DISABLE:-}" && return 0
   enabled "$DEBUG" && echo "Starting dnsmasq daemon..."
@@ -596,8 +580,8 @@ getReservedPorts() {
   fi
 
   # Reserve the public web server port.
-  if ! disabled "${WEB:-}"; then
-    [ -n "${WEB_PORT:-}" ] && list+="$WEB_PORT/tcp,"
+  if ! disabled "${WEB:-}" && [ -n "${WEB_PORT:-}" ]; then
+    list+="$WEB_PORT/tcp,"
   fi
 
   normalizePorts "$list" "$mode"
@@ -891,7 +875,12 @@ configureSlirp() {
   forward=$(getSlirp "$ip")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
-  if ! enabled "${DNSMASQ_DISABLE:-}"; then
+  if enabled "${DNSMASQ_DISABLE:-}"; then
+    if ! echo "$gateway" > "$QEMU_DIR/qemu.gw"; then
+      error "Failed to write QEMU gateway file!"
+      return 1
+    fi
+  else
     # Preserve the original resolver, then point the container at local dnsmasq so
     # host.lan resolves consistently for both the guest and helper processes.
     if [ ! -f /etc/resolv.dnsmasq ] && ! cp /etc/resolv.conf /etc/resolv.dnsmasq; then
@@ -2342,6 +2331,9 @@ else
     # Configure tap interface
     if ! configureNAT; then
 
+      # NAT setup failure is recoverable: tear down partial interfaces and
+      # continue with the default user-mode backend.
+
       closeInterfaces
       NETWORK="user"
 
@@ -2384,7 +2376,7 @@ else
 
   showGuestInfo
 
-  if isUserMode && [ -z "$USER_PORTS" ]; then
+  if isUserMode && { [ -z "$USER_PORTS" ] || [[ "$APP" == "Virtual DSM" ]]; }; then
     desc="$APP"
     [[ "${desc,,}" == "qemu" ]] && desc="the VM"
     info "Notice: because user-mode networking is active, when you need to forward custom ports to $desc, add them to the \"USER_PORTS\" variable."
@@ -2400,6 +2392,16 @@ if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" != "1500" ]]; then
   elif [[ "$GUEST_MTU" -lt "1500" ]]; then
     warn "MTU size is $GUEST_MTU, but cannot be advertised for $ADAPTER adapters; networking may break on paths below 1500 MTU."
   fi
+fi
+
+if ! echo "$UPLINK" > "$QEMU_DIR"/qemu.host; then
+  error "Failed to write QEMU host IP file!"
+  exit 24
+fi
+
+if ! echo "$NIC" > "$QEMU_DIR"/qemu.nic; then
+  error "Failed to write QEMU NIC file!"
+  exit 24
 fi
 
 if [ -n "$IP" ]; then

@@ -7,6 +7,8 @@ set -Eeuo pipefail
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
 : "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
+: "${DISK_OFFSET:=""}"            # Number of disk slots to reserve from the PCI address range
+: "${DISK_MINIMUM:=""}"           # Require the primary data disk to have at least this size
 : "${DISK_OPTIONS:=""}"           # Specifies additional options for the QEMU disk device
 : "${DISK_CACHE:="none"}"         # Caching mode, can be set to 'writeback' for better performance
 : "${DISK_DISCARD:="unmap"}"      # Controls whether unmap (TRIM) commands are passed to the host.
@@ -16,9 +18,11 @@ set -Eeuo pipefail
 DISK_IO=$(strip "$DISK_IO")
 DISK_FMT=$(strip "$DISK_FMT")
 DISK_TYPE=$(strip "$DISK_TYPE")
-DISK_FLAGS=$(strip "$DISK_FLAGS")
-DISK_OPTIONS=$(strip "$DISK_OPTIONS")
 DISK_CACHE=$(strip "$DISK_CACHE")
+DISK_FLAGS=$(strip "$DISK_FLAGS")
+DISK_OFFSET=$(strip "$DISK_OFFSET")
+DISK_MINIMUM=$(strip "$DISK_MINIMUM")
+DISK_OPTIONS=$(strip "$DISK_OPTIONS")
 DISK_DISCARD=$(strip "$DISK_DISCARD")
 DISK_ROTATION=$(strip "$DISK_ROTATION")
 
@@ -140,14 +144,14 @@ getDiskOptions() {
   return 0
 }
 
-normalizeSize() {
+normalizeDiskSize() {
 
   local diskSpace="$1"
-  local diskDesc="$2"
-  local dir="$3"
+  local dir="$2"
 
-  local free dataSize
-  local spare=1073741824
+  local spare=1073741824 free
+
+  diskSpace="${diskSpace// /}"
 
   # Dynamic sizes are based on current free space. max leaves a 1 GiB reserve,
   # while half intentionally consumes only half of what is available.
@@ -167,19 +171,47 @@ normalizeSize() {
 
   fi
 
-  local space="${diskSpace// /}"
-  [ -z "$space" ] && space="64G"
-  [ -z "${space//[0-9. ]}" ] && space="${space}G"
-  space=$(echo "${space^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+  [ -z "${diskSpace//[0-9. ]}" ] && diskSpace="${diskSpace}G"
+  diskSpace=$(echo "${diskSpace^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+
+  echo "$diskSpace"
+  return 0
+}
+
+normalizeSize() {
+
+  local diskSpace="$1"
+  local diskDesc="$2"
+  local dir="$3"
+
+  local space minimum
+  local dataSize minimumSize
+
+  diskSpace="${diskSpace// /}"
+  [ -z "$diskSpace" ] && diskSpace="${DISK_SIZE// /}"
+
+  space=$(normalizeDiskSize "$diskSpace" "$dir")
+
+  if [[ "$diskDesc" == "disk" ]]; then
+    minimum=$(normalizeDiskSize "$DISK_MINIMUM" "$dir")
+  else
+    minimum="100M"
+  fi
 
   if ! numfmt --from=iec "$space" &>/dev/null; then
     error "Invalid value for ${diskDesc^^}_SIZE: $diskSpace" && exit 73
   fi
 
-  dataSize=$(numfmt --from=iec "$space")
+  if ! numfmt --from=iec "$minimum" &>/dev/null; then
+    error "Invalid value for DISK_MINIMUM: $DISK_MINIMUM" && exit 73
+  fi
 
-  if (( dataSize < 104857600 )); then
-    error "Please increase the ${diskDesc^^}_SIZE variable to at least 100 MB." && exit 73
+  dataSize=$(numfmt --from=iec "$space")
+  minimumSize=$(numfmt --from=iec "$minimum")
+
+  if (( dataSize < minimumSize )); then
+    error "Please increase the ${diskDesc^^}_SIZE variable to at least $(formatBytes "$minimumSize")."
+    exit 73
   fi
 
   echo "$space"
@@ -401,7 +433,8 @@ convertDisk() {
   if [[ "$destinationFmt" == "raw" ]]; then
     if ! disabled "$ALLOCATE"; then
 
-      # Work around qemu-img bug
+      # qemu-img may leave converted raw output sparse despite requested
+      # preallocation, so allocate its final length explicitly afterward.
       if ! currentSize=$(stat -c%s "$tmpFile"); then
         error "Failed to determine converted image size: $tmpFile"
         exit 79
@@ -415,6 +448,8 @@ convertDisk() {
     fi
   fi
 
+  # Publish the converted image before deleting the original so a failed
+  # conversion or rename never destroys the only usable disk.
   if ! mv "$tmpFile" "$destinationFile"; then
     error "Failed to move converted $diskDesc image to $destinationFile."
     exit 79
@@ -459,6 +494,8 @@ checkFS () {
     warn "the filesystem of $base is FUSE, this extra layer will negatively affect performance!"
   fi
 
+  # Filesystems without O_DIRECT support require threaded I/O and writeback
+  # caching; native AIO with cache=none would fail at runtime.
   if ! supportsDirect "$fs"; then
     warn "the filesystem of $base is $fs, which does not support O_DIRECT mode, adjusting settings..."
   fi
@@ -494,7 +531,7 @@ createDevice () {
   [ -n "$DISK_OPTIONS" ] && options=",${DISK_OPTIONS#,}"
 
   local bootIndex=""
-  local diskId="data$diskIndex"
+  local diskId="${10:-data$diskIndex}"
   [ -n "$diskIndex" ] && bootIndex=",bootindex=$diskIndex"
   local result=" -drive file=$diskFile,id=$diskId,format=$diskFmt,cache=$diskCache,aio=$diskIo,discard=$DISK_DISCARD,detect-zeroes=on"
 
@@ -526,8 +563,8 @@ createDevice () {
       ;;
     "scsi" | "virtio-scsi" )
       result+=",if=none \
-      -device virtio-scsi-pci,id=${diskId}b,bus=$bus,addr=$diskAddress${IOTHREAD_OPT},hotplug=off \
-      -device scsi-hd,drive=${diskId},bus=${diskId}b.0,channel=0,scsi-id=0,lun=0,rotation_rate=$DISK_ROTATION${bootIndex}${diskSerial}${diskSectors}${options}"
+      -device virtio-scsi-pci,id=${diskId},bus=$bus,addr=$diskAddress${IOTHREAD_OPT},hotplug=off \
+      -device scsi-hd,drive=${diskId},bus=${diskId}.0,channel=0,scsi-id=0,lun=0,rotation_rate=$DISK_ROTATION${bootIndex}${diskSerial}${diskSectors}${options}"
       echo "$result"
       ;;
   esac
@@ -610,8 +647,8 @@ addMedia () {
 
         "scsi" | "virtio-scsi" )
           result+=",if=none \
-          -device virtio-scsi-pci,id=${mediaId}b,bus=$bus${address}${IOTHREAD_OPT},hotplug=off \
-          -device scsi-cd,drive=${mediaId},bus=${mediaId}b.0${bootIndex}"
+          -device virtio-scsi-pci,id=${mediaId},bus=$bus${address}${IOTHREAD_OPT},hotplug=off \
+          -device scsi-cd,drive=${mediaId},bus=${mediaId}.0${bootIndex}"
           echo "$result" ;;
       esac
 
@@ -628,8 +665,9 @@ finishDisks () {
 
   local type
 
-  # The shared iothread object is added only when at least one selected device
-  # type actually references it.
+  # VirtIO block and SCSI devices share one dedicated I/O thread, which
+  # must be declared exactly once regardless of disk count.
+
   [ -z "$IOTHREAD_OPT" ] && return 0
 
   for type in "${DISK_TYPE,,}" "${MEDIA_TYPE,,}"; do
@@ -659,6 +697,7 @@ addDisk () {
   local diskExt dataSize
   local available currentSize
   local previousExt
+  local explicitSize="${diskSpace// /}"
 
   diskExt=$(fmt2ext "$diskFmt")
   local diskFile="$diskBase.$diskExt"
@@ -706,13 +745,15 @@ addDisk () {
 
     if (( dataSize > currentSize )); then
 
-      resizeDisk "$diskFile" "$space" "$diskDesc" "$diskFmt" "$fs" || exit $?
+      if [ -n "$explicitSize" ]; then
+        resizeDisk "$diskFile" "$space" "$diskDesc" "$diskFmt" "$fs" || exit $?
+      fi
 
     else
 
       if (( dataSize < currentSize )); then
 
-        if [[ "${diskSpace,,}" != "max" && "${diskSpace,,}" != "half" ]]; then
+        if [ -n "$explicitSize" ] && [[ "${diskSpace,,}" != "max" && "${diskSpace,,}" != "half" ]]; then
           info "You decreased the ${diskDesc^^}_SIZE variable to ${diskSpace/G/ GB} but shrinking disks is not supported, will be ignored..."
         fi
 
@@ -820,6 +861,9 @@ addDevice () {
   [ -z "$diskDev" ] && return 0
   [ ! -b "$diskDev" ] && error "Device $diskDev cannot be found! Please add it to the 'devices' section of your compose file." && exit 55
 
+  local devType
+  devType=$(lsblk -no TYPE "$diskDev" 2>/dev/null | head -n1)
+
   local result
   result=$(fdisk -l "$diskDev" 2>/dev/null | grep -m 1 -o "(logical/physical): .*" | cut -c 21- || true)
 
@@ -829,12 +873,17 @@ addDevice () {
     physical="${physical%% *}"
   fi
 
-  # Report non-512 physical geometry to QEMU so guests align I/O correctly;
-  # the normal 512-byte case needs no explicit device option.
+  # Report non-512 physical geometry to QEMU so guests align I/O correctly.
+  # Legacy whole-disk 512e passthrough omits it for compatibility, while
+  # partitions, modern boot modes and non-512 logical sectors keep the real geometry.
   if [ -z "$logical" ] || [ -z "$physical" ]; then
     warn "Failed to determine the sector size for $diskDev"
   elif [[ "$physical" != "512" ]]; then
-    sectors=",logical_block_size=$logical,physical_block_size=$physical"
+    if [[ "$devType" != "disk" ||
+          ( "${BOOT_MODE,,}" != "legacy" && "${BOOT_MODE,,}" != "windows_legacy" ) ||
+          "$logical" != "512" ]]; then
+      sectors=",logical_block_size=$logical,physical_block_size=$physical"
+    fi
   fi
 
   DISK_OPTS+=$(createDevice "$diskDev" "$diskType" "$diskIndex" "$diskAddress" "raw" "$DISK_IO" "$DISK_CACHE" "" "$sectors")
@@ -845,7 +894,9 @@ addDevice () {
 [ -z "${DISK_OPTS:-}" ] && DISK_OPTS=""
 [ -z "${DISK_TYPE:-}" ] && DISK_TYPE="scsi"
 [ -z "${DISK_NAME:-}" ] && DISK_NAME="data"
+[ -z "${DISK_OFFSET:-}" ] && DISK_OFFSET="0"
 [ -z "${DISK_DISABLE:-}" ] && DISK_DISABLE=""
+[ -z "${DISK_MINIMUM:-}" ] && DISK_MINIMUM="100M"
 
 if ! enabled "$DISK_DISABLE"; then
   msg="Initializing disks..."
@@ -885,6 +936,11 @@ esac
 if [[ ! "$DISK_ROTATION" =~ ^[0-9]+$ ]]; then
   warn "Invalid DISK_ROTATION value '$DISK_ROTATION', using 1."
   DISK_ROTATION="1"
+fi
+
+if [[ ! "$DISK_OFFSET" =~ ^[0-5]$ ]]; then
+  error "Invalid DISK_OFFSET value '$DISK_OFFSET', must be between 0 and 5."
+  exit 78
 fi
 
 if ! validDiskType "$DISK_TYPE"; then
@@ -945,9 +1001,9 @@ if [ -s "$BOOT" ]; then
           DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "boot" "$BOOT_INDEX" "0x5")
         fi ;;
     *".img" | *".raw" )
-        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "") ;;
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "" "boot") ;;
     *".qcow2" )
-        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "qcow2" "$DISK_IO" "$DISK_CACHE" "" "") ;;
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "qcow2" "$DISK_IO" "$DISK_CACHE" "" "" "boot") ;;
     * )
         error "Invalid BOOT image specified, extension \".${BOOT/*./}\" is not recognized!" && exit 80 ;;
   esac
@@ -1045,7 +1101,7 @@ DISK_IMAGES=()
 DISK_DEVICES=()
 DISK_DEVICE_VARS=( "$DEVICE" "$DEVICE2" "$DEVICE3" "$DEVICE4" "$DEVICE5" "$DEVICE6" )
 
-for i in "${!DISK_DEVICE_VARS[@]}"; do
+for (( i=0; i<6-DISK_OFFSET; i++ )); do
 
   diskNumber=$(( i + 1 ))
 
@@ -1095,14 +1151,14 @@ DISK_ADDRESSES=( "0xa" "0xb" "0xc" "0xd" "0xe" "0xf" )
 
 # Source precedence is explicit block device, then bind-mounted image, then the
 # managed image created under the corresponding storage directory.
-for i in "${!DISK_FILES[@]}"; do
+for (( i=0; i<6-DISK_OFFSET; i++ )); do
 
   if [ -n "${DISK_DEVICES[i]}" ]; then
-    addDevice "${DISK_DEVICES[i]}" "$DISK_TYPE" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
+    addDevice "${DISK_DEVICES[i]}" "$DISK_TYPE" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" || exit $?
   elif [ -n "${DISK_IMAGES[i]}" ]; then
-    addImage "${DISK_IMAGES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" || exit $?
+    addImage "${DISK_IMAGES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" || exit $?
   else
-    addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+    addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
   fi
 
 done

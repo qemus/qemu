@@ -15,6 +15,7 @@ AUX_PID="$QEMU_DIR/audio-websocketd.pid"
 WSS_SOCKET="$QEMU_DIR/vnc-ws.sock"
 AUX_SOCKET="$QEMU_DIR/audio-ws.sock"
 WSD_SOCKET="$QEMU_DIR/status-ws.sock"
+WSD_COMMAND="$QEMU_DIR/status.cmd"
 
 WSD_LOG="/var/log/websocketd.log"
 AUX_LOG="/var/log/audio-socket.log"
@@ -34,7 +35,7 @@ prepareWebFiles() {
   cp -r /var/www/* "$QEMU_DIR" || return 1
   rm -f -- \
     "$WSD_PID" "$AUX_PID" "$WEB_PID" \
-    "$WSD_SOCKET" "$AUX_SOCKET" \
+    "$WSD_SOCKET" "$AUX_SOCKET" "$WSD_COMMAND" \
     "$WSD_LOG" "$AUX_LOG" || return 1
 
   return 0
@@ -74,7 +75,7 @@ configureAuthentication() {
 configureWebPorts() {
 
   if ! sed -i \
-    "s|listen 8006 default_server;|listen $WEB_PORT default_server;|g" \
+    -E "s|listen [0-9]+ default_server;|listen $WEB_PORT default_server;|g" \
     /etc/nginx/sites-enabled/web.conf; then
     error "Failed to configure webserver port!"
     return 1

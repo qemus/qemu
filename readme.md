@@ -69,8 +69,6 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
 
 - Docker or Podman on a Linux host with KVM support.
 - Docker Desktop or Podman (Desktop) on Windows 11 with nested virtualization enabled.
-- At least 2 GB of available RAM.
-- At least 64 GB of free disk space.
 
 > [!NOTE]
 > Docker Desktop on Linux, macOS, and Windows 10 does not currently provide KVM access to containers and is therefore not supported.
