@@ -6,13 +6,13 @@ ARG TARGETARCH
 ARG VERSION_ARG="0.0"
 ARG VERSION_QMP="0.0.6"
 ARG VERSION_WSD="0.4.2"
-ARG VERSION_UTK="1.2.0"
+ARG VERSION_UTK="1.3.0"
 ARG VERSION_VNC="1.7.0"
 ARG VERSION_OVMF="2026.05-2"
 ARG VERSION_PASST="2026_07_28"
 ARG VERSION_SEABIOS="1.17.0-1"
 ARG VERSION_QEMU="1:11.0.3+ds-2"
-ARG DEBIAN_SNAPSHOT="20260809T204446Z""
+ARG DEBIAN_SNAPSHOT="20260809T204446Z"
 
 ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
@@ -30,7 +30,6 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     wget \
     7zip \
     curl \
-    ovmf \
     aria2 \
     fdisk \
     nginx \
@@ -63,6 +62,7 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
 
   apt-get update
   apt-get --no-install-recommends -y -t sid install \
+    "ovmf=${VERSION_OVMF}" \
     "seabios=${VERSION_SEABIOS}" \
     "qemu-utils=${VERSION_QEMU}" \
     "qemu-system-x86=${VERSION_QEMU}"
@@ -77,11 +77,6 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   # Install websocketd package
   wget "https://github.com/qemus/websocketd/releases/download/v${VERSION_WSD}/websocketd-${VERSION_WSD}_${TARGETARCH}.deb" -O /tmp/wsd.deb -q --timeout=10
   dpkg -i /tmp/wsd.deb
-
-  # Install newer Microsoft Secure Boot variables from OVMF in SID
-  wget "https://deb.debian.org/debian/pool/main/e/edk2/ovmf-generic_${VERSION_OVMF}_all.deb" -O /tmp/ovmf.deb -q --timeout=10
-  dpkg-deb -x /tmp/ovmf.deb /tmp/ovmf
-  install -m 0644 /tmp/ovmf/usr/share/OVMF/OVMF_VARS_4M.ms.fd /usr/share/OVMF/OVMF_VARS_4M.ms.fd
 
   rm -f /etc/apt/sources.list.d/qemu-snapshot.list
   apt-get clean
