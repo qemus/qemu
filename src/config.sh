@@ -141,7 +141,7 @@ configureAudio() {
 
   AUDIO_OPTS+=" -audiodev wav,id=snd,path=$AUDIO_FIFO,out.frequency=48000,out.channels=2,out.format=s16"
 
-  # A USB audio device needs a compatible controller even when the main USB setting uses EHCI.
+  # A USB audio device needs a compatible controller.
   if [[ "$model" == usb-* ]]; then
 
     if disabled "$USB" || [ -z "$USB" ]; then
