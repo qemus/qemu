@@ -58,7 +58,7 @@ configureMonitor() {
     MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server=on,wait=off,nodelay=on"
   fi
 
-  MON_OPTS+=" -name $PROCESS,process=$PROCESS,debug-threads=on"
+  MON_OPTS+=" -name $PROCESS,process=$PROCESS"
   MON_OPTS+=" -pidfile $QEMU_PID"
   MON_OPTS="${MON_OPTS# }"
 
