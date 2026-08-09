@@ -451,6 +451,11 @@ configureDNS() {
   local arguments="$DNSMASQ_OPTS"
   local pid
 
+  if ! echo "$gateway" > "$QEMU_DIR/qemu.gw"; then
+    error "Failed to write QEMU gateway file!"
+    return 1
+  fi
+
   enabled "${DNSMASQ_DISABLE:-}" && return 0
   enabled "$DEBUG" && echo "Starting dnsmasq daemon..."
 
@@ -891,7 +896,12 @@ configureSlirp() {
   forward=$(getSlirp "$ip")
   [ -n "$forward" ] && NET_OPTS+=",$forward"
 
-  if ! enabled "${DNSMASQ_DISABLE:-}"; then
+  if enabled "${DNSMASQ_DISABLE:-}"; then
+    if ! echo "$gateway" > "$QEMU_DIR/qemu.gw"; then
+      error "Failed to write QEMU gateway file!"
+      return 1
+    fi
+  else
     # Preserve the original resolver, then point the container at local dnsmasq so
     # host.lan resolves consistently for both the guest and helper processes.
     if [ ! -f /etc/resolv.dnsmasq ] && ! cp /etc/resolv.conf /etc/resolv.dnsmasq; then
@@ -2384,7 +2394,7 @@ else
 
   showGuestInfo
 
-  if isUserMode && [ -z "$USER_PORTS" ]; then
+  if isUserMode && { [ -z "$USER_PORTS" ] || [[ "$USER_PORTS" == "5000/tcp,5001/tcp" ]]; }; then
     desc="$APP"
     [[ "${desc,,}" == "qemu" ]] && desc="the VM"
     info "Notice: because user-mode networking is active, when you need to forward custom ports to $desc, add them to the \"USER_PORTS\" variable."
@@ -2400,6 +2410,16 @@ if [[ "$GUEST_MTU" != "0" && "$GUEST_MTU" != "1500" ]]; then
   elif [[ "$GUEST_MTU" -lt "1500" ]]; then
     warn "MTU size is $GUEST_MTU, but cannot be advertised for $ADAPTER adapters; networking may break on paths below 1500 MTU."
   fi
+fi
+
+if ! echo "$UPLINK" > "$QEMU_DIR"/qemu.host; then
+  error "Failed to write QEMU host IP file!"
+  exit 24
+fi
+
+if ! echo "$NIC" > "$QEMU_DIR"/qemu.nic; then
+  error "Failed to write QEMU NIC file!"
+  exit 24
 fi
 
 if [ -n "$IP" ]; then
