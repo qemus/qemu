@@ -28,10 +28,11 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     wget \
     7zip \
     curl \
+    ovmf \
     aria2 \
     fdisk \
     nginx \
-    ovmf \
+    unzip \
     swtpm \
     procps \
     ipcalc \
