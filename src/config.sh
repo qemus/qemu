@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+: "${QMP:=""}"
 : "${UUID:=""}"
 : "${HPET:="off"}"
 : "${VMPORT:="off"}"
@@ -48,6 +49,7 @@ configureSerial() {
 configureMonitor() {
 
   MON_OPTS="-monitor $MONITOR"
+  [ -n "$QMP" ] && MON_OPTS+=" -qmp $QMP"
 
   if enabled "$SHUTDOWN" && [ -n "${ACPI_SOCKET:-}" ]; then
     MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server=on,wait=off,nodelay=on"
