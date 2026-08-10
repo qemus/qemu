@@ -20,8 +20,7 @@ finish() {
   local reason="$1"
   local failed=0
 
-  # A nonzero exit is unexpected only when no shutdown path created QEMU_END
-  # beforehand.
+  # A nonzero exit is unexpected only when QEMU_END is missing.
   if [ ! -f "$QEMU_END" ] && (( reason != 0 )); then
     failed=1
   fi
