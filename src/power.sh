@@ -35,6 +35,7 @@ finish() {
     warn "Timed out while waiting for $(app) to exit!"
   fi
 
+  stopConsole
   echo
 
   if (( failed == 0 )); then
