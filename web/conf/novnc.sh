@@ -82,6 +82,24 @@ ui = replace_pattern_once(
     "noVNC beforeunload handler",
 )
 
+autoconnect = '''        if (autoconnect === 'true' || autoconnect == '1') {
+            autoconnect = true;
+            UI.connect();
+'''
+
+patched_autoconnect = '''        if (autoconnect === 'true' || autoconnect == '1') {
+            autoconnect = true;
+            UI.inhibitReconnect = false;
+            UI.connect();
+'''
+
+ui = replace_once(
+    ui,
+    autoconnect,
+    patched_autoconnect,
+    "noVNC autoconnect block",
+)
+
 reconnect_pattern = (
     r'^    reconnect\(\)[ \t]*\{.*?'
     r'^    \},[ \t]*\n'
