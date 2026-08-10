@@ -70,12 +70,13 @@ configureMachine() {
   local smm="off"
   enabled "$SMM" && smm="on"
 
-  MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off"
-  MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
-
+  local usb=""
   if disabled "$USB" || [ -z "$USB" ]; then
-    MAC_OPTS+=",usb=off"
+    usb=",usb=off"
   fi
+
+  MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off${usb}"
+  MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 
   UUID=$(strip "$UUID")
   [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
