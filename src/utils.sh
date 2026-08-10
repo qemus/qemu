@@ -815,6 +815,18 @@ mergeState() {
   return 0
 }
 
+removeState() {
+
+  local name="$1"
+  local prefix="${2:-$PROCESS}"
+  local path
+
+  path=$(stateFile "$name" "$prefix") || return 1
+  rm -f -- "$path"
+
+  return $?
+}
+
 escape () {
 
   local s=${1//&/\&amp;}
