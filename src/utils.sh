@@ -445,13 +445,17 @@ disabled() {
 isAlive() {
 
   local pid="$1"
+  local state threads
+
   [ -z "$pid" ] && return 1
 
-  if kill -0 "$pid" 2>/dev/null; then
-    return 0
+  if ! read -r state threads < <(ps -o state=,nlwp= -p "$pid" 2>/dev/null); then
+    return 1
   fi
 
-  return 1
+  [[ "$state" == "Z" && "$threads" == "1" ]] && return 1
+
+  return 0
 }
 
 waitPid() {
@@ -505,10 +509,23 @@ fWait() {
   local name="$1"
   local timeout="${2:-10}"
   local deadline=$((SECONDS + timeout))
+  local pid alive
 
   [ -z "$name" ] && return 0
 
-  while pgrep -f -l "$name" >/dev/null; do
+  while :; do
+
+    alive=0
+
+    while read -r pid; do
+      if isAlive "$pid"; then
+        alive=1
+        break
+      fi
+    done < <(pgrep -f "$name" 2>/dev/null || :)
+
+    (( alive == 0 )) && break
+
     if (( SECONDS >= deadline )); then
       warn "Timed out while waiting for process: $name"
       break
