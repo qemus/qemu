@@ -20,52 +20,33 @@ WSD_COMMAND="$QEMU_DIR/status.cmd"
 WSD_LOG="/var/log/websocketd.log"
 AUX_LOG="/var/log/audio-socket.log"
 
-validateVncPort() {
+configureWebServer() {
 
-  if (( VNC_PORT < 5900 )); then
-    warn "VNC port cannot be set lower than 5900, ignoring value $VNC_PORT."
-    VNC_PORT="5900"
-  fi
-
-  return 0
-}
-
-prepareWebFiles() {
-
-  cp -r /var/www/* "$QEMU_DIR" || return 1
-  rm -f -- \
-    "$WSD_PID" "$AUX_PID" "$WEB_PID" \
-    "$WSD_SOCKET" "$AUX_SOCKET" "$WSD_COMMAND" \
-    "$WSD_LOG" "$AUX_LOG" || return 1
+  configureNginx || return 1
+  configureAuthentication || return 1
+  configureWebPorts || return 1
+  configureIpv6Listen || return 1
 
   return 0
 }
 
-configureAuthentication() {
+configureNginx() {
 
-  if ! enabled "${PROTECT:-}" && [ -z "${PASS:-}" ]; then
-    return 0
-  fi
+  mkdir -p /etc/nginx/sites-enabled || return 1
+  rm -f /etc/nginx/sites-enabled/default || return 1
 
-  local user="Docker"
-  local pass="admin"
-
-  USERNAME=$(strip "${USERNAME:-}")
-  [ -n "${USERNAME:-}" ] && user="$USERNAME"
-  [ -n "${PASSWORD:-}" ] && pass="$PASSWORD"
-
-  # PASS is the legacy web-password variable and intentionally overrides the
-  # newer general PASSWORD value for backwards compatibility.
-  [ -n "${PASS:-}" ] && pass="$PASS"
-
-  # Set password
-  if ! printf '%s\n' "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd; then
-    error "Failed to create web authentication file!"
+  # TODO: Use setfacl to grant www-data access to the Unix sockets
+  # and restore unprivileged nginx workers.
+  if ! sed -i \
+    -e 's/^user .*/user root;/' \
+    -e 's/^worker_processes.*/worker_processes 1;/' \
+    /etc/nginx/nginx.conf; then
+    error "Failed to configure nginx!"
     return 1
   fi
 
-  if ! sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf; then
-    error "Failed to enable web authentication!"
+  if ! cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf; then
+    error "Failed to copy nginx config!"
     return 1
   fi
 
@@ -102,52 +83,34 @@ configureIpv6Listen() {
   return 0
 }
 
-configureNginx() {
+configureAuthentication() {
 
-  mkdir -p /etc/nginx/sites-enabled || return 1
-  rm -f /etc/nginx/sites-enabled/default || return 1
+  if ! enabled "${PROTECT:-}" && [ -z "${PASS:-}" ]; then
+    return 0
+  fi
 
-  # TODO: Use setfacl to grant www-data access to the Unix sockets
-  # and restore unprivileged nginx workers.
-  if ! sed -i \
-    -e 's/^user .*/user root;/' \
-    -e 's/^worker_processes.*/worker_processes 1;/' \
-    /etc/nginx/nginx.conf; then
-    error "Failed to configure nginx!"
+  local user="Docker"
+  local pass="admin"
+
+  USERNAME=$(strip "${USERNAME:-}")
+  [ -n "${USERNAME:-}" ] && user="$USERNAME"
+  [ -n "${PASSWORD:-}" ] && pass="$PASSWORD"
+
+  # PASS is the legacy web-password variable and intentionally overrides the
+  # newer general PASSWORD value for backwards compatibility.
+  [ -n "${PASS:-}" ] && pass="$PASS"
+
+  # Set password
+  if ! printf '%s\n' "$user:{PLAIN}$pass" > /etc/nginx/.htpasswd; then
+    error "Failed to create web authentication file!"
     return 1
   fi
 
-  if ! cp /etc/nginx/default.conf /etc/nginx/sites-enabled/web.conf; then
-    error "Failed to copy nginx config!"
+  if ! sed -i "s/auth_basic off/auth_basic \"NoVNC\"/g" /etc/nginx/sites-enabled/web.conf; then
+    error "Failed to enable web authentication!"
     return 1
   fi
 
-  return 0
-}
-
-configureWebServer() {
-
-  configureNginx || return 1
-  configureAuthentication || return 1
-  configureWebPorts || return 1
-  configureIpv6Listen || return 1
-
-  return 0
-}
-
-stopWebServer() {
-
-  local pid
-
-  if readPidFile pid "$WEB_PID"; then
-    pKill "$pid" 2
-
-    if isAlive "$pid"; then
-      kill -9 -- "$pid" 2>/dev/null || :
-    fi
-  fi
-
-  rm -f -- "$WEB_PID"
   return 0
 }
 
@@ -159,19 +122,21 @@ startWebServer() {
   return 0
 }
 
-stopWebsocketServer() {
+stopWebServer() {
 
   local pid
 
-  if readPidFile pid "$WSD_PID"; then
+  if readPidFile pid "$WEB_PID"; then
+
     pKill "$pid" 2
 
     if isAlive "$pid"; then
       kill -9 -- "$pid" 2>/dev/null || :
     fi
+
   fi
 
-  rm -f -- "$WSD_PID" "$WSD_SOCKET"
+  rm -f -- "$WEB_PID"
   return 0
 }
 
@@ -215,23 +180,26 @@ startWebsocketServer() {
 
   rm -f -- "$WSD_PID" "$WSD_SOCKET"
   [ -s "$WSD_LOG" ] && cat "$WSD_LOG" >&2
+
   error "Websocket server did not create its socket!"
   return 1
 }
 
-stopAudioServer() {
+stopWebsocketServer() {
 
   local pid
 
-  if readPidFile pid "$AUX_PID"; then
+  if readPidFile pid "$WSD_PID"; then
+
     pKill "$pid" 2
 
     if isAlive "$pid"; then
       kill -9 -- "$pid" 2>/dev/null || :
     fi
+
   fi
 
-  rm -f -- "$AUX_PID" "$AUX_SOCKET"
+  rm -f -- "$WSD_PID" "$WSD_SOCKET"
   return 0
 }
 
@@ -276,8 +244,67 @@ startAudioServer() {
 
   rm -f -- "$AUX_PID" "$AUX_SOCKET"
   [ -s "$AUX_LOG" ] && cat "$AUX_LOG" >&2
+
   error "Audio websocket server did not create its socket!"
   return 1
+}
+
+stopAudioServer() {
+
+  local pid
+
+  if readPidFile pid "$AUX_PID"; then
+
+    pKill "$pid" 2
+
+    if isAlive "$pid"; then
+      kill -9 -- "$pid" 2>/dev/null || :
+    fi
+
+  fi
+
+  rm -f -- "$AUX_PID" "$AUX_SOCKET"
+  return 0
+}
+
+cleanupServers() {
+
+  rm -f -- \
+    "$WSD_PID" "$AUX_PID" "$WEB_PID" \
+    "$WSD_SOCKET" "$WSD_COMMAND" "$AUX_SOCKET" \
+    "$WSD_LOG" "$AUX_LOG" || :
+
+  return 0
+}
+
+stopAllServers() {
+
+  local pids=( "${WEB_PID:-}" "${WSD_PID:-}" "${AUX_PID:-}")
+
+  mKill "${pids[@]}"
+
+  cleanupServers
+
+  return 0
+}
+
+prepareWebFiles() {
+
+  cleanupServers
+
+  cp -r /var/www/* "$QEMU_DIR" || return 1
+
+  return 0
+}
+
+validateVncPort() {
+
+  if (( VNC_PORT < 5900 )); then
+    warn "VNC port cannot be set lower than 5900, ignoring value $VNC_PORT."
+    VNC_PORT="5900"
+  fi
+
+  return 0
 }
 
 validateVncPort
@@ -289,11 +316,9 @@ disabled "${WEB:-}" && return 0
 
 configureWebServer
 
-if startWebServer && startWebsocketServer; then
-  return 0
+if ! startWebServer || ! startWebsocketServer; then
+  stopAllServers || return $?
+  return 1
 fi
 
-stopWebsocketServer || :
-stopWebServer || :
-
-return 1
+return 0

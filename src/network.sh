@@ -1889,18 +1889,10 @@ closeInterfaces() {
   return 0
 }
 
-closeWeb() {
-
-  local pids=( "${WEB_PID:-}" "${WSD_PID:-}" )
-  mKill "${pids[@]}"
-
-  return 0
-}
-
 closeNetwork() {
 
   if ! disabled "${WEB:-}"; then
-    closeWeb
+    stopAllServers
   fi
 
   disabled "$NETWORK" && return 0
