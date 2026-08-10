@@ -82,22 +82,22 @@ ui = replace_pattern_once(
     "noVNC beforeunload handler",
 )
 
-autoconnect = '''        if (autoconnect === 'true' || autoconnect == '1') {
-            autoconnect = true;
-            UI.connect();
+reconnect_state = '''    inhibitReconnect: true,
+    reconnectCallback: null,
+    reconnectPassword: null,
 '''
 
-patched_autoconnect = '''        if (autoconnect === 'true' || autoconnect == '1') {
-            autoconnect = true;
-            UI.inhibitReconnect = false;
-            UI.connect();
+patched_reconnect_state = '''    inhibitReconnect: true,
+    reconnectCallback: null,
+    reconnectFailures: 0,
+    reconnectPassword: null,
 '''
 
 ui = replace_once(
     ui,
-    autoconnect,
-    patched_autoconnect,
-    "noVNC autoconnect block",
+    reconnect_state,
+    patched_reconnect_state,
+    "noVNC reconnect state",
 )
 
 reconnect_pattern = (
@@ -125,12 +125,42 @@ patched_reconnect = '''    async reconnect() {
                 },
             );
 
+            UI.reconnectFailures = 0;
+
             if (response.ok) {
                 window.location.reload();
                 return;
             }
+
+            UI.updateVisualState('reconnecting');
         } catch (err) {
+            UI.reconnectFailures++;
+
             Log.Warn("Failed to check for message page: " + err);
+
+            if (UI.reconnectFailures >= 3) {
+                document.getElementById("noVNC_transition_text").innerHTML =
+                    '<span style="display:block">' +
+                    'The container has stopped.' +
+                    '</span>' +
+                    '<span style="display:block; margin-top:1em; ' +
+                    'font-size:0.85em; font-weight:normal">' +
+                    'Check the container log for more details.' +
+                    '</span>';
+            }
+
+            // Keep checking in case nginx becomes available again.
+            if (!UI.inhibitReconnect) {
+                const delay = parseInt(
+                    UI.getSetting('reconnect_delay')
+                );
+                UI.reconnectCallback = setTimeout(
+                    UI.reconnect,
+                    delay,
+                );
+            }
+
+            return;
         }
 
         // Recheck in case reconnecting was disabled during the request.
