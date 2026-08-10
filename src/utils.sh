@@ -163,7 +163,9 @@ cleanupHelpers() {
   pids+=( "$@" )
   mKill "${pids[@]}"
 
+  fKill "progress.sh"
   closeNetwork
+
   return 0
 }
 
