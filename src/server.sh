@@ -267,23 +267,32 @@ stopAudioServer() {
   return 0
 }
 
+cleanupServers() {
+
+  rm -f -- \
+    "$WSD_PID" "$AUX_PID" "$WEB_PID" \
+    "$WSD_SOCKET" "$WSD_COMMAND" "$AUX_SOCKET" \
+    "$WSD_LOG" "$AUX_LOG" || :
+
+  return 0
+}
+
 stopAllServers() {
 
-  stopWebsocketServer || :
-  stopAudioServer || :
-  stopWebServer || :
+  local pids=( "${WEB_PID:-}" "${WSD_PID:-}" "${AUX_PID:-}")
+
+  mKill "${pids[@]}"
+
+  cleanupServers
 
   return 0
 }
 
 prepareWebFiles() {
 
-  cp -r /var/www/* "$QEMU_DIR" || return 1
+  cleanupServers
 
-  rm -f -- \
-    "$WSD_PID" "$AUX_PID" "$WEB_PID" \
-    "$WSD_SOCKET" "$AUX_SOCKET" "$WSD_COMMAND" \
-    "$WSD_LOG" "$AUX_LOG" || return 1
+  cp -r /var/www/* "$QEMU_DIR" || return 1
 
   return 0
 }
