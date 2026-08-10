@@ -1892,7 +1892,7 @@ closeInterfaces() {
 closeNetwork() {
 
   if ! disabled "${WEB:-}"; then
-    stopWebserver
+    stopAllServers
   fi
 
   disabled "$NETWORK" && return 0
