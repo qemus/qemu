@@ -445,13 +445,12 @@ disabled() {
 isAlive() {
 
   local pid="$1"
-  local state threads
+  local info state threads
 
   [ -z "$pid" ] && return 1
 
-  if ! read -r state threads < <(ps -o state=,nlwp= -p "$pid" 2>/dev/null); then
-    return 1
-  fi
+  info=$(ps -o state=,nlwp= -p "$pid" 2>/dev/null) || return 1
+  read -r state threads <<< "$info" || return 1
 
   [[ "$state" == "Z" && "$threads" == "1" ]] && return 1
 
