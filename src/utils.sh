@@ -445,13 +445,20 @@ disabled() {
 isAlive() {
 
   local pid="$1"
-  [ -z "$pid" ] && return 1
+  local key state rest
 
-  if kill -0 "$pid" 2>/dev/null; then
-    return 0
+  [ -z "$pid" ] && return 1
+  kill -0 "$pid" 2>/dev/null || return 1
+
+  if [ -r "/proc/$pid/status" ]; then
+    while read -r key state rest; do
+      [[ "$key" == "State:" ]] || continue
+      [[ "$state" == "Z" ]] && return 1
+      break
+    done < "/proc/$pid/status"
   fi
 
-  return 1
+  return 0
 }
 
 waitPid() {
@@ -505,10 +512,24 @@ fWait() {
   local name="$1"
   local timeout="${2:-10}"
   local deadline=$((SECONDS + timeout))
+  local pid alive
+  local pids=()
 
   [ -z "$name" ] && return 0
 
-  while pgrep -f -l "$name" >/dev/null; do
+  while true; do
+    mapfile -t pids < <(pgrep -f "$name" || :)
+    alive=0
+
+    for pid in "${pids[@]}"; do
+      if isAlive "$pid"; then
+        alive=1
+        break
+      fi
+    done
+
+    (( alive == 0 )) && break
+
     if (( SECONDS >= deadline )); then
       warn "Timed out while waiting for process: $name"
       break
@@ -1507,12 +1528,11 @@ downloadToFile() {
   local allocation="none"
   local default_interval=536870912
   local interval="$default_interval"
-  local progress_pid status log
-  local dir file option rc run_rc=0
+  local progress_pid status log dir
+  local file option rc run_rc=0
   local agent custom_agent="N"
   local output="" reason=""
-  local cancel_signal=""
-  local probe=""
+  local cancel_signal="" probe=""
 
   if [[ ! "$connections" =~ ^[1-9][0-9]*$ ]]; then
     error "Invalid connection count: $connections"
