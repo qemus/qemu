@@ -217,13 +217,22 @@ def _is_process_alive(pid: int) -> bool:
     """Check if a process with the given PID is still running."""
     try:
         os.kill(pid, 0)
-        return True
     except ProcessLookupError:
         return False
     except PermissionError:
         return True
     except OSError:
         return False
+
+    try:
+        with open(f"/proc/{pid}/status", "r", encoding="utf-8") as f:
+            for line in f:
+                if line.startswith("State:"):
+                    return line.split()[1] != "Z"
+    except OSError:
+        pass
+
+    return True
 
 
 async def qmp_wait_connected(sock_path: str, interval: int = 5, qemu_pid: int = -1) -> QMPClient:
