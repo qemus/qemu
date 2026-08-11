@@ -22,6 +22,8 @@ ARG DEBCONF_NONINTERACTIVE_SEEN="true"
 RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   set -eu
 
+  echo "deb https://deb.debian.org/debian trixie non-free" > /etc/apt/sources.list.d/non-free.list
+
   apt-get update
   apt-get --no-install-recommends -y install \
     bc \
