@@ -30,6 +30,7 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     tini \
     wget \
     7zip \
+    7zip-rar \
     curl \
     aria2 \
     fdisk \
@@ -39,6 +40,8 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     procps \
     ipcalc \
     ethtool \
+    python3 \
+    python3-pip \
     iptables \
     iproute2 \
     dnsmasq \
@@ -53,9 +56,7 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     genisoimage \
     inotify-tools \
     netcat-openbsd \
-    ca-certificates \
-    python3 \
-    python3-pip
+    ca-certificates
 
   if [ "$TARGETARCH" = "amd64" ]; then
     wget "https://github.com/qemus/mesa-intel/releases/download/v${VERSION_MESA}/mesa-intel_${VERSION_MESA}_amd64.deb" -O /tmp/mesa-intel.deb -q --timeout=10
