@@ -93,7 +93,4 @@ if [ ! -c "$RENDERNODE" ] || [ ! -r "$RENDERNODE" ] || [ ! -w "$RENDERNODE" ]; t
   warn "render device '$RENDERNODE' is unavailable or inaccessible."
 fi
 
-addPackage "xserver-xorg-video-intel" "Intel GPU drivers"
-addPackage "qemu-system-modules-opengl" "OpenGL module"
-
 return 0
