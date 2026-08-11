@@ -668,6 +668,7 @@ downloadToFile() {
   if (( rc == 0 )) && [ -f "$dest" ]; then
     # Aria normally removes this itself after successful completion.
     rm -f -- "$dest.aria2"
+    html "Download completed successfully..."
     return 0
   fi
 
