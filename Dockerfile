@@ -8,6 +8,7 @@ ARG VERSION_QMP="0.0.6"
 ARG VERSION_WSD="0.4.2"
 ARG VERSION_UTK="1.3.0"
 ARG VERSION_VNC="1.7.0"
+ARG VERSION_MESA="1.00"
 ARG VERSION_OVMF="2026.05-2"
 ARG VERSION_PASST="2026_07_28"
 ARG VERSION_SEABIOS="1.17.0-1"
@@ -56,6 +57,11 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     python3 \
     python3-pip
 
+  if [ "$TARGETARCH" = "amd64" ]; then
+    wget "https://github.com/qemus/mesa-intel/releases/download/v${VERSION_MESA}/mesa-intel_${VERSION_MESA}_amd64.deb" -O /tmp/mesa-intel.deb -q --timeout=10
+    apt-get --no-install-recommends -y install /tmp/mesa-intel.deb
+  fi
+
   # Install QEMU 11 and OVMF UEFI firmware from Debian Sid
   echo "deb [check-valid-until=no] https://snapshot.debian.org/archive/debian/${DEBIAN_SNAPSHOT}/ sid main" \
     > /etc/apt/sources.list.d/qemu-snapshot.list
@@ -66,6 +72,11 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     "ovmf-generic=${VERSION_OVMF}" \
     "qemu-utils=${VERSION_QEMU}" \
     "qemu-system-x86=${VERSION_QEMU}"
+
+  if [ "$TARGETARCH" = "amd64" ]; then
+    apt-get --no-install-recommends -y -t sid install \
+      "qemu-system-modules-opengl=${VERSION_QEMU}"
+  fi
 
   # Install QMP
   pip3 install --no-cache-dir --break-system-packages --root-user-action=ignore "qemu.qmp==${VERSION_QMP}"
