@@ -234,6 +234,9 @@ startDownloadProgress() {
   local progress_mode="apparent"
   local log_value status_value=""
 
+  # A previous progress helper must never survive into a new download.
+  fKill "progress.sh"
+
   if ! log_value=$(mktemp -p "$QEMU_DIR"); then
     error "Failed to create temporary download log!"
     return 2
