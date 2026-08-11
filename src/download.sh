@@ -1,3 +1,7 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+
+# Helper functions
 
 getAgent() {
 
