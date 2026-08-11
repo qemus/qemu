@@ -1,5 +1,4 @@
 #!/bin/sh
-
 set -eu
 
 VERSION_VNC="${1:?noVNC version must be specified}"
@@ -118,6 +117,24 @@ ui = replace_once(
     "noVNC reconnect state",
 )
 
+visual_state = '''    updateVisualState(state) {
+
+        document.documentElement.classList.remove("noVNC_connecting");
+'''
+
+patched_visual_state = '''    updateVisualState(state) {
+
+        document.documentElement.classList.remove("noVNC_stopped");
+        document.documentElement.classList.remove("noVNC_connecting");
+'''
+
+ui = replace_once(
+    ui,
+    visual_state,
+    patched_visual_state,
+    "noVNC visual state",
+)
+
 reconnect_pattern = (
     r'^    reconnect\(\)[ \t]*\{.*?'
     r'^    \},[ \t]*\n'
@@ -157,6 +174,7 @@ patched_reconnect = '''    async reconnect() {
             Log.Warn("Failed to check for message page: " + err);
 
             if (UI.reconnectFailures >= 3) {
+                document.documentElement.classList.add("noVNC_stopped");
                 document.getElementById("noVNC_transition_text").innerHTML =
                     '<span style="display:block">' +
                     'The container has stopped.' +
@@ -311,6 +329,9 @@ style_patch = '''    <style>
             text-align: center;
         }
         #noVNC_cancel_reconnect_button {
+            display: none;
+        }
+        :root.noVNC_stopped .noVNC_spinner {
             display: none;
         }
     </style>
