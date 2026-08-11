@@ -568,7 +568,11 @@ downloadToFile() {
     "$message" \
     "$output" \
     "$interval" \
-    "$connections" || return $?
+    "$connections" || {
+      rc=$?
+      html "Download failed (code $rc)."
+      return "$rc"
+    }
 
   enabled "${DEBUG:-N}" && echo "Downloading: $url"
 
@@ -642,6 +646,7 @@ downloadToFile() {
       exit "$run_rc"
     fi
 
+    html "Download failed (code $run_rc)."
     return "$run_rc"
   fi
 
@@ -675,16 +680,19 @@ downloadToFile() {
   local failure="Failed to download $url"
 
   if (( connections == 1 && rc == 3 )); then
-    error "$failure because the file could not be written (disk full?)."
+    failure="$failure because the file could not be written (disk full?)."
   elif (( connections > 1 && rc == 9 )); then
-    error "$failure because there was not enough disk space."
+    failure="$failure because there was not enough disk space."
   elif [ -n "$reason" ]; then
-    error "$failure : ${reason%.}."
+    failure="$failure : ${reason%.}."
   elif (( rc == 0 )); then
-    error "$failure because no output file was created."
+    failure="$failure because no output file was created."
   else
-    error "$failure with exit status $rc."
+    failure="$failure with exit status $rc."
   fi
+
+  html "$failure"
+  error "$failure"
 
   if (( connections == 1 && rc == 3 )) ||
       (( connections > 1 && rc == 9 )); then
