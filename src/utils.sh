@@ -1054,24 +1054,6 @@ hasData() {
   return 0
 }
 
-addPackage() {
-
-  local pkg=$1
-  local desc=$2
-
-  if apt-mark showinstall | grep -qx "$pkg"; then
-    return 0
-  fi
-
-  local msg="Installing $desc..."
-  info "$msg" && html "$msg"
-
-  DEBIAN_FRONTEND=noninteractive apt-get -qq update || return 1
-  DEBIAN_FRONTEND=noninteractive apt-get -qq --no-install-recommends -y install "$pkg" > /dev/null || return 1
-
-  return 0
-}
-
 getAgent() {
 
   local browser_version

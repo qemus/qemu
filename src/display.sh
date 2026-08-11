@@ -48,14 +48,8 @@ if ! enabled "$GPU" || isAmdCpu || [[ "$ARCH" != "amd64" ]]; then
 fi
 
 case "${APP:-}" in
-
   "Windows" | "macOS" )
-
-    if ! enabled "$DEBUG"; then
-      warn "GPU acceleration is not supported under $APP, ignoring GPU=Y."
-      return 0
-    fi ;;
-
+    warn "GPU acceleration is not supported for $APP, but feel free to experiment." ;;
 esac
 
 msg="Configuring display drivers..."
@@ -92,8 +86,5 @@ fi
 if [ ! -c "$RENDERNODE" ] || [ ! -r "$RENDERNODE" ] || [ ! -w "$RENDERNODE" ]; then
   warn "render device '$RENDERNODE' is unavailable or inaccessible."
 fi
-
-addPackage "xserver-xorg-video-intel" "Intel GPU drivers"
-addPackage "qemu-system-modules-opengl" "OpenGL module"
 
 return 0
