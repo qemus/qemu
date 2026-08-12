@@ -904,11 +904,7 @@ if ! enabled "$DISK_DISABLE"; then
 fi
 
 if [ -z "$DISK_IO" ]; then
-  if [[ "${BOOT_MODE,,}" == "windows_legacy" ]]; then
-    DISK_IO="threads"
-  else
-    DISK_IO="native"
-  fi
+  DISK_IO="native"
 fi
 
 IOTHREAD_OPT=",iothread=io2"
