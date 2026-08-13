@@ -222,16 +222,7 @@ checkDownloadSpace() {
 prepareNoCow() {
 
   local file="$1"
-  local storage="${STORAGE:-}"
   local dir fs attributes
-
-  [ -z "$storage" ] && return 0
-  storage="${storage%/}"
-  [[ "$file" == "$storage/"* ]] || return 0
-
-  # NOCOW must be set before the first data extent is allocated. Existing
-  # non-empty files cannot be changed retroactively and are left untouched.
-  [ -s "$file" ] && return 0
 
   dir=$(dirname -- "$file")
 
@@ -241,6 +232,16 @@ prepareNoCow() {
   fi
 
   [[ "${fs,,}" != "btrfs" ]] && return 0
+
+  # NOCOW must be set before the first data extent is allocated. Existing
+  # non-empty files cannot be changed retroactively, so only warn if needed.
+  if [ -s "$file" ]; then
+    attributes=$(lsattr "$file" 2>/dev/null || :)
+    if [[ "$attributes" != *"C"* ]]; then
+      warn "COW (copy on write) is not disabled for download file $file on ${fs^^}, and cannot be changed after data has been written!"
+    fi
+    return 0
+  fi
 
   if [ ! -e "$file" ]; then
     if ! touch "$file"; then
@@ -253,7 +254,27 @@ prepareNoCow() {
 
   attributes=$(lsattr "$file" 2>/dev/null || :)
   if [[ "$attributes" != *"C"* ]]; then
-    error "Failed to disable COW for image $file on ${fs^^} filesystem!"
+    error "Failed to disable COW for download file $file on ${fs^^} filesystem!"
+  fi
+
+  return 0
+}
+
+verifyNoCow() {
+
+  local file="$1"
+  local fs attributes
+
+  if ! fs=$(stat -f -c %T "$file"); then
+    warn "failed to determine filesystem type of \"$file\" !"
+    return 0
+  fi
+
+  [[ "${fs,,}" != "btrfs" ]] && return 0
+
+  attributes=$(lsattr "$file" 2>/dev/null || :)
+  if [[ "$attributes" != *"C"* ]]; then
+    warn "COW (copy on write) is not disabled for downloaded file $file on ${fs^^} filesystem!"
   fi
 
   return 0
@@ -720,6 +741,7 @@ downloadToFile() {
   if (( rc == 0 )) && [ -f "$dest" ]; then
     # Aria normally removes this itself after successful completion.
     rm -f -- "$dest.aria2"
+    verifyNoCow "$dest"
     html "Download completed successfully..."
     return 0
   fi
