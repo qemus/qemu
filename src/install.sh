@@ -797,6 +797,8 @@ case "${base,,}" in
 
     rm -f "$tmp"
 
+    prepareNoCow "$tmp" || exit 32
+
     if ! gzip -dc "$STORAGE/$base" > "$tmp"; then
       rm -f "$tmp"
       error "Failed to extract archive: $base" && exit 32
@@ -817,6 +819,8 @@ case "${base,,}" in
     tmp="$out.tmp"
 
     rm -f "$tmp"
+
+    prepareNoCow "$tmp" || exit 32
 
     if ! xz -dc "$STORAGE/$base" > "$tmp"; then
       rm -f "$tmp"
