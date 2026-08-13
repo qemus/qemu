@@ -512,6 +512,35 @@ checkFS () {
   return 0
 }
 
+checkNoCow () {
+
+  local file="$1"
+  local desc="$2"
+
+  local fs attributes
+
+  [ ! -f "$file" ] && return 0
+
+  case "${file,,}" in
+    *".img" | *".raw" | *".qcow2" ) ;;
+    * ) return 0 ;;
+  esac
+
+  if ! fs=$(stat -f -c %T "$file"); then
+    warn "failed to determine filesystem type of \"$file\" !"
+    return 0
+  fi
+
+  if isCow "$fs"; then
+    attributes=$(lsattr "$file" 2>/dev/null || :)
+    if [[ "$attributes" != *"C"* ]]; then
+      warn "COW (copy on write) is not disabled for $desc image file $file, this is recommended on ${fs^^} filesystems!"
+    fi
+  fi
+
+  return 0
+}
+
 createDevice () {
 
   local diskFile="$1"
@@ -594,6 +623,8 @@ addMedia () {
   done
 
   [ -z "$mediaFile" ] && return 0
+
+  checkNoCow "$mediaFile" "$mediaId"
 
   local bootIndex="" address=""
   [ -n "$mediaAddress" ] && address=",addr=$mediaAddress"
@@ -982,6 +1013,9 @@ if ! validDiskType "$MEDIA_TYPE"; then
 fi
 
 if [ -s "$BOOT" ]; then
+
+  checkNoCow "$BOOT" "boot"
+
   case "${BOOT,,}" in
     *".iso" )
         # Hybrid ISOs contain an MBR signature and must be attached as USB disks;
