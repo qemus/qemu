@@ -219,6 +219,46 @@ checkDownloadSpace() {
   return 0
 }
 
+prepareNoCow() {
+
+  local file="$1"
+  local storage="${STORAGE:-}"
+  local dir fs attributes
+
+  [ -z "$storage" ] && return 0
+  storage="${storage%/}"
+  [[ "$file" == "$storage/"* ]] || return 0
+
+  # NOCOW must be set before the first data extent is allocated. Existing
+  # non-empty files cannot be changed retroactively and are left untouched.
+  [ -s "$file" ] && return 0
+
+  dir=$(dirname -- "$file")
+
+  if ! fs=$(stat -f -c %T "$dir"); then
+    error "Failed to determine filesystem type of $dir."
+    return 1
+  fi
+
+  [[ "${fs,,}" != "btrfs" ]] && return 0
+
+  if [ ! -e "$file" ]; then
+    if ! touch "$file"; then
+      error "Failed to create $file."
+      return 1
+    fi
+  fi
+
+  { chattr +C "$file"; } || :
+
+  attributes=$(lsattr "$file" 2>/dev/null || :)
+  if [[ "$attributes" != *"C"* ]]; then
+    error "Failed to disable COW for image $file on ${fs^^} filesystem!"
+  fi
+
+  return 0
+}
+
 startDownloadProgress() {
 
   local log_name="$1"
@@ -493,6 +533,10 @@ downloadToFile() {
   fi
 
   if ! checkDownloadSpace "$dest" "$expected"; then
+    return 2
+  fi
+
+  if ! prepareNoCow "$dest"; then
     return 2
   fi
 
