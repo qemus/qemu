@@ -8,7 +8,7 @@ ARG VERSION_QMP="0.0.6"
 ARG VERSION_WSD="0.4.2"
 ARG VERSION_UTK="1.3.0"
 ARG VERSION_VNC="1.7.0"
-ARG VERSION_MESA="1.0.0"
+ARG VERSION_MINI="1.0.0"
 ARG VERSION_OVMF="2026.05-2"
 ARG VERSION_PASST="2026_07_28"
 ARG VERSION_SEABIOS="1.17.0-1"
@@ -61,8 +61,8 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
     ca-certificates
 
   if [ "$TARGETARCH" = "amd64" ]; then
-    wget "https://github.com/qemus/mesa-intel/releases/download/v${VERSION_MESA}/mesa-intel_${VERSION_MESA}_amd64.deb" -O /tmp/mesa-intel.deb -q --timeout=10
-    apt-get --no-install-recommends -y install /tmp/mesa-intel.deb
+    wget "https://github.com/qemus/qemu-minimal/releases/download/v${VERSION_MINI}/qemu-minimal_${VERSION_MINI}_amd64.deb" -O /tmp/mini.deb -q --timeout=10
+    apt-get --no-install-recommends -y install /tmp/mini.deb
   fi
 
   # Install QEMU 11 and OVMF UEFI firmware from Debian Sid
@@ -78,7 +78,8 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
 
   if [ "$TARGETARCH" = "amd64" ]; then
     apt-get --no-install-recommends -y -t sid install \
-      "qemu-system-modules-opengl=${VERSION_QEMU}"
+      "qemu-system-modules-opengl=${VERSION_QEMU}" \
+      "qemu-system-modules-spice=${VERSION_QEMU}"
   fi
 
   # Install QMP
