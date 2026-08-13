@@ -229,9 +229,11 @@ prepareNoCow() {
   storage="${storage%/}"
   [[ "$file" == "$storage/"* ]] || return 0
 
-  # NOCOW must be set before the first data extent is allocated. Existing
-  # non-empty files cannot be changed retroactively and are left untouched.
-  [ -s "$file" ] && return 0
+  case "${file,,}" in
+    *".img" | *".raw" | *".qcow2" | \
+    *".img.tmp" | *".raw.tmp" | *".qcow2.tmp" ) ;;
+    * ) return 0 ;;
+  esac
 
   dir=$(dirname -- "$file")
 
@@ -241,6 +243,16 @@ prepareNoCow() {
   fi
 
   [[ "${fs,,}" != "btrfs" ]] && return 0
+
+  # NOCOW must be set before the first data extent is allocated. Existing
+  # non-empty files cannot be changed retroactively, so only warn if needed.
+  if [ -s "$file" ]; then
+    attributes=$(lsattr "$file" 2>/dev/null || :)
+    if [[ "$attributes" != *"C"* ]]; then
+      warn "COW (copy on write) is not disabled for image file $file on ${fs^^}, and cannot be changed after data has been written!"
+    fi
+    return 0
+  fi
 
   if [ ! -e "$file" ]; then
     if ! touch "$file"; then
