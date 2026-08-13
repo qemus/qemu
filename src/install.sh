@@ -666,6 +666,31 @@ findArchiveImage() {
   return 0
 }
 
+verifyExtractedImage() {
+
+  local file="$1"
+  local fs attributes
+
+  if [ ! -f "$file" ] || [ ! -s "$file" ]; then
+    error "Extracted image $file is missing or empty."
+    return 1
+  fi
+
+  if ! fs=$(stat -f -c %T "$file"); then
+    error "Failed to determine filesystem type of $file."
+    return 1
+  fi
+
+  [[ "${fs,,}" != "btrfs" ]] && return 0
+
+  attributes=$(lsattr "$file" 2>/dev/null || :)
+  if [[ "$attributes" != *"C"* ]]; then
+    error "Failed to disable COW for extracted image $file on ${fs^^} filesystem."
+  fi
+
+  return 0
+}
+
 findBootFile && return 0
 
 # An existing non-empty data disk takes precedence over BOOT media; detect its
@@ -795,7 +820,9 @@ case "${base,,}" in
     out="$STORAGE/${base%.*}"
     tmp="$out.tmp"
 
-    rm -f "$tmp"
+    if ! rm -f "$tmp"; then
+      error "Failed to remove temporary extraction file $tmp" && exit 32
+    fi
 
     prepareNoCow "$tmp" || exit 32
 
@@ -804,12 +831,22 @@ case "${base,,}" in
       error "Failed to extract archive: $base" && exit 32
     fi
 
+    if ! verifyExtractedImage "$tmp"; then
+      rm -f "$tmp"
+      error "Failed to verify extracted image from $base" && exit 32
+    fi
+
     if ! mv -f "$tmp" "$out"; then
       rm -f "$tmp"
       error "Failed to move extracted image to $out" && exit 32
     fi
 
-    rm -f "$STORAGE/$base"
+    verifyExtractedImage "$out" || exit 32
+
+    if ! rm -f "$STORAGE/$base"; then
+      error "Failed to remove archive: $base" && exit 32
+    fi
+
     base="${base%.*}"
     ;;
 
@@ -818,7 +855,9 @@ case "${base,,}" in
     out="$STORAGE/${base%.*}"
     tmp="$out.tmp"
 
-    rm -f "$tmp"
+    if ! rm -f "$tmp"; then
+      error "Failed to remove temporary extraction file $tmp" && exit 32
+    fi
 
     prepareNoCow "$tmp" || exit 32
 
@@ -827,22 +866,49 @@ case "${base,,}" in
       error "Failed to extract archive: $base" && exit 32
     fi
 
+    if ! verifyExtractedImage "$tmp"; then
+      rm -f "$tmp"
+      error "Failed to verify extracted image from $base" && exit 32
+    fi
+
     if ! mv -f "$tmp" "$out"; then
       rm -f "$tmp"
       error "Failed to move extracted image to $out" && exit 32
     fi
 
-    rm -f "$STORAGE/$base"
+    verifyExtractedImage "$out" || exit 32
+
+    if ! rm -f "$STORAGE/$base"; then
+      error "Failed to remove archive: $base" && exit 32
+    fi
+
     base="${base%.*}"
     ;;
 
   *".7z" | *".zip" | *".rar" | *".lzma" | *".bz" | *".bz2" )
 
+    archive="$base"
     tmp="$STORAGE/extract"
-    rm -rf "$tmp"
+
+    if ! rm -rf "$tmp"; then
+      error "Failed to remove extraction directory \"$tmp\" !" && exit 32
+    fi
 
     if ! makeDir "$tmp"; then
       error "Failed to create directory \"$tmp\" !" && exit 33
+    fi
+
+    extractFs=$(stat -f -c %T "$tmp") || {
+      rm -rf "$tmp"
+      error "Failed to determine filesystem type of $tmp." && exit 32
+    }
+
+    if [[ "${extractFs,,}" == "btrfs" ]]; then
+      { chattr +C "$tmp"; } || :
+      extractAttrs=$(lsattr -d "$tmp" 2>/dev/null || :)
+      if [[ "$extractAttrs" != *"C"* ]]; then
+        error "Failed to disable COW for extraction directory $tmp on ${extractFs^^} filesystem."
+      fi
     fi
 
     if ! 7z x "$STORAGE/$base" -o"$tmp" > /dev/null; then
@@ -850,13 +916,11 @@ case "${base,,}" in
       error "Failed to extract archive: $base" && exit 32
     fi
 
-    rm -f "$STORAGE/$base"
-
     img=$(findArchiveImage "$tmp" "$base")
 
-    if [ ! -s "$img" ] || [ ! -f "$img" ]; then
+    if [ -z "$img" ] || ! verifyExtractedImage "$img"; then
       rm -rf "$tmp"
-      error "Cannot find any image file in archive: .${BOOT/*./}" && exit 32
+      error "Cannot find a valid image file in archive: .${BOOT/*./}" && exit 32
     fi
 
     base=$(basename "$img")
@@ -866,7 +930,17 @@ case "${base,,}" in
       error "Failed to move extracted image to $STORAGE/$base" && exit 32
     fi
 
-    rm -rf "$tmp"
+    verifyExtractedImage "$STORAGE/$base" || exit 32
+
+    # Remove the downloaded archive only after the extracted image has been
+    # validated and published successfully.
+    if ! rm -f "$STORAGE/$archive"; then
+      error "Failed to remove archive: $archive" && exit 32
+    fi
+
+    if ! rm -rf "$tmp"; then
+      error "Failed to remove extraction directory \"$tmp\" !" && exit 32
+    fi
     ;;
 
 esac
