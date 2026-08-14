@@ -3,10 +3,19 @@ set -Eeuo pipefail
 
 fKill "progress.sh"
 
-if [[ "${DISPLAY,,}" == "vnc" ]]; then
-  html "You can now connect to VNC on port $VNC_PORT." "0"
-elif [[ "${DISPLAY,,}" != "web" ]]; then
-  html "The virtual machine was booted successfully." "0"
+if [[ "${DISPLAY,,}" == "web" ]]; then
+
+  [ ! -f "$INFO" ] && error "File $INFO not found."
+  [ ! -f "$PAGE" ] && error "File $PAGE not found."
+
+else
+
+  if [[ "${DISPLAY,,}" == "vnc" ]]; then
+    html "You can now connect to VNC on port $VNC_PORT." "0"
+  else
+    html "The virtual machine was booted successfully." "0"
+  fi
+
 fi
 
 if enabled "$DEBUG"; then
