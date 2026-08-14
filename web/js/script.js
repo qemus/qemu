@@ -11,7 +11,7 @@ var webSocketFactory = {
 
         ws.addEventListener("open", e => {
             ws.close();
-            window.location.reload();
+            window.location.replace(window.location.href);
         });
 
         ws.addEventListener("error", e => {
