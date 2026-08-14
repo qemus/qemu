@@ -163,7 +163,7 @@ patched_reconnect = '''    async reconnect() {
             UI.reconnectFailures = 0;
 
             if (response.ok) {
-                window.location.reload();
+                window.location.replace(window.location.href);
                 return;
             }
 
