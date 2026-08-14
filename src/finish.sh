@@ -1,19 +1,12 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-if [[ "${DISPLAY,,}" == "web" ]]; then
+fKill "progress.sh"
 
-  [ ! -f "$INFO" ] && error "File $INFO not found."
-  [ ! -f "$PAGE" ] && error "File $PAGE not found."
-
-else
-
-  if [[ "${DISPLAY,,}" == "vnc" ]]; then
-    html "You can now connect to VNC on port $VNC_PORT." "0"
-  else
-    html "The virtual machine was booted successfully." "0"
-  fi
-
+if [[ "${DISPLAY,,}" == "vnc" ]]; then
+  html "You can now connect to VNC on port $VNC_PORT." "0"
+elif [[ "${DISPLAY,,}" != "web" ]]; then
+  html "The virtual machine was booted successfully." "0"
 fi
 
 if enabled "$DEBUG"; then
