@@ -14,43 +14,6 @@ page_name=$(basename -- "$page")
 vnc="$dir/vnc-ws.sock"
 vnc_name=$(basename -- "$vnc")
 
-if [ -f "$marker" ]; then
-  msg="Warning: status client connected after switching to VNC."
-
-  if ! printf '%s\n' "$msg" >> /proc/1/fd/2; then
-    printf '%s\n' "$msg" >&2
-  fi
-fi
-
-warnStale() {
-
-  local file="$1"
-  local msg="Warning: $file was recreated after switching to VNC."
-
-  if ! printf '%s\n' "$msg" >> /proc/1/fd/2; then
-    printf '%s\n' "$msg" >&2
-  fi
-
-  return 0
-}
-
-cleanupStale() {
-
-  [ ! -f "$marker" ] && return 0
-
-  if [ -f "$page" ]; then
-    rm -f -- "$page" || return 1
-    warnStale "$page_name"
-  fi
-
-  if [ -f "$path" ]; then
-    rm -f -- "$path" || return 1
-    warnStale "$name"
-  fi
-
-  return 0
-}
-
 refresh() {
 
   [ -f "$marker" ] && return 0
@@ -64,8 +27,6 @@ refresh() {
   [[ "$msg" == "$lastmsg" ]] && return 0
 
   lastmsg="$msg"
-  # The noVNC client consumes a tiny line protocol: s updates the status message
-  # and c below requests a switch to the VNC canvas.
   echo "s: $msg"
 
   return 0
@@ -105,12 +66,28 @@ transition() {
   return 0
 }
 
+cleanupStale() {
+
+  [ ! -f "$marker" ] && return 0
+
+  if [ -f "$page" ]; then
+    rm -f -- "$page" || return 1
+  fi
+
+  if [ -f "$path" ]; then
+    rm -f -- "$path" || return 1
+  fi
+
+  return 0
+}
+
 transition
+
 refresh
 refreshCommand
 
-# Watch the directory rather than only the file because writers publish updates
-# through atomic rename, which appears as moved_to.
+# Watch the directory rather than only the file because writers
+# publish updates through atomic rename, which appears as moved_to.
 inotifywait \
   -m -q \
   -e close_write,moved_to,create,delete \
