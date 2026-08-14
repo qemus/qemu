@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
+fKill "progress.sh"
+
 if [[ "${DISPLAY,,}" == "web" ]]; then
 
   [ ! -f "$INFO" ] && error "File $INFO not found."
