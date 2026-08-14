@@ -3,30 +3,41 @@ set -Eeuo pipefail
 
 lastmsg=""
 lastcmd=""
-transitioned="N"
 path="/run/shm/msg.html"
 dir=$(dirname -- "$path")
 name=$(basename -- "$path")
 command="$dir/status.cmd"
 command_name=$(basename -- "$command")
+marker="$dir/status.vnc"
 page="$dir/index.html"
+page_name=$(basename -- "$page")
 vnc="$dir/vnc-ws.sock"
 vnc_name=$(basename -- "$vnc")
 
-writeAtomic() {
+warnStale() {
 
   local file="$1"
-  local value="$2"
-  local tmp="${file}.tmp.$$"
+  local msg="Warning: $file was recreated after switching to VNC."
 
-  if ! printf '%s\n' "$value" > "$tmp"; then
-    rm -f -- "$tmp"
-    return 1
+  if ! printf '%s\n' "$msg" >> /proc/1/fd/2; then
+    printf '%s\n' "$msg" >&2
   fi
 
-  if ! mv -f -- "$tmp" "$file"; then
-    rm -f -- "$tmp"
-    return 1
+  return 0
+}
+
+cleanupStale() {
+
+  [ ! -f "$marker" ] && return 0
+
+  if [ -f "$page" ]; then
+    rm -f -- "$page" || return 1
+    warnStale "$page_name"
+  fi
+
+  if [ -f "$path" ]; then
+    rm -f -- "$path" || return 1
+    warnStale "$name"
   fi
 
   return 0
@@ -34,6 +45,7 @@ writeAtomic() {
 
 refresh() {
 
+  [ -f "$marker" ] && return 0
   [ ! -f "$path" ] && return 0
   [ ! -s "$path" ] && return 0
 
@@ -70,21 +82,24 @@ refreshCommand() {
 
 transition() {
 
-  [[ "$transitioned" == "Y" ]] && return 0
+  if [ -f "$marker" ]; then
+    cleanupStale || return 1
+    echo "c: vnc"
+    return 0
+  fi
+
   [ ! -S "$vnc" ] && return 0
 
-  transitioned="Y"
-  rm -f -- "$path" "$page"
-
-  writeAtomic "$command" "vnc" || return 1
-  refreshCommand
+  rm -f -- "$path" "$page" || return 1
+  : > "$marker" || return 1
+  echo "c: vnc"
 
   return 0
 }
 
+transition
 refresh
 refreshCommand
-transition
 
 # Watch the directory rather than only the file because writers publish updates
 # through atomic rename, which appears as moved_to.
@@ -111,13 +126,25 @@ inotifywait \
       continue
     fi
 
+    if [[ "$file" == "$page_name" ]]; then
+      case "${event,,}" in
+        "close_write"* | "moved_to"* )
+          [ -f "$marker" ] && cleanupStale ;;
+      esac
+      continue
+    fi
+
     [[ "$file" == "$name" ]] || continue
 
     case "${event,,}" in
       "delete"* )
-        transition ;;
+        [ ! -f "$marker" ] && transition ;;
       "close_write"* | "moved_to"* )
-        refresh ;;
+        if [ -f "$marker" ]; then
+          cleanupStale
+        else
+          refresh
+        fi ;;
     esac
 
   done
