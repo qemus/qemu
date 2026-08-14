@@ -14,6 +14,14 @@ page_name=$(basename -- "$page")
 vnc="$dir/vnc-ws.sock"
 vnc_name=$(basename -- "$vnc")
 
+if [ -f "$marker" ]; then
+  msg="Warning: status client connected after switching to VNC."
+
+  if ! printf '%s\n' "$msg" >> /proc/1/fd/2; then
+    printf '%s\n' "$msg" >&2
+  fi
+fi
+
 warnStale() {
 
   local file="$1"
