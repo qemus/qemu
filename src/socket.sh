@@ -8,15 +8,9 @@ dir=$(dirname -- "$path")
 name=$(basename -- "$path")
 command="$dir/status.cmd"
 command_name=$(basename -- "$command")
-marker="$dir/status.vnc"
-page="$dir/index.html"
-page_name=$(basename -- "$page")
-vnc="$dir/vnc-ws.sock"
-vnc_name=$(basename -- "$vnc")
 
 refresh() {
 
-  [ -f "$marker" ] && return 0
   [ ! -f "$path" ] && return 0
   [ ! -s "$path" ] && return 0
 
@@ -49,40 +43,6 @@ refreshCommand() {
   return 0
 }
 
-transition() {
-
-  if [ -f "$marker" ]; then
-    cleanupStale || return 1
-    echo "c: vnc"
-    return 0
-  fi
-
-  [ ! -S "$vnc" ] && return 0
-
-  rm -f -- "$path" "$page" || return 1
-  : > "$marker" || return 1
-  echo "c: vnc"
-
-  return 0
-}
-
-cleanupStale() {
-
-  [ ! -f "$marker" ] && return 0
-
-  if [ -f "$page" ]; then
-    rm -f -- "$page" || return 1
-  fi
-
-  if [ -f "$path" ]; then
-    rm -f -- "$path" || return 1
-  fi
-
-  return 0
-}
-
-transition
-
 refresh
 refreshCommand
 
@@ -90,18 +50,10 @@ refreshCommand
 # publish updates through atomic rename, which appears as moved_to.
 inotifywait \
   -m -q \
-  -e close_write,moved_to,create,delete \
+  -e close_write,moved_to,delete \
   --format '%e %f' \
   "$dir" |
   while read -r event file; do
-
-    if [[ "$file" == "$vnc_name" ]]; then
-      case "${event,,}" in
-        "create"* | "moved_to"* )
-          transition ;;
-      esac
-      continue
-    fi
 
     if [[ "$file" == "$command_name" ]]; then
       case "${event,,}" in
@@ -111,25 +63,13 @@ inotifywait \
       continue
     fi
 
-    if [[ "$file" == "$page_name" ]]; then
-      case "${event,,}" in
-        "close_write"* | "moved_to"* )
-          [ -f "$marker" ] && cleanupStale ;;
-      esac
-      continue
-    fi
-
     [[ "$file" == "$name" ]] || continue
 
     case "${event,,}" in
       "delete"* )
-        [ ! -f "$marker" ] && transition ;;
+        echo "c: vnc" ;;
       "close_write"* | "moved_to"* )
-        if [ -f "$marker" ]; then
-          cleanupStale
-        else
-          refresh
-        fi ;;
+        refresh ;;
     esac
 
   done

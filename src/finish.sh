@@ -6,7 +6,10 @@ fKill "progress.sh"
 if [[ "${DISPLAY,,}" == "web" ]]; then
 
   [ ! -f "$INFO" ] && error "File $INFO not found."
+  rm -f "$INFO"
+
   [ ! -f "$PAGE" ] && error "File $PAGE not found."
+  rm -f "$PAGE"
 
 else
 
