@@ -81,6 +81,46 @@ ui = replace_pattern_once(
     "noVNC beforeunload handler",
 )
 
+default_autoconnect = "        UI.initSetting('autoconnect', false);\n"
+patched_default_autoconnect = "        UI.initSetting('autoconnect', true);\n"
+
+ui = replace_once(
+    ui,
+    default_autoconnect,
+    patched_default_autoconnect,
+    "noVNC autoconnect default",
+)
+
+default_resize = "        UI.initSetting('resize', 'off');\n"
+patched_default_resize = "        UI.initSetting('resize', 'scale');\n"
+
+ui = replace_once(
+    ui,
+    default_resize,
+    patched_default_resize,
+    "noVNC resize default",
+)
+
+default_reconnect = "        UI.initSetting('reconnect', false);\n"
+patched_default_reconnect = "        UI.initSetting('reconnect', true);\n"
+
+ui = replace_once(
+    ui,
+    default_reconnect,
+    patched_default_reconnect,
+    "noVNC reconnect default",
+)
+
+default_reconnect_delay = "        UI.initSetting('reconnect_delay', 5000);\n"
+patched_default_reconnect_delay = "        UI.initSetting('reconnect_delay', 1000);\n"
+
+ui = replace_once(
+    ui,
+    default_reconnect_delay,
+    patched_default_reconnect_delay,
+    "noVNC reconnect delay default",
+)
+
 autoconnect = '''        if (autoconnect === 'true' || autoconnect == '1') {
             autoconnect = true;
             UI.connect();
@@ -252,6 +292,75 @@ ui = replace_once(
     clipboard_unhide,
     "",
     "noVNC clipboard unhide operation",
+)
+
+redirect_state = '''        let defaults = {};
+        let mandatory = {};
+'''
+
+patched_redirect_state = '''        let defaults = {};
+        let mandatory = {};
+        let redirecting = false;
+'''
+
+html = replace_once(
+    html,
+    redirect_state,
+    patched_redirect_state,
+    "noVNC status redirect state",
+)
+
+mandatory_failure = '''        } catch (err) {
+            Log.Error("Couldn't fetch mandatory.json: " + err);
+        }
+'''
+
+patched_mandatory_failure = '''        } catch (err) {
+            Log.Error("Couldn't fetch mandatory.json: " + err);
+
+            try {
+                const path = window.location.pathname
+                    .replace(/[^/]*$/, '')
+                    .replace(/\\/$/, '');
+                response = await fetch(
+                    `${path}/msg.html?_=${Date.now()}`,
+                    {
+                        cache: 'no-store',
+                    },
+                );
+
+                if (response.ok) {
+                    redirecting = true;
+                    window.location.replace(window.location.href);
+                }
+            } catch (probeErr) {
+                Log.Warn("Failed to check for message page: " + probeErr);
+            }
+        }
+'''
+
+html = replace_once(
+    html,
+    mandatory_failure,
+    patched_mandatory_failure,
+    "noVNC mandatory settings failure handler",
+)
+
+start_ui = '''        UI.start({ settings: { defaults: defaults,
+                               mandatory: mandatory } });
+'''
+
+patched_start_ui = '''        if (!redirecting) {
+            UI.start({ settings: { defaults: defaults,
+                                   mandatory: mandatory } });
+        }
+'''
+
+html = replace_once(
+    html,
+    start_ui,
+    patched_start_ui,
+    "noVNC UI startup",
 )
 
 original_favicon = (
