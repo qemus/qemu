@@ -19,7 +19,6 @@ WSD_SOCKET="$QEMU_DIR/status-ws.sock"
 WSD_LOG="/var/log/websocketd.log"
 AUX_LOG="/var/log/audio-socket.log"
 
-WSD_VNC="$QEMU_DIR/status.vnc"
 WSD_COMMAND="$QEMU_DIR/status.cmd"
 
 configureWebServer() {
@@ -273,7 +272,7 @@ cleanupServers() {
 
   rm -f -- \
     "$WSD_PID" "$AUX_PID" "$WEB_PID" \
-    "$WSD_SOCKET" "$WSD_COMMAND" "$WSD_VNC" "$AUX_SOCKET" \
+    "$WSD_SOCKET" "$WSD_COMMAND" "$AUX_SOCKET" \
     "$WSD_LOG" "$AUX_LOG" || :
 
   return 0
