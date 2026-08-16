@@ -55,7 +55,7 @@ configureMonitor() {
     MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server=on,wait=off,nodelay=on"
   fi
 
-  local name="${APP}// /-}"
+  local name="${APP// /-}"
   MON_OPTS+=" -name $name,process=$PROCESS"
   MON_OPTS+=" -pidfile $QEMU_PID"
   MON_OPTS="${MON_OPTS# }"
