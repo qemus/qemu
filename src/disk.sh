@@ -264,7 +264,7 @@ createDisk() {
 
     if (( dataSize > available )); then
       gb=$(formatBytes "$available")
-      error "Not enough free space to create a $diskDesc of ${diskSpace/G/ GB} in $base, it has only $gb available..."
+      error "Insufficient free space to create a $diskDesc of ${diskSpace/G/ GB} in $base, it has only $gb available..."
       error "Please specify a smaller ${diskDesc^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
 
@@ -340,7 +340,7 @@ resizeDisk() {
 
     if (( required > available )); then
       gb=$(formatBytes "$available")
-      error "Not enough free space to resize $diskDesc to ${diskSpace/G/ GB} in $base, it has only $gb available.."
+      error "Insufficient free space to resize $diskDesc to ${diskSpace/G/ GB} in $base, it has only $gb available.."
       error "Please specify a smaller ${diskDesc^^}_SIZE or disable preallocation by setting ALLOCATE=N." && exit 74
     fi
 
@@ -404,7 +404,7 @@ convertDisk() {
 
     if (( currentSize > available )); then
       gb=$(formatBytes "$available")
-      error "Not enough free space to convert $diskDesc to $destinationFmt in $base, it has only $gb available..."
+      error "Insufficient free space to convert $diskDesc to $destinationFmt in $base, it has only $gb available..."
       error "Please free up some disk space or disable preallocation by setting ALLOCATE=N." && exit 76
     fi
 
