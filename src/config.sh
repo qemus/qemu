@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 : "${QMP:=""}"
+: "${RNG:=""}"
 : "${UUID:=""}"
 : "${HPET:="off"}"
 : "${VMPORT:="off"}"
@@ -13,10 +14,6 @@ set -Eeuo pipefail
 
 msg="Configuring QEMU..."
 enabled "$DEBUG" && echo "$msg"
-
-DEV_OPTS=""
-AUDIO_OPTS=""
-DEF_OPTS="-nodefaults"
 
 configureProcessor() {
 
@@ -54,7 +51,7 @@ configureMonitor() {
 
   # Keep the user monitor and the automation monitor separate; power and
   # boot-key helpers need a private socket they can control safely.
-  if enabled "$SHUTDOWN" && [ -n "${ACPI_SOCKET:-}" ]; then
+  if enabled "${SHUTDOWN:-}" && [ -n "${ACPI_SOCKET:-}" ]; then
     MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server=on,wait=off,nodelay=on"
   fi
 
@@ -90,8 +87,12 @@ configureVirtioDevices() {
   local bus
   bus=$(getPciBus)
 
-  DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
-  DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$bus"
+  DEV_OPTS=""
+
+  if ! disabled "$RNG"; then
+    DEV_OPTS+=" -object rng-random,id=objrng0,filename=/dev/urandom"
+    DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$bus"
+  fi
 
   # Windows receives no balloon device by default because the guest driver is not
   # guaranteed to be present; explicitly enabling ballooning opts into it.
@@ -104,6 +105,8 @@ configureVirtioDevices() {
     fi
   fi
 
+  DEV_OPTS="${DEV_OPTS# }"
+
   return 0
 }
 
@@ -114,10 +117,14 @@ configureSharedFolder() {
     DEV_OPTS+=" -device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=shared"
   fi
 
+  DEV_OPTS="${DEV_OPTS# }"
+
   return 0
 }
 
 configureUsb() {
+
+  USB_OPTS=""
 
   if ! disabled "$USB" && [ -n "$USB" ]; then
     USB_OPTS="-device $USB -device usb-tablet"
@@ -127,6 +134,8 @@ configureUsb() {
 }
 
 configureAudio() {
+
+  AUDIO_OPTS=""
 
   disabled "${WEB:-}" && return 0
   enabled "${AUDIO:-N}" || return 0
@@ -209,10 +218,10 @@ configureCompatibility() {
 
 buildArguments() {
 
-  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
+  ARGS="-nodefaults $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
 
-  # Keep the final command as a normalized argument string because entry.sh
-  # intentionally expands user-supplied ARGUMENTS together with generated flags.
+  # Collapse whitespace after optional argument groups are assembled so
+  # empty features do not leave malformed spacing in the final command.
   ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 
   return 0
