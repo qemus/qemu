@@ -5,7 +5,7 @@ set -Eeuo pipefail
 
 : "${DISK_IO:=""}"                # I/O Mode, can be set to 'native', 'threads' or 'io_uring'
 : "${DISK_FMT:=""}"               # Disk file format, can be set to "raw" (default) or "qcow2"
-: "${DISK_TYPE:=""}"              # Device type to be used, "sata", "nvme", "blk" or "scsi"
+: "${DISK_TYPE:=""}"              # Device type to be used, like "ide", "usb", "scsi", or "blk"
 : "${DISK_FLAGS:=""}"             # Specifies the options for use with the qcow2 disk format
 : "${DISK_OFFSET:=""}"            # Number of disk slots to reserve from the PCI address range
 : "${DISK_MINIMUM:=""}"           # Require the primary data disk to have at least this size
