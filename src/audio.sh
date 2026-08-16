@@ -3,7 +3,6 @@ set -Eeuo pipefail
 
 NOVNC="/usr/share/novnc"
 NOVNC_HTML="$NOVNC/vnc.html"
-NOVNC_BACKUP="$NOVNC_HTML.bak"
 
 AUDIO_RELAY="/run/audio.py"
 AUDIO_LOG="/var/log/audio.log"
@@ -23,14 +22,24 @@ supportsAudio() {
   return 1
 }
 
-showAudioControl() {
+disableAudioControl() {
 
   if ! sed -i \
-    -e 's/id="noVNC_setting_audio_row" hidden/id="noVNC_setting_audio_row"/' \
-    -e 's/id="noVNC_setting_audio_separator" hidden/id="noVNC_setting_audio_separator"/' \
+    -e '/id="noVNC_setting_audio"/ s/ disabled//' \
+    -e '/id="noVNC_setting_audio"/ s/type="checkbox"/type="checkbox" disabled/' \
     "$NOVNC_HTML"
   then
-    error "Failed to update noVNC audio controls!"
+    error "Failed to disable noVNC audio control!"
+    return 1
+  fi
+
+  return 0
+}
+
+enableAudioControl() {
+
+  if ! sed -i '/id="noVNC_setting_audio"/ s/type="checkbox" disabled/type="checkbox"/' "$NOVNC_HTML"; then
+    error "Failed to enable noVNC audio control!"
     return 1
   fi
 
@@ -109,45 +118,8 @@ startAudioRelay() {
   return 1
 }
 
-backupHtml() {
-
-  local tmp="$NOVNC_BACKUP.tmp"
-
-  [ -f "$NOVNC_BACKUP" ] && return 0
-
-  # Save the unmodified noVNC page atomically and only once, so later
-  # startups can always restore a clean UI before enabling audio again.
-  rm -f -- "$tmp"
-
-  if ! cp -p -- "$NOVNC_HTML" "$tmp"; then
-    rm -f -- "$tmp"
-    error "Failed to backup noVNC html!"
-    return 1
-  fi
-
-  if ! mv -f -- "$tmp" "$NOVNC_BACKUP"; then
-    rm -f -- "$tmp"
-    error "Failed to save noVNC html backup!"
-    return 1
-  fi
-
-  return 0
-}
-
-restoreHtml() {
-
-  [ -f "$NOVNC_BACKUP" ] || return 0
-
-  if ! cp -p -- "$NOVNC_BACKUP" "$NOVNC_HTML"; then
-    error "Failed to restore noVNC html!"
-    return 1
-  fi
-
-  return 0
-}
-
-# Undo a previous audio UI modification before evaluating the current settings.
-restoreHtml || return 1
+# Keep the control disabled unless audio is successfully initialized below.
+disableAudioControl || return 1
 enabled "$AUDIO" || return 0
 
 if disabled "${WEB:-}"; then
@@ -161,19 +133,13 @@ if ! supportsAudio; then
   return 0
 fi
 
-if backupHtml &&
-  startAudioRelay &&
-  startAudioServer &&
-  showAudioControl
-then
-  return 0
+if startAudioRelay && startAudioServer; then
+  enableAudioControl && return 0
 fi
 
-# Audio initialization is all-or-nothing; roll back the relay, server, and UI
-# together when any step fails.
 stopAudioServer || :
 stopAudioRelay || :
-restoreHtml || :
+disableAudioControl || :
 
 AUDIO="N"
 

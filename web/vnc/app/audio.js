@@ -18,6 +18,10 @@
       return;
     }
 
+    if (cb.disabled) {
+      cb.checked = false;
+    }
+
     var ctx = null;
     var ws = null;
     var nextTime = 0;
@@ -45,6 +49,12 @@
     }
 
     function start() {
+      if (cb.disabled) {
+        cb.checked = false;
+        stop();
+        return;
+      }
+
       stop();
 
       var context = new (window.AudioContext || window.webkitAudioContext)({
@@ -134,9 +144,10 @@
     }
 
     cb.addEventListener("change", function () {
-      if (cb.checked) {
+      if (cb.checked && !cb.disabled) {
         start();
       } else {
+        cb.checked = false;
         stop();
       }
     });
