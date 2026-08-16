@@ -91,9 +91,10 @@ An empty default means the variable is unset and its value is determined automat
 | `MACHINE` | `q35` | QEMU machine type. |
 | `PCI_BUS` | `pcie.0` | Overrides the PCI bus used for attached devices. |
 | `UUID` |  | UUID assigned to the VM. |
+| `RNG` | `Y` | Adds the Virtio RNG device to the machine. |
 | `HPET` | `off` | QEMU HPET timer setting. |
 | `VMPORT` | `off` | QEMU VMware port setting. |
-| `SOUND` | `intel-hda` | QEMU audio device used by the web viewer. |
+| `SOUND` | `intel-hda` | QEMU audio device used when `AUDIO=Y`. |
 | `SM_BIOS` |  | Additional arguments passed to QEMU’s `-smbios` option. |
 | `ARGUMENTS` |  | Additional raw arguments appended to the QEMU command line. |
 
