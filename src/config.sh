@@ -220,8 +220,8 @@ buildArguments() {
 
   ARGS="-nodefaults $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
 
-  # Keep the final command as a normalized argument string because entry.sh
-  # intentionally expands user-supplied ARGUMENTS together with generated flags.
+  # Collapse whitespace after optional argument groups are assembled so
+  # empty features do not leave malformed spacing in the final command.
   ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 
   return 0
