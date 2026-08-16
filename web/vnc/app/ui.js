@@ -1277,13 +1277,6 @@ const UI = {
         UI.connected = true;
         UI.inhibitReconnect = false;
 
-        let msg;
-        if (UI.getSetting('encrypt')) {
-            msg = _("Connected (encrypted) to ") + UI.desktopName;
-        } else {
-            msg = _("Connected (unencrypted) to ") + UI.desktopName;
-        }
-        UI.showStatus(msg);
         UI.updateVisualState('connected');
 
         UI.updateBeforeUnload();
