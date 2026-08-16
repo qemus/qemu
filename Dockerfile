@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM debian:trixie-slim
+FROM debian:trixie-slim AS base
 
 ARG TARGETARCH
 ARG VERSION_ARG="0.0"
@@ -19,8 +19,7 @@ ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
 ARG DEBCONF_NONINTERACTIVE_SEEN="true"
 
-RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro \
-    --mount=type=bind,source=novnc,target=/run/novnc,ro <<EOF
+RUN <<EOF
   set -eu
 
   echo "deb https://deb.debian.org/debian trixie non-free" > /etc/apt/sources.list.d/non-free.list
@@ -97,20 +96,24 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro \
   rm -f /etc/apt/sources.list.d/qemu-snapshot.list
   apt-get clean
 
-  # Install noVNC
-  sh /run/novnc.sh "$VERSION_VNC" /run/novnc
-
   # Set version file
   echo "$VERSION_ARG" > /etc/version
 
   rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 EOF
 
+FROM base AS novnc
+
+COPY ./web/vnc /tmp/novnc/
+
+RUN sh /tmp/novnc/install.sh "$VERSION_VNC" /tmp/novnc
+
+FROM base
+
 COPY --chmod=755 ./src /run/
-COPY --chmod=755 --exclude=conf/novnc.sh ./web /var/www/
-COPY --chmod=664 ./web/conf/defaults.json /usr/share/novnc
-COPY --chmod=664 ./web/conf/mandatory.json /usr/share/novnc
+COPY --chmod=755 --exclude=vnc --exclude=conf ./web /var/www/
 COPY --chmod=744 ./web/conf/nginx.conf /etc/nginx/default.conf
+COPY --from=novnc /usr/share/novnc /usr/share/novnc
 COPY --chmod=644 ./web/img/favicon.svg /usr/share/novnc/app/images/favicon.svg
 
 ADD --chmod=755 "https://github.com/qemus/boot-logo/releases/download/v${VERSION_UTK}/boot-logo_${TARGETARCH}.bin" /run/boot-logo
