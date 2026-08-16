@@ -15,8 +15,6 @@ set -Eeuo pipefail
 msg="Configuring QEMU..."
 enabled "$DEBUG" && echo "$msg"
 
-DEF_OPTS="-nodefaults"
-
 configureProcessor() {
 
   CPU_OPTS="-cpu $CPU_FLAGS -smp $SMP"
@@ -107,6 +105,8 @@ configureVirtioDevices() {
     fi
   fi
 
+  DEV_OPTS="${DEV_OPTS# }"
+
   return 0
 }
 
@@ -117,10 +117,14 @@ configureSharedFolder() {
     DEV_OPTS+=" -device virtio-9p-pci,id=fs0,fsdev=fsdev0,mount_tag=shared"
   fi
 
+  DEV_OPTS="${DEV_OPTS# }"
+
   return 0
 }
 
 configureUsb() {
+
+  USB_OPTS=""
 
   if ! disabled "$USB" && [ -n "$USB" ]; then
     USB_OPTS="-device $USB -device usb-tablet"
@@ -214,7 +218,7 @@ configureCompatibility() {
 
 buildArguments() {
 
-  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
+  ARGS="-nodefaults $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
 
   # Keep the final command as a normalized argument string because entry.sh
   # intentionally expands user-supplied ARGUMENTS together with generated flags.
