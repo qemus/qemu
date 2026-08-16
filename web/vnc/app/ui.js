@@ -1945,7 +1945,11 @@ const UI = {
     updateDesktopName(e) {
         UI.desktopName = e.detail.name;
         // Display the desktop name in the document title
-        document.title = e.detail.name + " - " + PAGE_TITLE;
+        let title = e.detail.name;
+        if (title.startsWith("QEMU (") && title.endsWith(")")) {
+            title = title.slice(6, -1);
+        }
+        document.title = title + " - " + PAGE_TITLE;
     },
 
     bell(e) {
