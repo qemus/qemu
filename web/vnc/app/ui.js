@@ -81,13 +81,6 @@ const UI = {
         // Translate the DOM
         l10n.translateDOM();
 
-        // We rely on modern APIs which might not be available in an
-        // insecure context
-        if (!window.isSecureContext) {
-            // FIXME: This gets hidden when connecting
-            UI.showStatus(_("Running without HTTPS is not recommended, crashes or other issues are likely."), 'error');
-        }
-
         // Try to fetch version number
         try {
             let response = await fetch('./version', { cache: 'no-store' });
