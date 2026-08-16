@@ -52,3 +52,5 @@ for dir in "$OVERRIDE_DIR"/*/; do
   [ -d "$dir" ] || continue
   cp -a "$dir" "$INSTALL_DIR/"
 done
+
+cp /etc/version "$INSTALL_DIR/version"
