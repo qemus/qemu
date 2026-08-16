@@ -33,20 +33,22 @@ if [ "$OVERRIDE_VERSION" != "$VERSION_VNC" ]; then
   exit 1
 fi
 
+cd "$SOURCE_DIR"
+mv app core vendor package.json ./*.html "$INSTALL_DIR"
+
 for file in \
-  app/ui.js \
-  core/input/util.js \
-  core/rfb.js \
+  defaults.json \
+  mandatory.json \
   vnc.html
 do
   if [ ! -f "$OVERRIDE_DIR/$file" ]; then
     echo "ERROR: noVNC override file not found: $file" >&2
     exit 1
   fi
-  cp "$OVERRIDE_DIR/$file" "$SOURCE_DIR/$file"
+  cp "$OVERRIDE_DIR/$file" "$INSTALL_DIR/"
 done
 
-cd "$SOURCE_DIR"
-mv app core vendor package.json ./*.html "$INSTALL_DIR"
-
-ln -sf /var/www/js/audio.js "$INSTALL_DIR/audio-plugin.js"
+for dir in "$OVERRIDE_DIR"/*/; do
+  [ -d "$dir" ] || continue
+  cp -a "$dir" "$INSTALL_DIR/"
+done
