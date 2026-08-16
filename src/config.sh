@@ -90,7 +90,7 @@ configureVirtioDevices() {
 
   DEV_OPTS=""
 
-  if ! disabled "$RNG"; then
+  if ! disabled "$RNG" && [[ "${BOOT_MODE,,}" != "windows_legacy" ]]; then
     DEV_OPTS+=" -object rng-random,id=objrng0,filename=/dev/urandom"
     DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$bus"
   fi
