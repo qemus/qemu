@@ -212,7 +212,7 @@ checkDownloadSpace() {
     capacity_size=$(formatBytes "$capacity") ||
       capacity_size="$capacity bytes"
 
-    error "Not enough free space to download file, $expected_size required but only $capacity_size available!"
+    error "Insufficient free space to download file, $expected_size required but only $capacity_size available!"
     return 1
   fi
 
@@ -751,7 +751,7 @@ downloadToFile() {
   if (( connections == 1 && rc == 3 )); then
     failure="$failure because the file could not be written (disk full?)."
   elif (( connections > 1 && rc == 9 )); then
-    failure="$failure because there was not enough disk space."
+    failure="$failure because there was insufficient free disk space."
   elif [ -n "$reason" ]; then
     failure="$failure : ${reason%.}."
   elif (( rc == 0 )); then
