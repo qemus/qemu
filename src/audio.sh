@@ -62,6 +62,16 @@ stopAudioRelay() {
   return 0
 }
 
+disableAudio() {
+
+  stopAudioServer || :
+  stopAudioRelay || :
+  disableAudioControl || :
+
+  AUDIO="N"
+  return 0
+}
+
 startAudioRelay() {
 
   [ -f "$AUDIO_RELAY" ] || {
@@ -137,11 +147,7 @@ if startAudioRelay && startAudioServer; then
   enableAudioControl && return 0
 fi
 
-stopAudioServer || :
-stopAudioRelay || :
-disableAudioControl || :
-
-AUDIO="N"
+disableAudio
 
 warn "Audio support failed to initialize, ignoring AUDIO=Y."
 return 0

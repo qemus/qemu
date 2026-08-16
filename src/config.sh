@@ -132,7 +132,9 @@ configureAudio() {
   enabled "${AUDIO:-N}" || return 0
 
   if [ -z "${AUDIO_FIFO:-}" ] || [ ! -p "$AUDIO_FIFO" ]; then
-    AUDIO="N"
+
+    disableAudio
+
     warn "Audio support failed to initialize, ignoring AUDIO=Y."
     return 0
   fi
@@ -146,36 +148,44 @@ configureAudio() {
   if [[ "$model" == usb-* ]]; then
 
     if disabled "$USB" || [ -z "$USB" ]; then
-      AUDIO="N"
+
       AUDIO_OPTS=""
+      disableAudio
+
       warn "Cannot initialize audio device $model as USB is disabled, ignoring AUDIO=Y."
       return 0
     fi
 
     case "${USB,,}" in
-      *xhci*|*ohci*|*uhci*)
-        ;;
+
+      *xhci*|*ohci*|*uhci*) ;;
+
       *ehci*)
+
         AUDIO_OPTS+=" -device pci-ohci,id=audio-ohci"
-        [[ ",$sound," == *,bus=* ]] || sound+=",bus=audio-ohci.0"
-        ;;
+        [[ ",$sound," == *,bus=* ]] || sound+=",bus=audio-ohci.0" ;;
+
       *)
+
         AUDIO_OPTS+=" -device qemu-xhci,id=audio-xhci"
-        [[ ",$sound," == *,bus=* ]] || sound+=",bus=audio-xhci.0"
-        ;;
+        [[ ",$sound," == *,bus=* ]] || sound+=",bus=audio-xhci.0" ;;
+
     esac
 
   fi
 
   case "$model" in
+
     intel-hda|ich9-intel-hda)
+
       AUDIO_OPTS+=" -device $sound"
-      AUDIO_OPTS+=" -device hda-output,audiodev=snd"
-      ;;
+      AUDIO_OPTS+=" -device hda-output,audiodev=snd" ;;
+
     *)
+
       [[ ",$sound," == *,audiodev=* ]] || sound+=",audiodev=snd"
-      AUDIO_OPTS+=" -device $sound"
-      ;;
+      AUDIO_OPTS+=" -device $sound" ;;
+
   esac
 
   return 0
@@ -199,9 +209,10 @@ configureCompatibility() {
 
 buildArguments() {
 
+  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
+
   # Keep the final command as a normalized argument string because entry.sh
   # intentionally expands user-supplied ARGUMENTS together with generated flags.
-  ARGS="$DEF_OPTS $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS ${USB_OPTS:-} $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
   ARGS=$(echo "$ARGS" | sed 's/\t/ /g' | tr -s ' ')
 
   return 0
