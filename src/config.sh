@@ -132,7 +132,7 @@ configureAudio() {
   enabled "${AUDIO:-N}" || return 0
 
   if [ -z "${AUDIO_FIFO:-}" ] || [ ! -p "$AUDIO_FIFO" ]; then
-    AUDIO="N"
+    disableAudio
     warn "Audio support failed to initialize, ignoring AUDIO=Y."
     return 0
   fi
@@ -146,8 +146,8 @@ configureAudio() {
   if [[ "$model" == usb-* ]]; then
 
     if disabled "$USB" || [ -z "$USB" ]; then
-      AUDIO="N"
       AUDIO_OPTS=""
+      disableAudio
       warn "Cannot initialize audio device $model as USB is disabled, ignoring AUDIO=Y."
       return 0
     fi
