@@ -1,4 +1,5 @@
 {
   "resize": "scale",
-  "reconnect_delay": 1000
+  "reconnect_delay": 1000,
+  "keep_device_awake": true
 }
