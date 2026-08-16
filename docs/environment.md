@@ -69,7 +69,6 @@ An empty default means the variable is unset and its value is determined automat
 | Variable | Default | Description |
 |---|---|---|
 | `DISPLAY` | `web` | Display backend, such as `web`, `vnc`, `disabled`, or `none`. |
-| `LOSSY` | `N` | Enables lossy VNC compression to reduce bandwidth usage. |
 | `VGA` | `virtio` | QEMU video adapter model. |
 | `GPU` | `N` | Enables experimental Intel iGPU acceleration. |
 | `RENDERNODE` | `/dev/dri/renderD128` | Render node used for GPU acceleration. |
@@ -81,8 +80,8 @@ An empty default means the variable is unset and its value is determined automat
 | `WEB` | `Y` | Enables the web interface. |
 | `WEB_PORT` | `8006` | Port for the web interface. |
 | `VNC_PORT` | `5900` | Port for the VNC server. |
+| `LOSSY` | `N` | Enables lossy VNC compression to reduce bandwidth usage. |
 | `AUDIO` | `N` | Streams guest audio to the web viewer. |
-| `SOUND` | `intel-hda` | QEMU audio device used by the web viewer. |
 | `PROTECT` | `N` | Enables password protection for the web interface. |
 
 ## ⚙️ System
@@ -94,6 +93,7 @@ An empty default means the variable is unset and its value is determined automat
 | `UUID` |  | UUID assigned to the VM. |
 | `HPET` | `off` | QEMU HPET timer setting. |
 | `VMPORT` | `off` | QEMU VMware port setting. |
+| `SOUND` | `intel-hda` | QEMU audio device used by the web viewer. |
 | `SM_BIOS` |  | Additional arguments passed to QEMU’s `-smbios` option. |
 | `ARGUMENTS` |  | Additional raw arguments appended to the QEMU command line. |
 
