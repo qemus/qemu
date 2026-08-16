@@ -4,13 +4,13 @@ set -Eeuo pipefail
 : "${QMP:=""}"
 : "${RNG:=""}"
 : "${UUID:=""}"
+: "${MONITOR:=""}"
 : "${HPET:="off"}"
 : "${VMPORT:="off"}"
 : "${SOUND:="intel-hda"}"
 : "${SERIAL:="mon:stdio"}"
 : "${USB:="qemu-xhci,id=xhci,p2=7,p3=7"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
-: "${MONITOR:="unix:$QEMU_DIR/monitor.sock,server=on,wait=off,nodelay=on"}"
 
 msg="Configuring QEMU..."
 enabled "$DEBUG" && echo "$msg"
@@ -49,9 +49,9 @@ configureMonitor() {
   [ -n "$QMP" ] && MON_OPTS+=" -qmp $QMP"
   [ -n "$MONITOR" ] && MON_OPTS+=" -monitor $MONITOR"
 
-  # Keep the user monitor and the automation monitor separate; power and
-  # boot-key helpers need a private socket they can control safely.
-  if enabled "${SHUTDOWN:-}" && [ -n "${ACPI_SOCKET:-}" ]; then
+  # Keep the user monitor and the automation monitor separate; power
+  # and boot-key helpers need a private socket they can control safely.
+  if [ -n "${ACPI_SOCKET:-}" ]; then
     MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server=on,wait=off,nodelay=on"
   fi
 
