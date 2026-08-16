@@ -2,6 +2,7 @@
 set -Eeuo pipefail
 
 : "${QMP:=""}"
+: "${RNG:=""}"
 : "${UUID:=""}"
 : "${HPET:="off"}"
 : "${VMPORT:="off"}"
@@ -14,8 +15,6 @@ set -Eeuo pipefail
 msg="Configuring QEMU..."
 enabled "$DEBUG" && echo "$msg"
 
-DEV_OPTS=""
-AUDIO_OPTS=""
 DEF_OPTS="-nodefaults"
 
 configureProcessor() {
@@ -54,7 +53,7 @@ configureMonitor() {
 
   # Keep the user monitor and the automation monitor separate; power and
   # boot-key helpers need a private socket they can control safely.
-  if enabled "$SHUTDOWN" && [ -n "${ACPI_SOCKET:-}" ]; then
+  if enabled "${SHUTDOWN:-}" && [ -n "${ACPI_SOCKET:-}" ]; then
     MON_OPTS+=" -monitor unix:$ACPI_SOCKET,server=on,wait=off,nodelay=on"
   fi
 
@@ -90,8 +89,12 @@ configureVirtioDevices() {
   local bus
   bus=$(getPciBus)
 
-  DEV_OPTS="-object rng-random,id=objrng0,filename=/dev/urandom"
-  DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$bus"
+  DEV_OPTS=""
+
+  if ! disabled "$RNG"; then
+    DEV_OPTS+=" -object rng-random,id=objrng0,filename=/dev/urandom"
+    DEV_OPTS+=" -device virtio-rng-pci,rng=objrng0,id=rng0,bus=$bus"
+  fi
 
   # Windows receives no balloon device by default because the guest driver is not
   # guaranteed to be present; explicitly enabling ballooning opts into it.
@@ -127,6 +130,8 @@ configureUsb() {
 }
 
 configureAudio() {
+
+  AUDIO_OPTS=""
 
   disabled "${WEB:-}" && return 0
   enabled "${AUDIO:-N}" || return 0
