@@ -19,7 +19,8 @@ ARG DEBCONF_NOWARNINGS="yes"
 ARG DEBIAN_FRONTEND="noninteractive"
 ARG DEBCONF_NONINTERACTIVE_SEEN="true"
 
-RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
+RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro \
+    --mount=type=bind,source=novnc,target=/run/novnc,ro <<EOF
   set -eu
 
   echo "deb https://deb.debian.org/debian trixie non-free" > /etc/apt/sources.list.d/non-free.list
@@ -97,7 +98,7 @@ RUN --mount=type=bind,source=web/conf/novnc.sh,target=/run/novnc.sh,ro <<EOF
   apt-get clean
 
   # Install noVNC
-  sh /run/novnc.sh "$VERSION_VNC"
+  sh /run/novnc.sh "$VERSION_VNC" /run/novnc
 
   # Set version file
   echo "$VERSION_ARG" > /etc/version
