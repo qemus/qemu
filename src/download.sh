@@ -212,7 +212,7 @@ checkDownloadSpace() {
     capacity_size=$(formatBytes "$capacity") ||
       capacity_size="$capacity bytes"
 
-    error "Insufficient free space to download file, $expected_size required but only $capacity_size available!"
+    error "Insufficient free disk space to download file, $expected_size required but only $capacity_size available!"
     return 1
   fi
 
