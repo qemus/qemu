@@ -514,7 +514,7 @@ convertImage() {
 
     if (( src_size > space )); then
       space_gb=$(formatBytes "$space")
-      error "Not enough free space to convert image in $dir, it has only $space_gb available..."
+      error "Insufficient free disk space to convert image in $dir, it has only $space_gb available..."
       return 1
     fi
   fi
