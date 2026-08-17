@@ -57,8 +57,8 @@ configureMonitor() {
   [ -n "$QMP" ] && MON_OPTS+=" -qmp $QMP"
 
   local name="${APP// /-}"
-  MON_OPTS+=" -name $name,process=$PROCESS"
-  MON_OPTS+=" -pidfile $QEMU_PID"
+  ID_OPTS="-name $name,process=$PROCESS"
+  PID_OPTS="-pidfile $QEMU_PID"
   MON_OPTS="${MON_OPTS# }"
 
   return 0
@@ -78,8 +78,8 @@ configureMachine() {
   MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
 
   UUID=$(strip "$UUID")
-  [ -n "$UUID" ] && MAC_OPTS+=" -uuid $UUID"
-  [ -n "$SM_BIOS" ] && MAC_OPTS+=" $SM_BIOS"
+  [ -n "$UUID" ] && ID_OPTS+=" -uuid $UUID"
+  [ -n "$SM_BIOS" ] && ID_OPTS+=" $SM_BIOS"
 
   return 0
 }
@@ -220,7 +220,7 @@ configureCompatibility() {
 
 buildArguments() {
 
-  ARGS="-nodefaults $CPU_OPTS $RAM_OPTS $MAC_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
+  ARGS="-nodefaults $MAC_OPTS $CPU_OPTS $RAM_OPTS $ID_OPTS $PID_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
 
   # Collapse whitespace after optional argument groups are assembled so
   # empty features do not leave malformed spacing in the final command.
