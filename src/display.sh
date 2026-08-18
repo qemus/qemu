@@ -3,7 +3,7 @@ set -Eeuo pipefail
 
 # Docker environment variables
 
-: "${GPU:="N"}"         # GPU passthrough
+: "${GPU:="N"}"         # GPU acceleration
 : "${VGA:="virtio"}"    # VGA adaptor
 : "${DISPLAY:="web"}"   # Display type
 : "${LOSSY:="N"}"       # Lossy VNC compression
@@ -41,32 +41,47 @@ case "${DISPLAY,,}" in
 
 esac
 
-# The current virgl host path is limited to Intel-compatible amd64 render nodes;
-# all other hosts retain the normal software/VNC display configuration.
-if ! enabled "$GPU" || isAmdCpu || [[ "$ARCH" != "amd64" ]]; then
+enabled "$GPU" || return 0
+
+msg="Configuring display drivers..."
+enabled "$DEBUG" && echo "$msg"
+
+if [[ "$ARCH" != "amd64" ]]; then
+  warn "GPU acceleration is only supported for the AMD64 platform, ignoring GPU=Y."
   return 0
 fi
+
+RENDER_NAME="${RENDERNODE##*/}"
+
+if [[ ! "$RENDER_NAME" =~ ^renderD([0-9]+)$ ]]; then
+  warn "invalid render node '$RENDERNODE', ignoring GPU=Y."
+  return 0
+fi
+
+CARD_NUMBER="${BASH_REMATCH[1]}"
+VENDOR_FILE="/sys/class/drm/${RENDER_NAME}/device/vendor"
+
+if [ ! -r "$VENDOR_FILE" ]; then
+  warn "cannot determine the GPU vendor for '$RENDERNODE', ignoring GPU=Y."
+  return 0
+fi
+
+GPU_VENDOR=$(< "$VENDOR_FILE")
+case "${GPU_VENDOR,,}" in
+  "0x8086" | "0x1002" ) ;;
+  * )
+    warn "GPU acceleration is only supported for Intel and AMD GPUs, ignoring GPU=Y."
+    return 0 ;;
+esac
 
 case "${APP:-}" in
   "Windows" | "macOS" )
     warn "GPU acceleration is not supported for $APP, but feel free to experiment." ;;
 esac
 
-msg="Configuring display drivers..."
-html "$msg"
-enabled "$DEBUG" && echo "$msg"
-
-[[ "${VGA,,}" == "virtio" ]] && VGA="virtio-vga-gl"
-DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
-DISPLAY_OPTS+=" -device $VGA"
-
-[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :${port}${LOSSY_OPT}"
-[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT}"
-
 [ ! -d /dev/dri ] && mkdir -m 755 /dev/dri
 
-# Extract the card number from the render node
-CARD_NUMBER=$(echo "$RENDERNODE" | grep -oP '(?<=renderD)\d+')
+# Derive the matching DRM card from the validated render node number.
 CARD_DEVICE="/dev/dri/card$((CARD_NUMBER - 128))"
 
 # Containers normally have no udev, so reconstruct the matching DRM card and
@@ -84,7 +99,15 @@ if [ ! -c "$RENDERNODE" ]; then
 fi
 
 if [ ! -c "$RENDERNODE" ] || [ ! -r "$RENDERNODE" ] || [ ! -w "$RENDERNODE" ]; then
-  warn "render device '$RENDERNODE' is unavailable or inaccessible."
+  warn "render device '$RENDERNODE' is unavailable or inaccessible, ignoring GPU=Y."
+  return 0
 fi
+
+[[ "${VGA,,}" == "virtio" ]] && VGA="virtio-vga-gl"
+DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
+DISPLAY_OPTS+=" -device $VGA"
+
+[[ "${DISPLAY,,}" == "vnc" ]] && DISPLAY_OPTS+=" -vnc :${port}${LOSSY_OPT}"
+[[ "${DISPLAY,,}" == "web" ]] && DISPLAY_OPTS+=" -vnc :${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT}"
 
 return 0
