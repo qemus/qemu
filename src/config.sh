@@ -226,7 +226,7 @@ configureCompatibility() {
   CMP_OPTS=""
 
   case "${BOOT_MODE,,}" in
-    "legacy" | "windows_legacy" | "custom" )
+    "legacy" | "windows_legacy" )
       return 0 ;;
   esac
 

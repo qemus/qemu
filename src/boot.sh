@@ -10,6 +10,7 @@ set -Eeuo pipefail
 
 BOOT_DESC=""
 BOOT_OPTS=""
+BIOS=$(strip "$BIOS")
 
 SWTPM="/run/swtpm"
 TPM_PID="/var/run/tpm.pid"
@@ -17,11 +18,17 @@ TPM_SOCKET="/tmp/swtpm.sock"
 
 configureBootMode() {
 
-  # Supplying BIOS explicitly overrides BOOT_MODE so the custom firmware path
-  # cannot accidentally be combined with an OVMF configuration.
-  [ -n "$BIOS" ] && BOOT_MODE="custom"
+  # Supplying BIOS explicitly overrides BOOT_MODE so the custom firmware
+  # path cannot accidentally be combined with an OVMF configuration.
+  if [ -n "$BIOS" ]; then
+    case "${BOOT_MODE,,}" in
+      "uefi" | "secure" | "" )
+        BOOT_MODE="legacy" ;;
+    esac
+  fi
 
   case "${BOOT_MODE,,}" in
+
     "uefi" | "" )
 
       BOOT_MODE="uefi"
@@ -69,24 +76,24 @@ configureBootMode() {
 
       [ -z "$SMM" ] && SMM="Y"
       [ -z "${HV:-}" ] && HV="N"
-      [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci" ;;
+      [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci"
+
+      if [ -n "$BIOS" ]; then
+        BOOT_OPTS="-bios $BIOS"
+      fi ;;
 
     "legacy" )
 
-      BOOT_DESC=" with SeaBIOS" ;;
-
-    "custom" )
-
-      BOOT_DESC=" with custom BIOS file"
-
-      BIOS=$(strip "$BIOS")
-
       if [ -z "$BIOS" ]; then
-        error "BOOT_MODE is custom but BIOS is empty!"
-        exit 33
-      fi
 
-      BOOT_OPTS="-bios $BIOS" ;;
+        BOOT_DESC=" with SeaBIOS"
+
+      else
+
+        BOOT_OPTS="-bios $BIOS"
+        BOOT_DESC=" with custom SeaBIOS file"
+
+      fi ;;
 
     *)
 
@@ -98,19 +105,17 @@ configureBootMode() {
   return 0
 }
 
-addWindowsBootOptions() {
+addWindowsOptions() {
 
-  if [[ "${BOOT_MODE,,}" == "windows"* ]]; then
+  [[ "${BOOT_MODE,,}" == "windows"* ]] || return 0
 
-    # Windows expects a local-time hardware clock, and disabling S3/S4 avoids
-    # sleep states that cannot be resumed reliably in this container setup.
-    BOOT_OPTS+=" -rtc base=localtime"
+  # Windows expects a local-time hardware clock, and disabling S3/S4 avoids
+  # sleep states that cannot be resumed reliably in this container setup.
+  BOOT_OPTS+=" -rtc base=localtime"
 
-    if isQ35; then
-      BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
-      BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
-    fi
-
+  if isQ35; then
+    BOOT_OPTS+=" -global ICH9-LPC.disable_s3=1"
+    BOOT_OPTS+=" -global ICH9-LPC.disable_s4=1"
   fi
 
   return 0
@@ -274,17 +279,15 @@ detectSmbiosSerial() {
   SM_BIOS=""
   PS="/sys/class/dmi/id/product_serial"
 
-  if [ -r "$PS" ]; then
+  [ -r "$PS" ] || return 0
 
-    # Reuse the host product serial as a stable SMBIOS identity after stripping
-    # characters that cannot safely appear in the QEMU argument.
-    BIOS_SERIAL=$(<"$PS")
-    BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
+  # Reuse the host product serial as a stable SMBIOS identity after stripping
+  # characters that cannot safely appear in the QEMU argument.
+  BIOS_SERIAL=$(<"$PS")
+  BIOS_SERIAL="${BIOS_SERIAL//[![:alnum:]]/}"
 
-    if [ -n "$BIOS_SERIAL" ]; then
-      SM_BIOS="-smbios type=1,serial=$BIOS_SERIAL"
-    fi
-
+  if [ -n "$BIOS_SERIAL" ]; then
+    SM_BIOS="-smbios type=1,serial=$BIOS_SERIAL"
   fi
 
   return 0
@@ -308,9 +311,7 @@ stopTpm() {
 
 startTpm() {
 
-  if ! enabled "$TPM"; then
-    return 0
-  fi
+  enabled "$TPM" || return 0
 
   local msg="Starting TPM emulator..."
   enabled "$DEBUG" && echo "$msg"
@@ -385,7 +386,7 @@ configureBootMode
 [ -z "$SMM" ] && SMM="N"
 [ -z "$TPM" ] && TPM="N"
 
-addWindowsBootOptions
+addWindowsOptions
 
 clearNvram
 stopTpm
