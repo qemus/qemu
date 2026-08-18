@@ -371,10 +371,24 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     - /dev/dri
   ```
 
-  This allows the VM to use the host GPU through its DRM render node for accelerated 3D graphics.
+  For NVIDIA GPUs, the `NVIDIA Container Toolkit` must be installed on the host and the GPU must be exposed to the container:
+
+  ```yaml
+  environment:
+    GPU: "Y"
+    NVIDIA_DRIVER_CAPABILITIES: "graphics"
+  deploy:
+    resources:
+      reservations:
+        devices:
+          - driver: nvidia
+            count: all
+            capabilities:
+              - gpu
+  ```
 
   > [!NOTE]
-  > This feature is experimental and currently supports Intel and AMD GPUs only. It provides OpenGL 3D acceleration through VirGL; Vulkan and direct PCI GPU passthrough are not supported.
+  > This feature is experimental. It provides OpenGL 3D acceleration but can also improve the performance of the VirtIO graphics device. Vulkan and direct PCI GPU passthrough are not supported yet.
 
 ### How do I enable dynamic memory allocation?
 
