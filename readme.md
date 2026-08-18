@@ -388,7 +388,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   ```
 
   > [!NOTE]
-  > This feature is experimental. It provides OpenGL 3D acceleration through VirGL on guests with compatible 3D drivers. Windows and macOS guests do not currently support VirGL 3D acceleration, although hardware rendering may still improve display presentation. Vulkan and direct PCI GPU passthrough are not supported.
+  > This feature is experimental. It provides OpenGL acceleration but can also improve the performance of the VirtIO graphics device. Vulkan and direct PCI GPU passthrough are not supported yet.
 
 ### How do I enable dynamic memory allocation?
 
