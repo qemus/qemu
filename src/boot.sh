@@ -76,7 +76,7 @@ configureBootMode() {
 
       [ -z "$SMM" ] && SMM="Y"
       [ -z "${HV:-}" ] && HV="N"
-      [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci" ;;
+      [ -z "${USB:-}" ] && USB="usb-ehci,id=ehci"
 
       if [ -n "$BIOS" ]; then
         BOOT_OPTS="-bios $BIOS"
