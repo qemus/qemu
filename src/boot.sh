@@ -22,8 +22,8 @@ configureBootMode() {
   # path cannot accidentally be combined with an OVMF configuration.
   if [ -n "$BIOS" ]; then
     case "${BOOT_MODE,,}" in
-      "uefi" | "secure" | "legacy" | "" )
-        BOOT_MODE="custom" ;;
+      "uefi" | "secure" | "" )
+        BOOT_MODE="legacy" ;;
     esac
   fi
 
@@ -84,18 +84,16 @@ configureBootMode() {
 
     "legacy" )
 
-      BOOT_DESC=" with SeaBIOS" ;;
-
-    "custom" )
-
-      BOOT_DESC=" with custom SeaBIOS file"
-
       if [ -z "$BIOS" ]; then
-        error "BOOT_MODE is custom but BIOS is not specified!"
-        exit 33
-      fi
 
-      BOOT_OPTS="-bios $BIOS" ;;
+        BOOT_DESC=" with SeaBIOS"
+
+      else
+
+        BOOT_OPTS="-bios $BIOS"
+        BOOT_DESC=" with custom SeaBIOS file"
+
+      fi ;;
 
     *)
 
