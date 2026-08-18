@@ -360,6 +360,22 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     - /dev/bus/usb
   ```
 
+### How do I enable GPU acceleration?
+
+  To enable hardware-accelerated graphics using an Intel or AMD GPU, add the following lines to your compose file:
+
+  ```yaml
+  environment:
+    GPU: "Y"
+  devices:
+    - /dev/dri
+  ```
+
+  This allows the VM to use the host GPU through its DRM render node for accelerated 3D graphics.
+
+  > [!NOTE]
+  > This feature is experimental and currently supports Intel and AMD GPUs only. It provides OpenGL 3D acceleration through VirGL; Vulkan and direct PCI GPU passthrough are not supported.
+
 ### How do I enable dynamic memory allocation?
 
   By default, the VM is allocated the full amount of RAM configured via `RAM_SIZE` for its entire lifetime.
