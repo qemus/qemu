@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 set -Eeuo pipefail
 
-: "${QMP:=""}"
+: "${USB:=""}"
 : "${RNG:=""}"
+: "${QMP:=""}"
 : "${UUID:=""}"
 : "${MONITOR:=""}"
 : "${HPET:="off"}"
@@ -10,7 +11,6 @@ set -Eeuo pipefail
 : "${SOUND:="intel-hda"}"
 : "${MOUSE:="usb-tablet"}"
 : "${SERIAL:="mon:stdio"}"
-: "${USB:="qemu-xhci,id=xhci,p2=7,p3=7"}"
 : "${SMP:="$CPU_CORES,sockets=1,dies=1,cores=$CPU_CORES,threads=1"}"
 
 msg="Configuring QEMU..."
@@ -69,11 +69,10 @@ configureMonitor() {
   [ -n "$MONITOR" ] && MON_OPTS+=" -monitor $MONITOR"
   [ -n "$QMP" ] && MON_OPTS+=" -qmp $QMP"
 
-  local name="${APP// /-}"
-  ID_OPTS="-name $name,process=$PROCESS"
+  ID_OPTS="-name ${APP// /-},process=$PROCESS"
   PID_OPTS="-pidfile $QEMU_PID"
-  MON_OPTS="${MON_OPTS# }"
 
+  MON_OPTS="${MON_OPTS# }"
   return 0
 }
 
@@ -83,9 +82,7 @@ configureMachine() {
   enabled "$SMM" && smm="on"
 
   local usb=""
-  if disabled "$USB" || [ -z "$USB" ]; then
-    usb=",usb=off"
-  fi
+  disabled "$USB" && usb=",usb=off"
 
   MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off${usb}"
   MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
@@ -144,7 +141,11 @@ configureUsb() {
 
   USB_OPTS=""
 
-  if ! disabled "$USB" && [ -n "$USB" ]; then
+  if enabled "$USB" || [ -z "$USB" ]; then
+    USB="qemu-xhci,id=xhci,p2=7,p3=7"
+  fi
+
+  if ! disabled "$USB"; then
     USB_OPTS="-device $USB"
     if [[ "${MOUSE,,}" == "usb"* ]]; then
       USB_OPTS+=" -device $MOUSE"
@@ -177,7 +178,7 @@ configureAudio() {
   # A USB audio device needs a compatible controller.
   if [[ "$model" == usb-* ]]; then
 
-    if disabled "$USB" || [ -z "$USB" ]; then
+    if disabled "$USB"; then
 
       AUDIO_OPTS=""
       disableAudio
