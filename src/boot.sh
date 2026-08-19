@@ -77,7 +77,7 @@ configureBootMode() {
       [ -z "$SMM" ] && SMM="Y"
       [ -z "${HV:-}" ] && HV="N"
 
-      if ! disabled "${USB:-}"; then
+      if enabled "${USB:-}" || [ -z "${USB:-}" ]; then
         USB="usb-ehci,id=ehci"
       fi
 
