@@ -141,7 +141,7 @@ configureUsb() {
 
   USB_OPTS=""
 
-  if enabled "$USB"; then
+  if enabled "$USB" || [ -z "$USB" ]; then
     USB="qemu-xhci,id=xhci,p2=7,p3=7"
   fi
 
