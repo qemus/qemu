@@ -82,9 +82,7 @@ configureMachine() {
   enabled "$SMM" && smm="on"
 
   local usb=""
-  if disabled "$USB" || [ -z "$USB" ; then
-    usb=",usb=off"
-  fi
+  disabled "$USB" && usb=",usb=off"
 
   MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off${usb}"
   MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
@@ -180,7 +178,7 @@ configureAudio() {
   # A USB audio device needs a compatible controller.
   if [[ "$model" == usb-* ]]; then
 
-    if disabled "$USB" || [ -z "$USB" ]; then
+    if disabled "$USB"; then
 
       AUDIO_OPTS=""
       disableAudio
