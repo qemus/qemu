@@ -127,10 +127,10 @@ clearNvram() {
   # between plain, secure, and legacy configurations cannot mix their state.
   DEST="$STORAGE/${BOOT_MODE,,}"
 
-  if enabled "$CLEAR"; then
-    # Clear NVRAM (helps to fix corruptions)
-    rm -f "$DEST.rom" "$DEST.vars" "$DEST.tpm"
-  fi
+  enabled "$CLEAR" || return 0
+
+  # Clear NVRAM (helps to fix corruptions)
+  rm -f "$DEST.rom" "$DEST.vars" "$DEST.tpm"
 
   return 0
 }
@@ -235,7 +235,8 @@ configureUefi() {
 enableIgnoreMsrs() {
 
   MSRS="/sys/module/kvm/parameters/ignore_msrs"
-  [ ! -e "$MSRS" ] && return 0
+
+  [ -e "$MSRS" ] || return 0
 
   result=$(<"$MSRS")
   result="${result//[![:print:]]/}"
@@ -395,7 +396,6 @@ configureUefi
 enableIgnoreMsrs
 checkClocksource
 detectSmbiosSerial
-
 startTpm
 
 return 0
