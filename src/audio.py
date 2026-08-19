@@ -9,6 +9,10 @@ SOCKET = sys.argv[2]
 clients = set()
 lock = threading.Lock()
 
+
+class StreamEnded(Exception):
+    pass
+
 try:
     os.unlink(SOCKET)
 except FileNotFoundError:
@@ -45,7 +49,7 @@ def read_exact(fd, size):
     while len(data) < size:
         chunk = os.read(fd, size - len(data))
         if not chunk:
-            raise RuntimeError("Unexpected end of WAV stream")
+            raise StreamEnded("Unexpected end of WAV stream")
 
         data.extend(chunk)
 
@@ -71,7 +75,7 @@ def read_wav_header(fd):
         while remaining:
             skipped = os.read(fd, min(remaining, 4096))
             if not skipped:
-                raise RuntimeError("Incomplete WAV chunk")
+                raise StreamEnded("Incomplete WAV chunk")
 
             remaining -= len(skipped)
 
@@ -82,7 +86,12 @@ while True:
     fd = os.open(FIFO, os.O_RDONLY)
 
     try:
-        read_wav_header(fd)
+        try:
+            read_wav_header(fd)
+        except StreamEnded:
+            # QEMU can close and recreate an audio voice when the guest resets.
+            # Reopen the FIFO and wait for the next complete WAV stream.
+            continue
 
         while True:
             data = os.read(fd, 4096)
