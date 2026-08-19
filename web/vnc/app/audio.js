@@ -26,6 +26,9 @@
     var ws = null;
     var nextTime = 0;
     var leftover = EMPTY;
+    var vncConnected = document.documentElement.classList.contains(
+      "noVNC_connected",
+    );
 
     function stop() {
       var socket = ws;
@@ -49,7 +52,10 @@
     }
 
     function start() {
-      if (cb.disabled) {
+      if (
+        cb.disabled ||
+        !document.documentElement.classList.contains("noVNC_connected")
+      ) {
         cb.checked = false;
         stop();
         return;
@@ -150,6 +156,24 @@
         cb.checked = false;
         stop();
       }
+    });
+
+    var observer = new MutationObserver(function () {
+      var connected = document.documentElement.classList.contains(
+        "noVNC_connected",
+      );
+
+      if (vncConnected && !connected) {
+        cb.checked = false;
+        stop();
+      }
+
+      vncConnected = connected;
+    });
+
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
     });
   }
 
