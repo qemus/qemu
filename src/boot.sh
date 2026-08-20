@@ -74,7 +74,6 @@ configureBootMode() {
 
       BOOT_DESC=" (legacy)"
 
-      [ -z "$SMM" ] && SMM="Y"
       [ -z "${HV:-}" ] && HV="N"
 
       if enabled "${USB:-}" || [ -z "${USB:-}" ]; then
