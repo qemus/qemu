@@ -45,6 +45,8 @@ configureBootMode() {
         exit 33
       fi
 
+      [ -z "$SMM" ] && SMM="Y"
+
       ROM="OVMF_CODE_4M.secboot.fd"
       VARS="OVMF_VARS_4M.fd" ;;
 
@@ -72,7 +74,6 @@ configureBootMode() {
 
       BOOT_DESC=" (legacy)"
 
-      [ -z "$SMM" ] && SMM="Y"
       [ -z "${HV:-}" ] && HV="N"
 
       if enabled "${USB:-}" || [ -z "${USB:-}" ]; then
