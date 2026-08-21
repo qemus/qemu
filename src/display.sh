@@ -26,18 +26,27 @@ port=$(( VNC_PORT - 5900 ))
 LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
+if [[ "${VGA,,}" == "std" ]]; then
+  VGA="std,vgamem_mb=64"
+fi
+
+VGA_OPT="-vga ${VGA}"
+if [[ "${VGA,,}" == "std,"* ]]; then
+  VGA_OPT="-device VGA,${VGA#*,}"
+fi
+
 case "${DISPLAY,,}" in
 
   "vnc" )
-    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} -vga ${VGA}" ;;
+    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} ${VGA_OPT}" ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} -vga ${VGA}" ;;
+    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} ${VGA_OPT}" ;;
   "disabled" )
-    DISPLAY_OPTS="-display none -vga ${VGA}" ;;
+    DISPLAY_OPTS="-display none ${VGA_OPT}" ;;
   "none" )
     DISPLAY_OPTS="-display none -vga none" ;;
   *)
-    DISPLAY_OPTS="-display ${DISPLAY} -vga ${VGA}" ;;
+    DISPLAY_OPTS="-display ${DISPLAY} ${VGA_OPT}" ;;
 
 esac
 
@@ -239,7 +248,11 @@ if ! gpuNodeVendor "$RENDERNODE"; then
   return 0
 fi
 
-[[ "${VGA,,}" == "virtio" ]] && VGA="virtio-vga-gl"
+case "${VGA,,}" in
+  "virtio" ) VGA="virtio-vga-gl" ;;
+  "std,"* ) VGA="VGA,${VGA#*,}" ;;
+esac
+
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
 
