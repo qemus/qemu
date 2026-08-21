@@ -211,7 +211,7 @@ prepareUefiVars() {
   return 0
 }
 
-configureUefi() {
+configureBios() {
 
   case "${BOOT_MODE,,}" in
 
@@ -228,6 +228,12 @@ configureUefi() {
 
       BOOT_OPTS+=" -drive file=$DEST.rom,if=pflash,unit=0,format=raw,readonly=on"
       BOOT_OPTS+=" -drive file=$DEST.vars,if=pflash,unit=1,format=raw" ;;
+
+    "legacy" | "windows_legacy" )
+
+      if ! isQ35; then
+        BOOT_OPTS+=" -global PIIX4_PM.acpi-root-pci-hotplug=off"
+      fi ;;
 
   esac
 
@@ -394,7 +400,7 @@ addWindowsOptions
 clearNvram
 stopTpm
 
-configureUefi
+configureBios
 enableIgnoreMsrs
 checkClocksource
 detectSmbiosSerial
