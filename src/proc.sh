@@ -5,6 +5,7 @@ set -Eeuo pipefail
 
 : "${CPU_MODEL:=""}"    # QEMU CPU mode
 : "${CPU_FLAGS:=""}"    # Additional QEMU CPU flags
+: "${VM:=""}"           # Enables the Hypervisor CPU bit
 : "${HV:=""}"           # Enables Hyper-V enlightenments for Windows guests
 : "${VMX:=""}"          # Exposes Intel VMX virtualization extensions to the guest
 
@@ -63,7 +64,9 @@ removeCpuArgument() {
 
 configureKvmCpuModel() {
 
-  CPU_FEATURES="kvm=on,l3-cache=on,+hypervisor"
+  CPU_FEATURES="kvm=on,l3-cache=on"
+  enabled "$VM" && CPU_FEATURES+=",+hypervisor"
+
   KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
 
   if [ -z "$CPU_MODEL" ]; then
@@ -209,7 +212,9 @@ configureTcgCpuModel() {
 configureTcg() {
 
   KVM_OPTS=""
-  CPU_FEATURES="l3-cache=on,+hypervisor"
+
+  CPU_FEATURES="l3-cache=on"
+  enabled "$VM" && CPU_FEATURES+=",+hypervisor"
 
   if [[ "$ARCH" == "amd64" ]]; then
     KVM_OPTS=" -accel tcg,thread=multi"
@@ -228,6 +233,8 @@ composeCpuFlags() {
 }
 
 removeCpuArgument
+
+[ -z "$VM" ] && VM="Y"
 
 if [ -z "$HV" ]; then
 
