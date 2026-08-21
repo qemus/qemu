@@ -26,10 +26,6 @@ port=$(( VNC_PORT - 5900 ))
 LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
-if [[ "${VGA,,}" == "std" ]]; then
-  VGA="std,vgamem_mb=64"
-fi
-
 VGA_OPT="-vga ${VGA}"
 if [[ "${VGA,,}" == "std,"* ]]; then
   VGA_OPT="-device VGA,${VGA#*,}"
