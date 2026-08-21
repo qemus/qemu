@@ -74,8 +74,6 @@ configureBootMode() {
 
       BOOT_DESC=" (legacy)"
 
-      [ -z "${HV:-}" ] && HV="N"
-
       if enabled "${USB:-}" || [ -z "${USB:-}" ]; then
         USB="usb-ehci,id=ehci"
       fi
