@@ -378,7 +378,7 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
   ```yaml
   environment:
     GPU: "Y"
-    NVIDIA_DRIVER_CAPABILITIES: "graphics"
+    NVIDIA_DRIVER_CAPABILITIES: "all"
 
   deploy:
     resources:
