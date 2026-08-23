@@ -70,7 +70,7 @@ An empty default means the variable is unset and its value is determined automat
 |---|---|---|
 | `DISPLAY` | `web` | Display backend, such as `web`, `vnc`, `disabled`, or `none`. |
 | `VGA` | `virtio` | QEMU video adapter model. |
-| `GPU` | `N` | Enables experimental GPU acceleration. |
+| `GPU` | `N` | Enables OpenGL/Vulkan GPU acceleration. |
 | `RENDERNODE` | `/dev/dri/renderD128` | Render node used for GPU acceleration. |
 
 ## 🌍 Web UI
