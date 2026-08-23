@@ -88,9 +88,121 @@ gpuNodeVendor() {
   return 0
 }
 
+# Venus requires a Vulkan userspace driver in addition to the normal EGL/GBM
+# rendering path. Keep this separate so normal VirGL/OpenGL does not require Vulkan.
+
+venusEnabled() {
+
+  [[ ",${VGA,,}," =~ ,venus=(on|true|yes|1), ]]
+}
+
+vulkanLibraryAvailable() {
+
+  local library="$1"
+
+  compgen -G "/usr/lib/*/${library}" >/dev/null 2>&1 \
+    || [ -e "/usr/lib/${library}" ] \
+    || [ -e "/usr/lib64/${library}" ]
+}
+
+vulkanManifestAvailable() {
+
+  local manifest="$1"
+
+  compgen -G "/etc/vulkan/icd.d/${manifest}*.json" >/dev/null 2>&1 \
+    || compgen -G "/usr/share/vulkan/icd.d/${manifest}*.json" >/dev/null 2>&1
+}
+
+mesaVulkanReady() {
+
+  local vendor="$1"
+  local library manifest
+  VULKAN_REASON=""
+
+  if ! vulkanLibraryAvailable "libvulkan.so.1"; then
+    VULKAN_REASON="the Vulkan loader is not available in the container"
+    return 1
+  fi
+
+  case "$vendor" in
+    "0x8086" )
+      for library in libvulkan_intel.so libvulkan_intel_hasvk.so; do
+        if ! vulkanLibraryAvailable "$library"; then
+          VULKAN_REASON="the Intel Vulkan driver library '$library' is not available in the container"
+          return 1
+        fi
+      done
+
+      for manifest in intel_icd intel_hasvk_icd; do
+        if ! vulkanManifestAvailable "$manifest"; then
+          VULKAN_REASON="the Intel Vulkan ICD '$manifest' is not available in the container"
+          return 1
+        fi
+      done ;;
+
+    "0x1002" )
+      if ! vulkanLibraryAvailable "libvulkan_radeon.so"; then
+        VULKAN_REASON="the AMD Vulkan driver library 'libvulkan_radeon.so' is not available in the container"
+        return 1
+      fi
+
+      if ! vulkanManifestAvailable "radeon_icd"; then
+        VULKAN_REASON="the AMD Vulkan ICD 'radeon_icd' is not available in the container"
+        return 1
+      fi ;;
+  esac
+
+  return 0
+}
+
 # NVIDIA uses the proprietary host driver injected by NVIDIA Container Toolkit
 # rather than a Mesa Gallium driver from qemu-minimal. Require the complete EGL
-# and GBM path before selecting an NVIDIA render node.
+# and GBM path before selecting an NVIDIA render node. Venus additionally needs
+# the Vulkan loader, NVIDIA ICD and NVIDIA Vulkan userspace libraries.
+
+nvidiaVulkanReady() {
+
+  local icd=""
+
+  if ! compgen -G '/usr/lib/*/libvulkan.so.1' >/dev/null 2>&1 \
+      && [ ! -e /usr/lib/libvulkan.so.1 ] \
+      && [ ! -e /usr/lib64/libvulkan.so.1 ]; then
+    NVIDIA_REASON="the Vulkan loader is not available in the container"
+    return 1
+  fi
+
+  for icd in /etc/vulkan/icd.d/nvidia_icd*.json /usr/share/vulkan/icd.d/nvidia_icd*.json; do
+    [ -r "$icd" ] && break
+    icd=""
+  done
+
+  if [ -z "$icd" ]; then
+    NVIDIA_REASON="the NVIDIA Vulkan ICD is not available in the container"
+    return 1
+  fi
+
+  if ! compgen -G '/usr/lib/*/libGLX_nvidia.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib/*/nvidia/*/libGLX_nvidia.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib/nvidia/*/libGLX_nvidia.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib/libGLX_nvidia.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib64/nvidia/*/libGLX_nvidia.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib64/libGLX_nvidia.so.*' >/dev/null 2>&1; then
+    NVIDIA_REASON="the NVIDIA Vulkan driver library is not available in the container"
+    return 1
+  fi
+
+  if ! compgen -G '/usr/lib/*/libnvidia-glvkspirv.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib/*/nvidia/*/libnvidia-glvkspirv.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib/nvidia/*/libnvidia-glvkspirv.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib/libnvidia-glvkspirv.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib64/nvidia/*/libnvidia-glvkspirv.so.*' >/dev/null 2>&1 \
+      && ! compgen -G '/usr/lib64/libnvidia-glvkspirv.so.*' >/dev/null 2>&1; then
+    NVIDIA_REASON="the NVIDIA Vulkan SPIR-V compiler library is not available in the container"
+    return 1
+  fi
+
+  return 0
+}
 
 nvidiaGpuReady() {
 
@@ -124,6 +236,10 @@ nvidiaGpuReady() {
     return 1
   fi
 
+  if venusEnabled && ! nvidiaVulkanReady; then
+    return 1
+  fi
+
   if [ ! -r /sys/module/nvidia_drm/parameters/modeset ] \
       || ! IFS= read -r modeset < /sys/module/nvidia_drm/parameters/modeset; then
     NVIDIA_REASON="the nvidia-drm KMS state cannot be determined"
@@ -143,6 +259,8 @@ nvidiaGpuReady() {
 GPU_VENDOR=""
 NVIDIA_NODE=""
 NVIDIA_REASON=""
+VULKAN_NODE=""
+VULKAN_REASON=""
 fail="falling back to software rendering."
 
 if [ -n "$RENDERNODE" ]; then
@@ -153,7 +271,11 @@ if [ -n "$RENDERNODE" ]; then
   fi
 
   case "$GPU_VENDOR" in
-    "0x8086" | "0x1002" ) ;;
+    "0x8086" | "0x1002" )
+      if venusEnabled && ! mesaVulkanReady "$GPU_VENDOR"; then
+        warn "GPU at $RENDERNODE cannot be used for Venus because $VULKAN_REASON; $fail"
+        return 0
+      fi ;;
     "0x10de" )
       if ! nvidiaGpuReady; then
         warn "NVIDIA GPU at $RENDERNODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
@@ -174,8 +296,11 @@ else
 
     case "$GPU_VENDOR" in
       "0x8086" | "0x1002" )
-        RENDERNODE="$node"
-        break ;;
+        if ! venusEnabled || mesaVulkanReady "$GPU_VENDOR"; then
+          RENDERNODE="$node"
+          break
+        fi
+        VULKAN_NODE="$node" ;;
       "0x10de" )
         NVIDIA_NODE="$node"
         if nvidiaGpuReady; then
@@ -190,6 +315,8 @@ else
 
     if [ -n "$NVIDIA_NODE" ] && [ -n "$NVIDIA_REASON" ]; then
       warn "NVIDIA GPU at $NVIDIA_NODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
+    elif [ -n "$VULKAN_NODE" ] && [ -n "$VULKAN_REASON" ]; then
+      warn "GPU at $VULKAN_NODE cannot be used for Venus because $VULKAN_REASON; $fail"
     else
       warn "no usable GPU render node found; $fail"
     fi
