@@ -21,6 +21,7 @@ Docker container for running virtual machines using QEMU.
 - Near-native performance with KVM acceleration
 - Customizable CPU, memory, and storage allocation
 - Hardware-accelerated OpenGL and Vulkan graphics
+- DRM native contexts for compatible Linux guests
 - Dynamic memory allocation with memory ballooning
 - USB passthrough and host folder sharing
 - Supports NAT, user-mode, macvlan, and macvtap networking
