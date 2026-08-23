@@ -96,6 +96,11 @@ venusEnabled() {
   [[ ",${VGA,,}," =~ ,venus=(on|true|yes|1), ]]
 }
 
+disableVenus() {
+
+  VGA="$(sed -E 's/,venus=(on|true|yes|1)(,|$)/\2/I' <<< "$VGA")"
+}
+
 vulkanLibraryAvailable() {
 
   local library="$1"
@@ -270,10 +275,6 @@ nvidiaGpuReady() {
     return 1
   fi
 
-  if venusEnabled && ! nvidiaVulkanReady; then
-    return 1
-  fi
-
   if [ ! -r /sys/module/nvidia_drm/parameters/modeset ] \
       || ! IFS= read -r modeset < /sys/module/nvidia_drm/parameters/modeset; then
     NVIDIA_REASON="the nvidia-drm KMS state cannot be determined"
@@ -293,7 +294,6 @@ nvidiaGpuReady() {
 GPU_VENDOR=""
 NVIDIA_NODE=""
 NVIDIA_REASON=""
-VULKAN_NODE=""
 VULKAN_REASON=""
 VULKAN_PAT_REASON=""
 VIRTGPU_GUEST_PAT=""
@@ -307,11 +307,7 @@ if [ -n "$RENDERNODE" ]; then
   fi
 
   case "$GPU_VENDOR" in
-    "0x8086" | "0x1002" )
-      if venusEnabled && ! mesaVulkanReady "$GPU_VENDOR"; then
-        warn "GPU at $RENDERNODE cannot be used for Venus because $VULKAN_REASON; $fail"
-        return 0
-      fi ;;
+    "0x8086" | "0x1002" ) ;;
     "0x10de" )
       if ! nvidiaGpuReady; then
         warn "NVIDIA GPU at $RENDERNODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
@@ -332,11 +328,8 @@ else
 
     case "$GPU_VENDOR" in
       "0x8086" | "0x1002" )
-        if ! venusEnabled || mesaVulkanReady "$GPU_VENDOR"; then
-          RENDERNODE="$node"
-          break
-        fi
-        VULKAN_NODE="$node" ;;
+        RENDERNODE="$node"
+        break ;;
       "0x10de" )
         NVIDIA_NODE="$node"
         if nvidiaGpuReady; then
@@ -351,8 +344,6 @@ else
 
     if [ -n "$NVIDIA_NODE" ] && [ -n "$NVIDIA_REASON" ]; then
       warn "NVIDIA GPU at $NVIDIA_NODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
-    elif [ -n "$VULKAN_NODE" ] && [ -n "$VULKAN_REASON" ]; then
-      warn "GPU at $VULKAN_NODE cannot be used for Venus because $VULKAN_REASON; $fail"
     else
       warn "no usable GPU render node found; $fail"
     fi
@@ -485,9 +476,26 @@ venusGuestPatReady() {
   return 0
 }
 
-if venusEnabled && ! venusGuestPatReady; then
-  warn "GPU at $RENDERNODE cannot be used for Vulkan because $VULKAN_PAT_REASON; $fail"
-  return 0
+if venusEnabled; then
+
+  case "$GPU_VENDOR" in
+    "0x8086" | "0x1002" )
+      if ! mesaVulkanReady "$GPU_VENDOR"; then
+        warn "Vulkan acceleration could not be enabled because $VULKAN_REASON; continuing with OpenGL acceleration."
+        disableVenus
+      fi ;;
+    "0x10de" )
+      if ! nvidiaVulkanReady; then
+        warn "Vulkan acceleration could not be enabled because $NVIDIA_REASON; continuing with OpenGL acceleration."
+        disableVenus
+      fi ;;
+  esac
+
+  if venusEnabled && ! venusGuestPatReady; then
+    warn "Vulkan acceleration could not be enabled because $VULKAN_PAT_REASON; continuing with OpenGL acceleration."
+    disableVenus
+  fi
+
 fi
 
 case "${VGA,,}" in
