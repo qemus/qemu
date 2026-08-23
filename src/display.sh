@@ -613,29 +613,27 @@ echo
 info "Hardware rendering enabled:"
 echo
 
-printf "  Device:     %s" "$GPU_NAME"
-[ -n "$GPU_DEVICE_NAME" ] && printf " %s" "$GPU_DEVICE_NAME"
-printf "\n"
+info "Device:     $GPU_NAME${GPU_DEVICE_NAME:+ $GPU_DEVICE_NAME}"
+
 if [ -n "$GPU_DEVICE" ]; then
-  printf "  PCI ID:     %s:%s\n" "${GPU_VENDOR#0x}" "${GPU_DEVICE#0x}"
+  info "PCI ID:     ${GPU_VENDOR#0x}:${GPU_DEVICE#0x}"
 fi
-printf "  Driver:     %s\n" "${GPU_DRIVER:-unknown}"
+
+info "Driver:     ${GPU_DRIVER:-unknown}"
+
 if [[ "$GPU_VENDOR" == "0x10de" ]]; then
   nvidiaDriverVersion || NVIDIA_DRIVER_VERSION="unknown"
-  printf "  Version:    %s\n" "$NVIDIA_DRIVER_VERSION"
+  info "Version:    $NVIDIA_DRIVER_VERSION"
 fi
-printf "  Render:     %s\n" "$RENDERNODE"
+
+info "Render:     $RENDERNODE"
+echo
+
 if modernVirtioGpuGuest; then
-  printf "  OpenGL 4.3: [ ✓ ]\n"
-  printf "  OpenGL 4.6: [%s]" "$OPENGL_46"
-  [ -n "$OPENGL_46_REASON" ] && printf " %s" "$OPENGL_46_REASON"
-  printf "\n"
-  printf "  Vulkan:     [%s]" "$VULKAN_STATE"
-  [ -n "$VULKAN_STATE_REASON" ] && printf " %s" "$VULKAN_STATE_REASON"
-  printf "\n"
-  printf "  DRM Native: [%s]" "$DRM_STATE"
-  [ -n "$DRM_STATE_REASON" ] && printf " %s" "$DRM_STATE_REASON"
-  printf "\n"
+  info "Vulkan:     [$VULKAN_STATE]${VULKAN_STATE_REASON:+ $VULKAN_STATE_REASON}"
+  info "DRM Native: [$DRM_STATE]${DRM_STATE_REASON:+ $DRM_STATE_REASON}"
+  info "OpenGL 4.3: [ ✓ ]"
+  info "OpenGL 4.6: [$OPENGL_46]${OPENGL_46_REASON:+ $OPENGL_46_REASON}"
 fi
 echo
 
