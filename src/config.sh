@@ -5,9 +5,10 @@ set -Eeuo pipefail
 : "${RNG:=""}"
 : "${QMP:=""}"
 : "${UUID:=""}"
+: "${HPET:=""}"
+: "${VMPORT:=""}"
 : "${MONITOR:=""}"
-: "${HPET:="off"}"
-: "${VMPORT:="off"}"
+: "${RAM_BACKEND:=""}"
 : "${SOUND:="intel-hda"}"
 : "${MOUSE:="usb-tablet"}"
 : "${SERIAL:="mon:stdio"}"
@@ -27,6 +28,7 @@ MOUSE=$(strip "$MOUSE")
 SERIAL=$(strip "$SERIAL")
 VMPORT=$(strip "$VMPORT")
 MONITOR=$(strip "$MONITOR")
+RAM_BACKEND=$(strip "$RAM_BACKEND")
 
 configureProcessor() {
 
@@ -37,7 +39,22 @@ configureProcessor() {
 
 configureMemory() {
 
-  RAM_OPTS=$(echo "-m ${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+  local ram
+  ram=$(echo "${RAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+
+  RAM_OPTS="-m $ram"
+  MEM_OPTS=""
+  RAM_MACHINE_OPTS=""
+
+  case "${RAM_BACKEND,,}" in
+    "" ) ;;
+    "memfd" )
+      MEM_OPTS="-object memory-backend-memfd,id=ram,size=$ram,share=on"
+      RAM_MACHINE_OPTS=",memory-backend=ram" ;;
+    * )
+      error "Invalid RAM_BACKEND value '$RAM_BACKEND', supported value is 'memfd'."
+      exit 78 ;;
+  esac
 
   return 0
 }
@@ -78,14 +95,24 @@ configureMonitor() {
 
 configureMachine() {
 
-  local smm="off"
-  enabled "$SMM" && smm="on"
-
   local usb=""
+  local smm="off"
+  local hpet="off"
+  local vmport="off"
+
+  enabled "$SMM" && smm="on"
+  disabled "$SMM" && smm="off"
+
+  enabled "$HPET" && hpet="on"
+  disabled "$HPET" && hpet="off"
+
+  enabled "$VMPORT" && vmport="on"
+  disabled "$VMPORT" && vmport="off"
+
   disabled "$USB" && usb=",usb=off"
 
   MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off${usb}"
-  MAC_OPTS+=",vmport=${VMPORT},dump-guest-core=off,hpet=${HPET}${KVM_OPTS}"
+  MAC_OPTS+="$RAM_MACHINE_OPTS,vmport=${vmport},dump-guest-core=off,hpet=${hpet}${KVM_OPTS}"
 
   [ -n "$UUID" ] && ID_OPTS+=" -uuid $UUID"
   [ -n "$SM_BIOS" ] && ID_OPTS+=" $SM_BIOS"
@@ -240,7 +267,7 @@ configureCompatibility() {
 
 buildArguments() {
 
-  ARGS="-nodefaults $MAC_OPTS $CPU_OPTS $RAM_OPTS $ID_OPTS $PID_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
+  ARGS="-nodefaults $MEM_OPTS $MAC_OPTS $CPU_OPTS $RAM_OPTS $ID_OPTS $PID_OPTS $DISPLAY_OPTS $MON_OPTS $SERIAL_OPTS $USB_OPTS $NET_OPTS $DISK_OPTS $BOOT_OPTS $DEV_OPTS $AUDIO_OPTS $CMP_OPTS $ARGUMENTS"
 
   # Collapse whitespace after optional argument groups are assembled so
   # empty features do not leave malformed spacing in the final command.

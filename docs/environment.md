@@ -23,6 +23,7 @@ An empty default means the variable is unset and its value is determined automat
 | `VMX` | `N` | Exposes Intel VMX virtualization extensions to the guest. |
 | `HV` | `Y` | Enables Hyper-V enlightenments for Windows guests. |
 | `RAM_SIZE` | `2G` | Amount of RAM assigned to the VM, such as `2G`, `4G`, `half`, or `max`. |
+| `RAM_BACKEND` |  | Guest RAM backing mechanism, set `memfd` for memfd-backed memory. |
 | `RAM_CHECK` | `Y` | Checks whether enough host memory is available before starting the VM. |
 
 ## 💾 Storage
@@ -70,7 +71,7 @@ An empty default means the variable is unset and its value is determined automat
 |---|---|---|
 | `DISPLAY` | `web` | Display backend, such as `web`, `vnc`, `disabled`, or `none`. |
 | `VGA` | `virtio` | QEMU video adapter model. |
-| `GPU` | `N` | Enables OpenGL/Vulkan GPU acceleration. |
+| `GPU` | `N` | Enables OpenGL/Vulkan GPU acceleration and DRM native context. |
 | `RENDERNODE` | `/dev/dri/renderD128` | Render node used for GPU acceleration. |
 
 ## 🌍 Web UI
@@ -92,8 +93,8 @@ An empty default means the variable is unset and its value is determined automat
 | `PCI_BUS` | `pcie.0` | Overrides the PCI bus used for attached devices. |
 | `UUID` |  | UUID assigned to the VM. |
 | `RNG` | `Y` | Adds the Virtio RNG device to the machine. |
-| `HPET` | `off` | HPET timer setting. |
-| `VMPORT` | `off` | VMware port setting. |
+| `HPET` | `N` | HPET timer setting. |
+| `VMPORT` | `N` | VMware port setting. |
 | `MOUSE` | `usb-tablet` | Pointing device used by the machine. |
 | `SOUND` | `intel-hda` | Audio device used when `AUDIO=Y`. |
 | `SM_BIOS` |  | Additional arguments passed to QEMU’s `-smbios` option. |
