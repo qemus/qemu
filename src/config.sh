@@ -101,8 +101,14 @@ configureMachine() {
   local vmport="off"
 
   enabled "$SMM" && smm="on"
+  disabled "$SMM" && smm="off"
+
   enabled "$HPET" && hpet="on"
+  disabled "$HPET" && hpet="off"
+
   enabled "$VMPORT" && vmport="on"
+  disabled "$VMPORT" && vmport="off"
+
   disabled "$USB" && usb=",usb=off"
 
   MAC_OPTS="-machine type=${MACHINE},smm=${smm},graphics=off${usb}"
