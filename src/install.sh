@@ -198,7 +198,7 @@ readQcow2Sectors() {
       -O raw \
       bs=512 \
       skip="$skip" \
-      count="$count" \
+      count="$((skip + count))" \
       "if=$file" \
       "of=$output" >/dev/null 2>&1; then
     return 1
