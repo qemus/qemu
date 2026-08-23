@@ -640,6 +640,11 @@ info "Driver:     ${GPU_DRIVER:-unknown}"
 if [[ "$GPU_VENDOR" == "0x10de" ]]; then
   nvidiaDriverVersion || NVIDIA_DRIVER_VERSION="unknown"
   info "Version:    $NVIDIA_DRIVER_VERSION"
+else
+  MESA_VERSION="$(dpkg-query -W -f='${Provides}\n' qemu-render 2>/dev/null \
+    | sed -n 's/.*libgbm1 (= \([^)]*\)).*/\1/p' || true)"
+
+  [ -n "$MESA_VERSION" ] && info "Mesa:       $MESA_VERSION"
 fi
 
 info "Render:     $RENDERNODE"
