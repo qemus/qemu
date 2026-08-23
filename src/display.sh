@@ -160,9 +160,43 @@ mesaVulkanReady() {
 # and GBM path before selecting an NVIDIA render node. Venus additionally needs
 # the Vulkan loader, NVIDIA ICD and NVIDIA Vulkan userspace libraries.
 
+nvidiaDriverVersion() {
+
+  local data=""
+  NVIDIA_DRIVER_VERSION=""
+
+  if [ -r /proc/driver/nvidia/version ]; then
+    data="$(head -n 1 /proc/driver/nvidia/version 2>/dev/null || true)"
+  elif [ -r /sys/module/nvidia/version ]; then
+    data="$(cat /sys/module/nvidia/version 2>/dev/null || true)"
+  fi
+
+  if [[ "$data" =~ ([0-9]{3,})\.([0-9]+)(\.[0-9]+)? ]]; then
+    NVIDIA_DRIVER_VERSION="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}${BASH_REMATCH[3]:-}"
+    return 0
+  fi
+
+  return 1
+}
+
 nvidiaVulkanReady() {
 
   local icd=""
+  local major minor
+
+  if ! nvidiaDriverVersion; then
+    NVIDIA_REASON="the NVIDIA driver version cannot be determined"
+    return 1
+  fi
+
+  [[ "$NVIDIA_DRIVER_VERSION" =~ ^([0-9]+)\.([0-9]+) ]] || return 1
+  major="${BASH_REMATCH[1]}"
+  minor="${BASH_REMATCH[2]}"
+
+  if (( major < 570 || (major == 570 && minor < 86) )); then
+    NVIDIA_REASON="NVIDIA driver $NVIDIA_DRIVER_VERSION is older than the 570.86 minimum required by Venus"
+    return 1
+  fi
 
   if ! compgen -G '/usr/lib/*/libvulkan.so.1' >/dev/null 2>&1 \
       && [ ! -e /usr/lib/libvulkan.so.1 ] \
@@ -371,6 +405,13 @@ if ! gpuNodeVendor "$RENDERNODE"; then
   return 0
 fi
 
+modernVirtioGpuGuest() {
+
+  [[ "${APP,,}" == "qemu" ]] && return 0
+
+  return 1
+}
+
 hostBlobsSupported() {
 
   local version major minor
@@ -385,12 +426,29 @@ hostBlobsSupported() {
 
 case "${VGA,,}" in
   "virtio" )
-    if hostBlobsSupported; then
+    if ! modernVirtioGpuGuest; then
+      VGA="virtio-vga-gl"
+    elif hostBlobsSupported; then
       VGA="virtio-vga-gl,hostmem=8G,blob=true"
+
+      case "$GPU_VENDOR" in
+        "0x8086" | "0x1002" )
+          if mesaVulkanReady "$GPU_VENDOR"; then
+            VGA+=",venus=true"
+          else
+            warn "Vulkan acceleration could not be enabled because $VULKAN_REASON; continuing with OpenGL 4.6."
+          fi ;;
+        "0x10de" )
+          if nvidiaVulkanReady; then
+            VGA+=",venus=true"
+          else
+            warn "Vulkan acceleration could not be enabled because $NVIDIA_REASON; continuing with OpenGL 4.6."
+          fi ;;
+      esac
     else
       echo
       info "Host kernel $(uname -r) does not support virtio-gpu host blobs; OpenGL is limited to 4.3."
-      info "Upgrade the host kernel to 6.13 or newer to enable support for OpenGL 4.6 acceleration."
+      info "Upgrade the host kernel to 6.13 or newer to enable OpenGL 4.6 and Vulkan acceleration."
       echo
       VGA="virtio-vga-gl"
     fi ;;
