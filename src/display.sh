@@ -311,8 +311,7 @@ venusGuestPatRequired() {
   # TCG does not use the Intel KVM guest-PAT quirk.
   disabled "${KVM:-}" && return 1
 
-  cpu_vendor=$(awk -F ': *' '/^vendor_id/{print $2; exit}' /proc/cpuinfo)
-  [[ "$cpu_vendor" == "GenuineIntel" ]] || return 1
+  isIntelCpu || return 1
 
   case "$GPU_VENDOR" in
     "0x1002" | "0x10de" )
