@@ -371,12 +371,13 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
     - /dev/dri
   ```
 
-  For NVIDIA GPUs, the `NVIDIA Container Toolkit` must be installed on the host and the GPU must be exposed to the container:
+  For NVIDIA GPUs, the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html) must be installed on the host and the GPU must be exposed to the container:
 
   ```yaml
   environment:
     GPU: "Y"
     NVIDIA_DRIVER_CAPABILITIES: "graphics"
+
   deploy:
     resources:
       reservations:
@@ -387,8 +388,9 @@ kubectl apply -f https://raw.githubusercontent.com/qemus/qemu/refs/heads/master/
               - gpu
   ```
 
-  > [!NOTE]
-  > This feature is experimental. It provides OpenGL 3D acceleration but can also improve the performance of the VirtIO graphics device. Vulkan and direct PCI GPU passthrough are not supported yet.
+  GPU acceleration provides hardware-accelerated OpenGL on Intel, AMD, and NVIDIA GPUs.
+
+  Vulkan acceleration is also enabled automatically when supported on hosts running Linux 6.13 or newer, and requires a guest with Venus support, such as Linux 5.16 or newer with Mesa 24.2 or newer. NVIDIA additionally requires driver version 570.86 or newer.
 
 ### How do I enable dynamic memory allocation?
 
