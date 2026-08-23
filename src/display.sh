@@ -304,7 +304,16 @@ nvidiaGpuReady() {
 modernVirtioGpuGuest() {
 
   case "${APP,,}" in
-    "qemu" | "windows" | "virtual dsm" ) return 0 ;;
+    "macos" ) return 1 ;;
+  esac
+
+  return 0
+}
+
+drmNativeGpuGuest() {
+
+  case "${APP,,}" in
+    "qemu" ) return 0 ;;
   esac
 
   return 1
@@ -562,7 +571,11 @@ case "${VGA,,}" in
     if ! modernVirtioGpuGuest; then
       VGA="virtio-vga-gl"
     elif hostBlobsSupported; then
-      VGA="virtio-vga-gl,hostmem=8G,blob=true,drm_native_context=on"
+      VGA="virtio-vga-gl,hostmem=8G,blob=true"
+
+      if drmNativeGpuGuest; then
+        VGA+=",drm_native_context=on"
+      fi
 
       case "$GPU_VENDOR" in
         "0x8086" | "0x1002" )
@@ -587,7 +600,9 @@ case "${VGA,,}" in
 
       OPENGL_46_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
       VULKAN_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
-      DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+      if drmNativeGpuGuest; then
+        DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+      fi
       VGA="virtio-vga-gl"
 
     fi ;;
@@ -632,7 +647,9 @@ info
 
 if modernVirtioGpuGuest; then
   info "Vulkan:     [$VULKAN_STATE]${VULKAN_STATE_REASON:+ $VULKAN_STATE_REASON}"
-  info "DRM Native: [$DRM_STATE]${DRM_STATE_REASON:+ $DRM_STATE_REASON}"
+  if drmNativeGpuGuest; then
+    info "DRM Native: [$DRM_STATE]${DRM_STATE_REASON:+ $DRM_STATE_REASON}"
+  fi
   info "OpenGL 4.3: [ ✓ ]"
   info "OpenGL 4.6: [$OPENGL_46]${OPENGL_46_REASON:+ $OPENGL_46_REASON}"
 fi
