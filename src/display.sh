@@ -291,6 +291,70 @@ nvidiaGpuReady() {
   return 0
 }
 
+modernVirtioGpuGuest() {
+
+  [[ "${APP,,}" == "qemu" ]] && return 0
+  [[ "${APP,,}" == "windows" ]] && return 0
+
+  return 1
+}
+
+hostBlobsSupported() {
+
+  kernelAtLeast 6 13
+}
+
+venusGuestPatRequired() {
+
+  local cpu_vendor driver device=""
+
+  # TCG does not use the Intel KVM guest-PAT quirk.
+  disabled "${KVM:-}" && return 1
+
+  isIntelCpu || return 1
+
+  case "$GPU_VENDOR" in
+    "0x1002" | "0x10de" )
+      # RADV/NVIDIA dGPU on an Intel CPU.
+      return 0 ;;
+    "0x8086" )
+      driver=$(readlink -f "/sys/class/drm/${RENDER_NAME}/device/driver" 2>/dev/null || true)
+      driver="${driver##*/}"
+      [[ "$driver" == "xe" ]] && return 0
+
+      if [ -r "/sys/class/drm/${RENDER_NAME}/device/device" ]; then
+        IFS= read -r device < "/sys/class/drm/${RENDER_NAME}/device/device" || device=""
+        device="${device,,}"
+      fi
+
+      # Meteor Lake requires guest PAT even when it is still using i915.
+      case "$device" in
+        "0x7d40" | "0x7d45" | "0x7d55" | "0x7d60" | "0x7dd5" ) return 0 ;;
+      esac ;;
+  esac
+
+  return 1
+}
+
+venusGuestPatReady() {
+
+  VULKAN_PAT_REASON=""
+  venusGuestPatRequired || return 0
+
+  if ! hasFlag "ss"; then
+    VULKAN_PAT_REASON="the Intel CPU cannot safely honor guest PAT because self-snoop is unavailable"
+    return 1
+  fi
+
+  if ! kernelAtLeast 6 16; then
+    VULKAN_PAT_REASON="Linux 6.16 or newer is required for guest PAT support on this Intel CPU/GPU combination"
+    return 1
+  fi
+
+  VIRTGPU_GUEST_PAT="Y"
+  return 0
+}
+
 GPU_VENDOR=""
 NVIDIA_NODE=""
 NVIDIA_REASON=""
@@ -398,84 +462,6 @@ if ! gpuNodeVendor "$RENDERNODE"; then
   return 0
 fi
 
-modernVirtioGpuGuest() {
-
-  [[ "${APP,,}" == "qemu" ]] && return 0
-
-  return 1
-}
-
-hostKernelAtLeast() {
-
-  local required_major="$1"
-  local required_minor="$2"
-  local version major minor
-  version="$(uname -r)"
-
-  [[ "$version" =~ ^([0-9]+)\.([0-9]+) ]] || return 1
-  major="${BASH_REMATCH[1]}"
-  minor="${BASH_REMATCH[2]}"
-
-  (( major > required_major || (major == required_major && minor >= required_minor) ))
-}
-
-hostBlobsSupported() {
-
-  hostKernelAtLeast 6 13
-}
-
-venusGuestPatRequired() {
-
-  local cpu_vendor driver device=""
-
-  # TCG does not use the Intel KVM guest-PAT quirk.
-  disabled "${KVM:-}" && return 1
-
-  cpu_vendor=$(awk -F ': *' '/^vendor_id/{print $2; exit}' /proc/cpuinfo)
-  [[ "$cpu_vendor" == "GenuineIntel" ]] || return 1
-
-  case "$GPU_VENDOR" in
-    "0x1002" | "0x10de" )
-      # RADV/NVIDIA dGPU on an Intel CPU.
-      return 0 ;;
-    "0x8086" )
-      driver=$(readlink -f "/sys/class/drm/${RENDER_NAME}/device/driver" 2>/dev/null || true)
-      driver="${driver##*/}"
-      [[ "$driver" == "xe" ]] && return 0
-
-      if [ -r "/sys/class/drm/${RENDER_NAME}/device/device" ]; then
-        IFS= read -r device < "/sys/class/drm/${RENDER_NAME}/device/device" || device=""
-        device="${device,,}"
-      fi
-
-      # Meteor Lake requires guest PAT even when it is still using i915.
-      case "$device" in
-        "0x7d40" | "0x7d45" | "0x7d55" | "0x7d60" | "0x7dd5" ) return 0 ;;
-      esac ;;
-  esac
-
-  return 1
-}
-
-venusGuestPatReady() {
-
-  VULKAN_PAT_REASON=""
-  venusGuestPatRequired || return 0
-
-  if ! hasFlag "ss"; then
-    VULKAN_PAT_REASON="the Intel CPU cannot safely honor guest PAT because self-snoop is unavailable"
-    return 1
-  fi
-
-  if ! hostKernelAtLeast 6 16; then
-    VULKAN_PAT_REASON="Linux 6.16 or newer is required for guest PAT support on this Intel CPU/GPU combination"
-    return 1
-  fi
-
-  VIRTGPU_GUEST_PAT="Y"
-  return 0
-}
-
 if venusEnabled; then
 
   case "$GPU_VENDOR" in
@@ -499,7 +485,9 @@ if venusEnabled; then
 fi
 
 case "${VGA,,}" in
+
   "virtio" )
+
     if ! modernVirtioGpuGuest; then
       VGA="virtio-vga-gl"
     elif hostBlobsSupported; then
@@ -523,14 +511,19 @@ case "${VGA,,}" in
             VGA+=",venus=true"
           fi ;;
       esac
+
     else
+
       echo
       info "Host kernel $(uname -r) does not support virtio-gpu host blobs; OpenGL is limited to 4.3."
       info "Upgrade the host kernel to 6.13 or newer to enable OpenGL 4.6 and Vulkan acceleration."
       echo
       VGA="virtio-vga-gl"
+
     fi ;;
+
   "std,"* ) VGA="VGA,${VGA#*,}" ;;
+
 esac
 
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
