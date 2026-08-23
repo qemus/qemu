@@ -101,6 +101,16 @@ disableVenus() {
   VGA="$(sed -E 's/,venus=(on|true|yes|1)(,|$)/\2/I' <<< "$VGA")"
 }
 
+drmNativeEnabled() {
+
+  [[ ",${VGA,,}," =~ ,drm_native_context=(on|true|yes|1), ]]
+}
+
+disableDrmNative() {
+
+  VGA="$(sed -E 's/,drm_native_context=(on|true|yes|1)(,|$)/\2/I' <<< "$VGA")"
+}
+
 vulkanLibraryAvailable() {
 
   local library="$1"
@@ -304,6 +314,46 @@ hostBlobsSupported() {
   kernelAtLeast 6 13
 }
 
+# qemu-render builds the AMDGPU and i915 native-context backends. Host support
+# can be validated here; arbitrary guest kernel/Mesa support is negotiated later.
+drmNativeReady() {
+
+  DRM_REASON=""
+
+  if [[ "${APP,,}" == "windows" ]]; then
+    DRM_REASON="DRM native contexts require a Linux guest"
+    return 1
+  fi
+
+  if ! hostBlobsSupported; then
+    DRM_REASON="Linux 6.13 or newer is required for DRM native contexts"
+    return 1
+  fi
+
+  if ! [[ ",${VGA,,}," =~ ,blob=(on|true|yes|1), ]]; then
+    DRM_REASON="virtio-gpu host blobs are not enabled"
+    return 1
+  fi
+
+  case "$GPU_VENDOR" in
+    "0x1002" )
+      if [[ "$GPU_DRIVER" != "amdgpu" ]]; then
+        DRM_REASON="the AMD GPU is using '$GPU_DRIVER' instead of the amdgpu DRM driver"
+        return 1
+      fi ;;
+    "0x8086" )
+      if [[ "$GPU_DRIVER" != "i915" ]]; then
+        DRM_REASON="the Intel GPU is using '$GPU_DRIVER' instead of the i915 DRM driver"
+        return 1
+      fi ;;
+    * )
+      DRM_REASON="no native DRM renderer is available for this GPU"
+      return 1 ;;
+  esac
+
+  return 0
+}
+
 venusGuestPatRequired() {
 
   local cpu_vendor driver device=""
@@ -360,6 +410,10 @@ NVIDIA_NODE=""
 NVIDIA_REASON=""
 VULKAN_REASON=""
 VULKAN_PAT_REASON=""
+DRM_REASON=""
+OPENGL_46_REASON=""
+VULKAN_STATE_REASON=""
+DRM_STATE_REASON=""
 VIRTGPU_GUEST_PAT=""
 fail="falling back to software rendering."
 
@@ -426,6 +480,24 @@ fi
 
 RENDER_NAME="${RENDERNODE##*/}"
 CARD_NUMBER="${RENDER_NAME#renderD}"
+GPU_DEVICE=""
+GPU_DRIVER=""
+
+if [ -r "/sys/class/drm/${RENDER_NAME}/device/device" ]; then
+  IFS= read -r GPU_DEVICE < "/sys/class/drm/${RENDER_NAME}/device/device" || GPU_DEVICE=""
+  GPU_DEVICE="${GPU_DEVICE,,}"
+fi
+
+GPU_DRIVER=$(readlink -f "/sys/class/drm/${RENDER_NAME}/device/driver" 2>/dev/null || true)
+GPU_DRIVER="${GPU_DRIVER##*/}"
+GPU_DEVICE_NAME=""
+GPU_PCI_SLOT=$(readlink -f "/sys/class/drm/${RENDER_NAME}/device" 2>/dev/null || true)
+GPU_PCI_SLOT="${GPU_PCI_SLOT##*/}"
+
+if [[ "$GPU_PCI_SLOT" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$ ]]; then
+  GPU_DEVICE_NAME=$(lspci -D -s "$GPU_PCI_SLOT" -vmm 2>/dev/null \
+    | sed -n 's/^Device:[[:space:]]*//p' | head -n 1 || true)
+fi
 
 case "$GPU_VENDOR" in
   "0x8086" ) GPU_NAME="Intel" ;;
@@ -433,8 +505,6 @@ case "$GPU_VENDOR" in
   "0x10de" ) GPU_NAME="NVIDIA" ;;
   * ) GPU_NAME="GPU" ;;
 esac
-
-info "Hardware rendering enabled on $GPU_NAME render node $RENDERNODE."
 
 if [ ! -d /dev/dri ]; then
   mkdir -m 755 /dev/dri 2>/dev/null || true
@@ -467,18 +537,18 @@ if venusEnabled; then
   case "$GPU_VENDOR" in
     "0x8086" | "0x1002" )
       if ! mesaVulkanReady "$GPU_VENDOR"; then
-        warn "Vulkan acceleration could not be enabled because $VULKAN_REASON; continuing with OpenGL acceleration."
+        VULKAN_STATE_REASON="$VULKAN_REASON"
         disableVenus
       fi ;;
     "0x10de" )
       if ! nvidiaVulkanReady; then
-        warn "Vulkan acceleration could not be enabled because $NVIDIA_REASON; continuing with OpenGL acceleration."
+        VULKAN_STATE_REASON="$NVIDIA_REASON"
         disableVenus
       fi ;;
   esac
 
   if venusEnabled && ! venusGuestPatReady; then
-    warn "Vulkan acceleration could not be enabled because $VULKAN_PAT_REASON; continuing with OpenGL acceleration."
+    VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
     disableVenus
   fi
 
@@ -491,22 +561,22 @@ case "${VGA,,}" in
     if ! modernVirtioGpuGuest; then
       VGA="virtio-vga-gl"
     elif hostBlobsSupported; then
-      VGA="virtio-vga-gl,hostmem=8G,blob=true"
+      VGA="virtio-vga-gl,hostmem=8G,blob=true,drm_native_context=on"
 
       case "$GPU_VENDOR" in
         "0x8086" | "0x1002" )
           if ! mesaVulkanReady "$GPU_VENDOR"; then
-            warn "Vulkan acceleration could not be enabled because $VULKAN_REASON; continuing with OpenGL 4.6."
+            VULKAN_STATE_REASON="$VULKAN_REASON"
           elif ! venusGuestPatReady; then
-            warn "Vulkan acceleration could not be enabled because $VULKAN_PAT_REASON; continuing with OpenGL 4.6."
+            VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
           else
             VGA+=",venus=true"
           fi ;;
         "0x10de" )
           if ! nvidiaVulkanReady; then
-            warn "Vulkan acceleration could not be enabled because $NVIDIA_REASON; continuing with OpenGL 4.6."
+            VULKAN_STATE_REASON="$NVIDIA_REASON"
           elif ! venusGuestPatReady; then
-            warn "Vulkan acceleration could not be enabled because $VULKAN_PAT_REASON; continuing with OpenGL 4.6."
+            VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
           else
             VGA+=",venus=true"
           fi ;;
@@ -514,10 +584,9 @@ case "${VGA,,}" in
 
     else
 
-      echo
-      info "Host kernel $(uname -r) does not support virtio-gpu host blobs; OpenGL is limited to 4.3."
-      info "Upgrade the host kernel to 6.13 or newer to enable OpenGL 4.6 and Vulkan acceleration."
-      echo
+      OPENGL_46_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+      VULKAN_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+      DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
       VGA="virtio-vga-gl"
 
     fi ;;
@@ -525,6 +594,48 @@ case "${VGA,,}" in
   "std,"* ) VGA="VGA,${VGA#*,}" ;;
 
 esac
+
+if drmNativeEnabled && ! drmNativeReady; then
+  DRM_STATE_REASON="$DRM_REASON"
+  disableDrmNative
+fi
+
+OPENGL_46="   "
+[[ ",${VGA,,}," =~ ,blob=(on|true|yes|1), ]] && OPENGL_46=" ✓ "
+
+VULKAN_STATE="   "
+venusEnabled && VULKAN_STATE=" ✓ "
+
+DRM_STATE="   "
+drmNativeEnabled && DRM_STATE=" ✓ "
+
+echo
+info "Hardware rendering enabled:"
+info
+
+info "Device:     $GPU_NAME${GPU_DEVICE_NAME:+ $GPU_DEVICE_NAME}"
+
+if [ -n "$GPU_DEVICE" ]; then
+  info "PCI ID:     ${GPU_VENDOR#0x}:${GPU_DEVICE#0x}"
+fi
+
+info "Driver:     ${GPU_DRIVER:-unknown}"
+
+if [[ "$GPU_VENDOR" == "0x10de" ]]; then
+  nvidiaDriverVersion || NVIDIA_DRIVER_VERSION="unknown"
+  info "Version:    $NVIDIA_DRIVER_VERSION"
+fi
+
+info "Render:     $RENDERNODE"
+info
+
+if modernVirtioGpuGuest; then
+  info "Vulkan:     [$VULKAN_STATE]${VULKAN_STATE_REASON:+ $VULKAN_STATE_REASON}"
+  info "DRM Native: [$DRM_STATE]${DRM_STATE_REASON:+ $DRM_STATE_REASON}"
+  info "OpenGL 4.3: [ ✓ ]"
+  info "OpenGL 4.6: [$OPENGL_46]${OPENGL_46_REASON:+ $OPENGL_46_REASON}"
+fi
+echo
 
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
