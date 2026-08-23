@@ -303,8 +303,9 @@ nvidiaGpuReady() {
 
 modernVirtioGpuGuest() {
 
-  [[ "${APP,,}" == "qemu" ]] && return 0
-  [[ "${APP,,}" == "windows" ]] && return 0
+  case "${APP,,}" in
+    "qemu" | "windows" | "virtual dsm" ) return 0 ;;
+  esac
 
   return 1
 }

@@ -655,6 +655,11 @@ addMedia () {
         "auto" )
           echo "$result" ;;
 
+        "usb-disk" )
+          result=" -drive file=$mediaFile,id=$mediaId,format=raw,cache=unsafe,media=disk,if=none \
+          -device usb-storage,drive=${mediaId}${bootIndex},removable=on"
+          echo "$result" ;;
+
         "usb" )
           result+=",if=none \
           -device usb-storage,drive=${mediaId}${bootIndex},removable=on"
@@ -1026,7 +1031,7 @@ if [ -s "$BOOT" ]; then
           hybrid=$(head -c 512 "$BOOT" | tail -c 2 | xxd -p)
         fi
         if [[ "$hybrid" != "0000" ]]; then
-          DISK_OPTS+=$(addMedia "$BOOT" "usb" "boot" "$BOOT_INDEX" "0x5")
+          DISK_OPTS+=$(addMedia "$BOOT" "usb-disk" "boot" "$BOOT_INDEX" "0x5")
         else
           DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "boot" "$BOOT_INDEX" "0x5")
         fi ;;
