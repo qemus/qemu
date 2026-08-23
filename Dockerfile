@@ -8,7 +8,7 @@ ARG VERSION_QMP="0.0.6"
 ARG VERSION_WSD="0.4.2"
 ARG VERSION_UTK="1.3.0"
 ARG VERSION_VNC="1.7.0"
-ARG VERSION_MINI="1.2.0"
+ARG VERSION_RENDER="1.0.0"
 ARG VERSION_OVMF="2026.05-2"
 ARG VERSION_PASST="2026_07_28"
 ARG VERSION_SEABIOS="1.17.0-1"
@@ -61,8 +61,8 @@ RUN <<EOF
     ca-certificates
 
   if [ "$TARGETARCH" = "amd64" ]; then
-    wget "https://github.com/qemus/qemu-minimal/releases/download/v${VERSION_MINI}/qemu-minimal_${VERSION_MINI}_amd64.deb" -O /tmp/mini.deb -q --timeout=10
-    apt-get --no-install-recommends -y install /tmp/mini.deb
+    wget "https://github.com/qemus/qemu-render/releases/download/v${VERSION_RENDER}/qemu-render_${VERSION_RENDER}_amd64.deb" -O /tmp/render.deb -q --timeout=10
+    apt-get --no-install-recommends -y install /tmp/render.deb
   fi
 
   # Install QEMU 11 and OVMF UEFI firmware from Debian Sid

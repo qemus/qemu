@@ -371,8 +371,29 @@ if ! gpuNodeVendor "$RENDERNODE"; then
   return 0
 fi
 
+hostBlobsSupported() {
+
+  local version major minor
+  version="$(uname -r)"
+
+  [[ "$version" =~ ^([0-9]+)\.([0-9]+) ]] || return 1
+  major="${BASH_REMATCH[1]}"
+  minor="${BASH_REMATCH[2]}"
+
+  (( major > 6 || (major == 6 && minor >= 13) ))
+}
+
 case "${VGA,,}" in
-  "virtio" ) VGA="virtio-vga-gl" ;;
+  "virtio" )
+    if hostBlobsSupported; then
+      VGA="virtio-vga-gl,hostmem=8G,blob=true"
+    else
+      echo
+      info "Host kernel $(uname -r) does not support virtio-gpu host blobs; OpenGL is limited to 4.3."
+      info "Upgrade the host kernel to 6.13 or newer to enable support for OpenGL 4.6 acceleration."
+      echo
+      VGA="virtio-vga-gl"
+    fi ;;
   "std,"* ) VGA="VGA,${VGA#*,}" ;;
 esac
 
