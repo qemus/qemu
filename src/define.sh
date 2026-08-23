@@ -57,7 +57,7 @@ getURL() {
     "arch" | "archlinux" | "arch-linux" )
       name="Arch Linux"
       if [[ "$ret" == "url" ]]; then
-        url="https://geo.mirror.pkgbuild.com/iso/latest/archlinux-x86_64.iso"
+        url="https://geo.mirror.pkgbuild.com/images/latest/Arch-Linux-x86_64-basic.qcow2"
       fi ;;
     "cachy" | "cachyos" )
       name="CachyOS"
