@@ -96,6 +96,11 @@ venusEnabled() {
   [[ ",${VGA,,}," =~ ,venus=(on|true|yes|1), ]]
 }
 
+disableVenus() {
+
+  VGA="$(sed -E 's/,venus=(on|true|yes|1)(,|$)/\2/I' <<< "$VGA")"
+}
+
 vulkanLibraryAvailable() {
 
   local library="$1"
@@ -270,10 +275,6 @@ nvidiaGpuReady() {
     return 1
   fi
 
-  if venusEnabled && ! nvidiaVulkanReady; then
-    return 1
-  fi
-
   if [ ! -r /sys/module/nvidia_drm/parameters/modeset ] \
       || ! IFS= read -r modeset < /sys/module/nvidia_drm/parameters/modeset; then
     NVIDIA_REASON="the nvidia-drm KMS state cannot be determined"
@@ -293,8 +294,9 @@ nvidiaGpuReady() {
 GPU_VENDOR=""
 NVIDIA_NODE=""
 NVIDIA_REASON=""
-VULKAN_NODE=""
 VULKAN_REASON=""
+VULKAN_PAT_REASON=""
+VIRTGPU_GUEST_PAT=""
 fail="falling back to software rendering."
 
 if [ -n "$RENDERNODE" ]; then
@@ -305,11 +307,7 @@ if [ -n "$RENDERNODE" ]; then
   fi
 
   case "$GPU_VENDOR" in
-    "0x8086" | "0x1002" )
-      if venusEnabled && ! mesaVulkanReady "$GPU_VENDOR"; then
-        warn "GPU at $RENDERNODE cannot be used for Venus because $VULKAN_REASON; $fail"
-        return 0
-      fi ;;
+    "0x8086" | "0x1002" ) ;;
     "0x10de" )
       if ! nvidiaGpuReady; then
         warn "NVIDIA GPU at $RENDERNODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
@@ -330,11 +328,8 @@ else
 
     case "$GPU_VENDOR" in
       "0x8086" | "0x1002" )
-        if ! venusEnabled || mesaVulkanReady "$GPU_VENDOR"; then
-          RENDERNODE="$node"
-          break
-        fi
-        VULKAN_NODE="$node" ;;
+        RENDERNODE="$node"
+        break ;;
       "0x10de" )
         NVIDIA_NODE="$node"
         if nvidiaGpuReady; then
@@ -349,8 +344,6 @@ else
 
     if [ -n "$NVIDIA_NODE" ] && [ -n "$NVIDIA_REASON" ]; then
       warn "NVIDIA GPU at $NVIDIA_NODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
-    elif [ -n "$VULKAN_NODE" ] && [ -n "$VULKAN_REASON" ]; then
-      warn "GPU at $VULKAN_NODE cannot be used for Venus because $VULKAN_REASON; $fail"
     else
       warn "no usable GPU render node found; $fail"
     fi
@@ -412,8 +405,10 @@ modernVirtioGpuGuest() {
   return 1
 }
 
-hostBlobsSupported() {
+hostKernelAtLeast() {
 
+  local required_major="$1"
+  local required_minor="$2"
   local version major minor
   version="$(uname -r)"
 
@@ -421,8 +416,87 @@ hostBlobsSupported() {
   major="${BASH_REMATCH[1]}"
   minor="${BASH_REMATCH[2]}"
 
-  (( major > 6 || (major == 6 && minor >= 13) ))
+  (( major > required_major || (major == required_major && minor >= required_minor) ))
 }
+
+hostBlobsSupported() {
+
+  hostKernelAtLeast 6 13
+}
+
+venusGuestPatRequired() {
+
+  local cpu_vendor driver device=""
+
+  # TCG does not use the Intel KVM guest-PAT quirk.
+  disabled "${KVM:-}" && return 1
+
+  cpu_vendor=$(awk -F ': *' '/^vendor_id/{print $2; exit}' /proc/cpuinfo)
+  [[ "$cpu_vendor" == "GenuineIntel" ]] || return 1
+
+  case "$GPU_VENDOR" in
+    "0x1002" | "0x10de" )
+      # RADV/NVIDIA dGPU on an Intel CPU.
+      return 0 ;;
+    "0x8086" )
+      driver=$(readlink -f "/sys/class/drm/${RENDER_NAME}/device/driver" 2>/dev/null || true)
+      driver="${driver##*/}"
+      [[ "$driver" == "xe" ]] && return 0
+
+      if [ -r "/sys/class/drm/${RENDER_NAME}/device/device" ]; then
+        IFS= read -r device < "/sys/class/drm/${RENDER_NAME}/device/device" || device=""
+        device="${device,,}"
+      fi
+
+      # Meteor Lake requires guest PAT even when it is still using i915.
+      case "$device" in
+        "0x7d40" | "0x7d45" | "0x7d55" | "0x7d60" | "0x7dd5" ) return 0 ;;
+      esac ;;
+  esac
+
+  return 1
+}
+
+venusGuestPatReady() {
+
+  VULKAN_PAT_REASON=""
+  venusGuestPatRequired || return 0
+
+  if ! hasFlag "ss"; then
+    VULKAN_PAT_REASON="the Intel CPU cannot safely honor guest PAT because self-snoop is unavailable"
+    return 1
+  fi
+
+  if ! hostKernelAtLeast 6 16; then
+    VULKAN_PAT_REASON="Linux 6.16 or newer is required for guest PAT support on this Intel CPU/GPU combination"
+    return 1
+  fi
+
+  VIRTGPU_GUEST_PAT="Y"
+  return 0
+}
+
+if venusEnabled; then
+
+  case "$GPU_VENDOR" in
+    "0x8086" | "0x1002" )
+      if ! mesaVulkanReady "$GPU_VENDOR"; then
+        warn "Vulkan acceleration could not be enabled because $VULKAN_REASON; continuing with OpenGL acceleration."
+        disableVenus
+      fi ;;
+    "0x10de" )
+      if ! nvidiaVulkanReady; then
+        warn "Vulkan acceleration could not be enabled because $NVIDIA_REASON; continuing with OpenGL acceleration."
+        disableVenus
+      fi ;;
+  esac
+
+  if venusEnabled && ! venusGuestPatReady; then
+    warn "Vulkan acceleration could not be enabled because $VULKAN_PAT_REASON; continuing with OpenGL acceleration."
+    disableVenus
+  fi
+
+fi
 
 case "${VGA,,}" in
   "virtio" )
@@ -433,16 +507,20 @@ case "${VGA,,}" in
 
       case "$GPU_VENDOR" in
         "0x8086" | "0x1002" )
-          if mesaVulkanReady "$GPU_VENDOR"; then
-            VGA+=",venus=true"
-          else
+          if ! mesaVulkanReady "$GPU_VENDOR"; then
             warn "Vulkan acceleration could not be enabled because $VULKAN_REASON; continuing with OpenGL 4.6."
+          elif ! venusGuestPatReady; then
+            warn "Vulkan acceleration could not be enabled because $VULKAN_PAT_REASON; continuing with OpenGL 4.6."
+          else
+            VGA+=",venus=true"
           fi ;;
         "0x10de" )
-          if nvidiaVulkanReady; then
-            VGA+=",venus=true"
-          else
+          if ! nvidiaVulkanReady; then
             warn "Vulkan acceleration could not be enabled because $NVIDIA_REASON; continuing with OpenGL 4.6."
+          elif ! venusGuestPatReady; then
+            warn "Vulkan acceleration could not be enabled because $VULKAN_PAT_REASON; continuing with OpenGL 4.6."
+          else
+            VGA+=",venus=true"
           fi ;;
       esac
     else

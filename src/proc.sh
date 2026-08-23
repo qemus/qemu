@@ -67,7 +67,11 @@ configureKvmCpuModel() {
   CPU_FEATURES="kvm=on,l3-cache=on"
   enabled "$VM" && CPU_FEATURES+=",+hypervisor"
 
-  KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
+  if enabled "${VIRTGPU_GUEST_PAT:-}"; then
+    KVM_OPTS=" -accel kvm,honor-guest-pat=on -global kvm-pit.lost_tick_policy=discard"
+  else
+    KVM_OPTS=",accel=kvm -enable-kvm -global kvm-pit.lost_tick_policy=discard"
+  fi
 
   if [ -z "$CPU_MODEL" ]; then
     # Host passthrough is intentionally non-migratable so QEMU exposes the full
