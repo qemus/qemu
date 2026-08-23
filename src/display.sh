@@ -611,7 +611,7 @@ drmNativeEnabled && DRM_STATE=" ✓ "
 
 echo
 info "Hardware rendering enabled:"
-echo
+info
 
 info "Device:     $GPU_NAME${GPU_DEVICE_NAME:+ $GPU_DEVICE_NAME}"
 
@@ -627,7 +627,7 @@ if [[ "$GPU_VENDOR" == "0x10de" ]]; then
 fi
 
 info "Render:     $RENDERNODE"
-echo
+info
 
 if modernVirtioGpuGuest; then
   info "Vulkan:     [$VULKAN_STATE]${VULKAN_STATE_REASON:+ $VULKAN_STATE_REASON}"
