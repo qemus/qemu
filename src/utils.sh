@@ -336,12 +336,19 @@ hasFeature() {
 
 }
 
+getCpuVendor() {
+
+  awk -F ': *' '/^vendor_id/{print $2; exit}' /proc/cpuinfo
+}
+
 isAmdCpu() {
 
-  local vendor
-  vendor=$(awk -F ': *' '/^vendor_id/{print $2; exit}' /proc/cpuinfo)
+  [[ "$(getCpuVendor)" == "AuthenticAMD" ]]
+}
 
-  [[ "$vendor" == "AuthenticAMD" ]]
+isIntelCpu() {
+
+  [[ "$(getCpuVendor)" == "GenuineIntel" ]]
 }
 
 isQ35() {
@@ -353,6 +360,20 @@ isQ35() {
   esac
 
   return 1
+}
+
+kernelAtLeast() {
+
+  local required_major="$1"
+  local required_minor="$2"
+  local version major minor
+  version="$(uname -r)"
+
+  [[ "$version" =~ ^([0-9]+)\.([0-9]+) ]] || return 1
+  major="${BASH_REMATCH[1]}"
+  minor="${BASH_REMATCH[2]}"
+
+  (( major > required_major || (major == required_major && minor >= required_minor) ))
 }
 
 getPciBus() {
