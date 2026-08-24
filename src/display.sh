@@ -448,7 +448,17 @@ if [ -n "$RENDERNODE" ]; then
 
 else
 
+  if [ ! -d /dev/dri ]; then
+    warn "GPU acceleration was requested, but '/dev/dri' was not added to the devices section of your compose file; $fail"
+    return 0
+  fi
+
+  RENDER_NODE_FOUND="N"
+
   for node in /dev/dri/renderD*; do
+
+    [ -e "$node" ] || continue
+    RENDER_NODE_FOUND="Y"
 
     if ! gpuNodeVendor "$node"; then
       continue
@@ -472,6 +482,8 @@ else
 
     if [ -n "$NVIDIA_NODE" ] && [ -n "$NVIDIA_REASON" ]; then
       warn "NVIDIA GPU at $NVIDIA_NODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
+    elif [[ "$RENDER_NODE_FOUND" != "Y" ]]; then
+      warn "/dev/dri is available, but no GPU render nodes were found; $fail"
     else
       warn "no usable GPU render node found; $fail"
     fi
