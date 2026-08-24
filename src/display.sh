@@ -4,7 +4,7 @@ set -Eeuo pipefail
 # Docker environment variables
 
 : "${GPU:="N"}"         # GPU acceleration
-: "${VGA:="virtio"}"    # VGA adaptor
+: "${VGA:="virtio"}"    # VGA adapter
 : "${DISPLAY:="web"}"   # Display type
 : "${LOSSY:="N"}"       # Lossy VNC compression
 : "${VNC_PORT:="5900"}" # VNC port
@@ -41,6 +41,8 @@ esac
 VGA="${VGA_DEVICE}${VGA_OPTIONS}"
 VGA_ARG+=" ${VGA}"
 
+# QEMU accepts a VNC display number rather than a TCP port,
+# so translate the configured port back to its :N display index.
 port=$(( VNC_PORT - 5900 ))
 
 LOSSY_OPT=""
