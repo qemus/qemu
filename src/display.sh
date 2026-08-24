@@ -18,19 +18,33 @@ VNC_PORT=$(strip "$VNC_PORT")
 RENDERNODE=$(strip "$RENDERNODE")
 WSS_SOCKET="${WSS_SOCKET:-$QEMU_DIR/vnc-ws.sock}"
 
-port=$(( VNC_PORT - 5900 ))
+VGA_DEVICE="${VGA%%,*}"
+VGA_OPTIONS="${VGA#"$VGA_DEVICE"}"
 
-# Preserve the historic :0 setting as an alias for the managed web display.
-[[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
+case "${VGA_DEVICE,,}" in
+  "std" )
+    VGA_DEVICE="VGA" ;;
+  "vmware" )
+    VGA_DEVICE="vmware-svga" ;;
+  "virtio" )
+    VGA_DEVICE="virtio-vga" ;;
+esac
+
+VGA="${VGA_DEVICE}${VGA_OPTIONS}"
+
+VGA_OPT="-vga ${VGA}"
+case "${VGA_DEVICE,,}" in
+  "vga" | "vmware-svga" | "virtio-"* )
+    VGA_OPT="-device ${VGA}" ;;
+esac
+
+port=$(( VNC_PORT - 5900 ))
 
 LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
-VGA_OPT="-vga ${VGA}"
-
-if [[ "${VGA,,}" == "std,"* ]]; then
-  VGA_OPT="-device VGA,${VGA#*,}"
-fi
+# Preserve the historic :0 setting as an alias for the managed web display.
+[[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
 
 case "${DISPLAY,,}" in
 
@@ -57,13 +71,10 @@ if [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
-VGA_DEVICE="${VGA%%,*}"
-VGA_OPTIONS="${VGA#"$VGA_DEVICE"}"
-
 case "${VGA_DEVICE,,}" in
   "none" )
     VGA_DEVICE="virtio-gpu-gl" ;;
-  "virtio" | "virtio-vga" )
+  "virtio-vga" )
     VGA_DEVICE="virtio-vga-gl" ;;
   "virtio-gpu" )
     VGA_DEVICE="virtio-gpu-gl" ;;
