@@ -27,6 +27,7 @@ LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
 VGA_OPT="-vga ${VGA}"
+
 if [[ "${VGA,,}" == "std,"* ]]; then
   VGA_OPT="-device VGA,${VGA#*,}"
 fi
@@ -55,6 +56,13 @@ if [[ "$ARCH" != "amd64" ]]; then
   warn "GPU acceleration is only supported for the AMD64 platform, ignoring GPU=Y."
   return 0
 fi
+
+case "${VGA,,}" in
+  "virtio" | "virtio-vga"* | "virtio-gpu"* ) ;;
+  * )
+    warn "GPU acceleration requires a VirtIO GPU display, ignoring GPU=Y for VGA='$VGA'."
+    return 0 ;;
+esac
 
 # Return the PCI vendor for a usable DRM render node. Any malformed, missing,
 # inaccessible or disappearing node is rejected without aborting display setup.
@@ -830,6 +838,8 @@ case "${VGA,,}" in
     fi ;;
 
   "std,"* ) VGA="VGA,${VGA#*,}" ;;
+  "vmware,"* ) VGA="vmware-svga,${VGA#*,}" ;;
+  "vmware" ) VGA="vmware-svga" ;;
 
 esac
 
