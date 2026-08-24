@@ -58,7 +58,11 @@ if [[ "$ARCH" != "amd64" ]]; then
 fi
 
 case "${VGA,,}" in
-  "virtio" | "virtio-vga"* | "virtio-gpu"* ) ;;
+  "none" )
+    VGA="virtio-gpu-gl" ;;
+  "virtio" )
+    VGA="virtio-vga-gl" ;;
+  "virtio-vga"* | "virtio-gpu"* ) ;;
   * )
     warn "GPU acceleration requires a VirtIO GPU display, ignoring GPU=Y for VGA='$VGA'."
     return 0 ;;
@@ -836,10 +840,6 @@ case "${VGA,,}" in
       VGA="virtio-vga-gl"
 
     fi ;;
-
-  "std,"* ) VGA="VGA,${VGA#*,}" ;;
-  "vmware,"* ) VGA="vmware-svga,${VGA#*,}" ;;
-  "vmware" ) VGA="vmware-svga" ;;
 
 esac
 
