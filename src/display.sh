@@ -57,16 +57,23 @@ if [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
-case "${VGA,,}" in
+VGA_DEVICE="${VGA%%,*}"
+VGA_OPTIONS="${VGA#"$VGA_DEVICE"}"
+
+case "${VGA_DEVICE,,}" in
   "none" )
-    VGA="virtio-gpu-gl" ;;
-  "virtio" )
-    VGA="virtio-vga-gl" ;;
-  "virtio-vga"* | "virtio-gpu"* ) ;;
+    VGA_DEVICE="virtio-gpu-gl" ;;
+  "virtio" | "virtio-vga" )
+    VGA_DEVICE="virtio-vga-gl" ;;
+  "virtio-gpu" )
+    VGA_DEVICE="virtio-gpu-gl" ;;
+  "virtio-vga-gl" | "virtio-gpu-gl" ) ;;
   * )
     warn "GPU acceleration requires a VirtIO GPU display, ignoring GPU=Y for VGA='$VGA'."
     return 0 ;;
 esac
+
+VGA="${VGA_DEVICE}${VGA_OPTIONS}"
 
 # Return the PCI vendor for a usable DRM render node. Any malformed, missing,
 # inaccessible or disappearing node is rejected without aborting display setup.
@@ -798,50 +805,45 @@ if venusEnabled; then
 
 fi
 
-case "${VGA,,}" in
+if modernVirtioGpuGuest; then
 
-  "virtio" )
+  if hostBlobsSupported; then
+    VGA+=",hostmem=8G,blob=true"
 
-    if ! modernVirtioGpuGuest; then
-      VGA="virtio-vga-gl"
-    elif hostBlobsSupported; then
-      VGA="virtio-vga-gl,hostmem=8G,blob=true"
+    if drmNativeGpuGuest; then
+      VGA+=",drm_native_context=on"
+    fi
 
-      if drmNativeGpuGuest; then
-        VGA+=",drm_native_context=on"
-      fi
+    case "$GPU_VENDOR" in
+      "0x8086" | "0x1002" )
+        if ! mesaVulkanReady "$GPU_VENDOR"; then
+          VULKAN_STATE_REASON="$VULKAN_REASON"
+        elif ! venusGuestPatReady; then
+          VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
+        else
+          VGA+=",venus=true"
+        fi ;;
+      "0x10de" )
+        if ! nvidiaVulkanReady; then
+          VULKAN_STATE_REASON="$NVIDIA_REASON"
+        elif ! venusGuestPatReady; then
+          VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
+        else
+          VGA+=",venus=true"
+        fi ;;
+    esac
 
-      case "$GPU_VENDOR" in
-        "0x8086" | "0x1002" )
-          if ! mesaVulkanReady "$GPU_VENDOR"; then
-            VULKAN_STATE_REASON="$VULKAN_REASON"
-          elif ! venusGuestPatReady; then
-            VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
-          else
-            VGA+=",venus=true"
-          fi ;;
-        "0x10de" )
-          if ! nvidiaVulkanReady; then
-            VULKAN_STATE_REASON="$NVIDIA_REASON"
-          elif ! venusGuestPatReady; then
-            VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
-          else
-            VGA+=",venus=true"
-          fi ;;
-      esac
+  else
 
-    else
+    OPENGL_46_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+    VULKAN_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+    if drmNativeGpuGuest; then
+      DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+    fi
 
-      OPENGL_46_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
-      VULKAN_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
-      if drmNativeGpuGuest; then
-        DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
-      fi
-      VGA="virtio-vga-gl"
+  fi
 
-    fi ;;
-
-esac
+fi
 
 if drmNativeEnabled && ! drmNativeReady; then
   DRM_STATE_REASON="$DRM_REASON"
