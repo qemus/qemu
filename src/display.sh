@@ -27,6 +27,7 @@ LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
 VGA_OPT="-vga ${VGA}"
+
 if [[ "${VGA,,}" == "std,"* ]]; then
   VGA_OPT="-device VGA,${VGA#*,}"
 fi
@@ -830,6 +831,8 @@ case "${VGA,,}" in
     fi ;;
 
   "std,"* ) VGA="VGA,${VGA#*,}" ;;
+  "vmware,"* ) VGA="vmware-svga,${VGA#*,}" ;;
+  "vmware" ) VGA="vmware-svga" ;;
 
 esac
 
