@@ -21,6 +21,17 @@ isWindowsBoot() {
 
 }
 
+isTscClocksource() {
+
+  local path="/sys/devices/system/clocksource/clocksource0/current_clocksource"
+  local clocksource=""
+
+  [ -r "$path" ] || return 1
+  read -r clocksource < "$path" || return 1
+
+  [[ "$clocksource" == "tsc" ]]
+}
+
 appendCpuFeature() {
 
   local feature="$1"
@@ -87,12 +98,30 @@ configureKvmCpuModel() {
   return 0
 }
 
+configureKvmInvariantTsc() {
+
+  local scaling="$1"
+
+  # TSC scaling support does not prove the host TSC is stable. Only expose
+  # invariant TSC when Linux is actively using TSC; otherwise fail closed.
+  if enabled "$scaling" && isTscClocksource; then
+    CPU_FEATURES+=",+invtsc"
+  else
+    CPU_FEATURES+=",-invtsc"
+  fi
+
+  return 0
+}
+
 configureKvmAmdFeatures() {
+
+  local scaling="N"
 
   # AMD processor
   if hasFlag "tsc_scale"; then
-    CPU_FEATURES+=",+invtsc"
+    scaling="Y"
   fi
+  configureKvmInvariantTsc "$scaling"
 
   if isWindowsBoot; then
     CPU_FEATURES+=",arch_capabilities=off"
@@ -103,12 +132,15 @@ configureKvmAmdFeatures() {
 
 configureKvmIntelFeatures() {
 
+  local scaling="N"
+
   # Intel processor
   vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
 
   if grep -qw "tsc_scaling" <<< "$vmx"; then
-    CPU_FEATURES+=",+invtsc"
+    scaling="Y"
   fi
+  configureKvmInvariantTsc "$scaling"
 
   return 0
 }
