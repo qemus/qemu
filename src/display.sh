@@ -149,6 +149,178 @@ vulkanManifestAvailable() {
     || compgen -G "/usr/share/vulkan/icd.d/${manifest}*.json" >/dev/null 2>&1
 }
 
+vulkanRuntimeReady() {
+
+  local summary details selected api type
+  local prime=""
+  local vendor="${GPU_VENDOR,,}"
+  local device="${GPU_DEVICE,,}"
+  VULKAN_REASON=""
+
+  if ! command -v vulkaninfo >/dev/null 2>&1; then
+    VULKAN_REASON="vulkaninfo is not available in the container"
+    return 1
+  fi
+
+  if [ -z "$device" ]; then
+    VULKAN_REASON="the selected GPU PCI device ID cannot be determined"
+    return 1
+  fi
+
+  # Mesa can scope Vulkan enumeration to the exact DRM device by PCI address.
+  # Keep this probe local: QEMU still receives the selected render node normally.
+  case "$vendor" in
+    "0x8086" | "0x1002" )
+      if [[ "$GPU_PCI_SLOT" =~ ^[0-9a-fA-F]{4}:[0-9a-fA-F]{2}:[0-9a-fA-F]{2}\.[0-7]$ ]]; then
+        prime="pci-${GPU_PCI_SLOT//[:.]/_}!"
+      fi ;;
+  esac
+
+  if [ -n "$prime" ]; then
+    if ! summary="$(DRI_PRIME="$prime" vulkaninfo --summary 2>&1)"; then
+      VULKAN_REASON="Vulkan device enumeration failed for the selected GPU"
+      return 1
+    fi
+  elif ! summary="$(vulkaninfo --summary 2>&1)"; then
+    VULKAN_REASON="Vulkan device enumeration failed"
+    return 1
+  fi
+
+  selected="$(awk -v want_vendor="$vendor" -v want_device="$device" '
+    function emit() {
+      if (!found && in_gpu && tolower(vendor) == want_vendor &&
+          tolower(device) == want_device && api != "" && type != "") {
+        print api "|" type
+        found = 1
+      }
+    }
+
+    /^GPU[0-9]+:/ {
+      emit()
+      in_gpu = 1
+      vendor = ""
+      device = ""
+      api = ""
+      type = ""
+      next
+    }
+
+    in_gpu && /^[[:space:]]*apiVersion[[:space:]]*=/ {
+      api = $0
+      sub(/^.*=[[:space:]]*/, "", api)
+      if (match(api, /\([0-9]+\.[0-9]+(\.[0-9]+)?\)/)) {
+        api = substr(api, RSTART + 1, RLENGTH - 2)
+      } else {
+        sub(/[[:space:]].*$/, "", api)
+      }
+      next
+    }
+
+    in_gpu && /^[[:space:]]*vendorID[[:space:]]*=/ {
+      vendor = $0
+      sub(/^.*=[[:space:]]*/, "", vendor)
+      sub(/[[:space:]].*$/, "", vendor)
+      next
+    }
+
+    in_gpu && /^[[:space:]]*deviceID[[:space:]]*=/ {
+      device = $0
+      sub(/^.*=[[:space:]]*/, "", device)
+      sub(/[[:space:]].*$/, "", device)
+      next
+    }
+
+    in_gpu && /^[[:space:]]*deviceType[[:space:]]*=/ {
+      type = $0
+      sub(/^.*=[[:space:]]*/, "", type)
+      sub(/[[:space:]].*$/, "", type)
+      next
+    }
+
+    END { emit() }
+  ' <<< "$summary")"
+
+  if [ -z "$selected" ]; then
+    VULKAN_REASON="the selected GPU is not available through Vulkan"
+    return 1
+  fi
+
+  IFS='|' read -r api type <<< "$selected"
+  if [[ "$type" == "PHYSICAL_DEVICE_TYPE_CPU" ]]; then
+    VULKAN_REASON="the selected Vulkan device is a software CPU renderer"
+    return 1
+  fi
+
+  local major minor
+  IFS='.' read -r major minor _ <<< "$api"
+  if ! [[ "$major" =~ ^[0-9]+$ && "$minor" =~ ^[0-9]+$ ]]; then
+    VULKAN_REASON="the selected GPU reports an invalid Vulkan API version '$api'"
+    return 1
+  fi
+
+  if (( major < 1 || (major == 1 && minor < 1) )); then
+    VULKAN_REASON="the selected GPU supports Vulkan $major.$minor, but Venus requires Vulkan 1.1 or newer"
+    return 1
+  fi
+
+  if [ -n "$prime" ]; then
+    if ! details="$(DRI_PRIME="$prime" vulkaninfo 2>&1)"; then
+      VULKAN_REASON="Vulkan capability enumeration failed for the selected GPU"
+      return 1
+    fi
+  elif ! details="$(vulkaninfo 2>&1)"; then
+    VULKAN_REASON="Vulkan capability enumeration failed"
+    return 1
+  fi
+
+  if ! awk -v want_vendor="$vendor" -v want_device="$device" '
+    function finish() {
+      if (in_gpu && tolower(vendor) == want_vendor &&
+          tolower(device) == want_device && external_memory_fd) {
+        compatible = 1
+      }
+    }
+
+    /^GPU[0-9]+:/ {
+      finish()
+      in_gpu = 1
+      vendor = ""
+      device = ""
+      external_memory_fd = 0
+      next
+    }
+
+    in_gpu && /^[[:space:]]*vendorID[[:space:]]*=/ {
+      vendor = $0
+      sub(/^.*=[[:space:]]*/, "", vendor)
+      sub(/[[:space:]].*$/, "", vendor)
+      next
+    }
+
+    in_gpu && /^[[:space:]]*deviceID[[:space:]]*=/ {
+      device = $0
+      sub(/^.*=[[:space:]]*/, "", device)
+      sub(/[[:space:]].*$/, "", device)
+      next
+    }
+
+    in_gpu && /VK_KHR_external_memory_fd/ {
+      external_memory_fd = 1
+      next
+    }
+
+    END {
+      finish()
+      exit compatible ? 0 : 1
+    }
+  ' <<< "$details"; then
+    VULKAN_REASON="the selected GPU does not support VK_KHR_external_memory_fd required by Venus"
+    return 1
+  fi
+
+  return 0
+}
+
 mesaVulkanReady() {
 
   local vendor="$1"
@@ -187,6 +359,8 @@ mesaVulkanReady() {
         return 1
       fi ;;
   esac
+
+  vulkanRuntimeReady || return 1
 
   return 0
 }
@@ -268,6 +442,11 @@ nvidiaVulkanReady() {
       && ! compgen -G '/usr/lib64/nvidia/*/libnvidia-glvkspirv.so.*' >/dev/null 2>&1 \
       && ! compgen -G '/usr/lib64/libnvidia-glvkspirv.so.*' >/dev/null 2>&1; then
     NVIDIA_REASON="the NVIDIA Vulkan SPIR-V compiler library is not available in the container"
+    return 1
+  fi
+
+  if ! vulkanRuntimeReady; then
+    NVIDIA_REASON="$VULKAN_REASON"
     return 1
   fi
 
