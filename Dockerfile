@@ -57,6 +57,7 @@ RUN <<EOF
     util-linux \
     iputils-ping \
     genisoimage \
+    vulkan-tools \
     inotify-tools \
     netcat-openbsd \
     ca-certificates
