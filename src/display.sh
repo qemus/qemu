@@ -18,32 +18,49 @@ VNC_PORT=$(strip "$VNC_PORT")
 RENDERNODE=$(strip "$RENDERNODE")
 WSS_SOCKET="${WSS_SOCKET:-$QEMU_DIR/vnc-ws.sock}"
 
-port=$(( VNC_PORT - 5900 ))
+VGA_DEVICE="${VGA%%,*}"
+VGA_OPTIONS="${VGA#"$VGA_DEVICE"}"
 
-# Preserve the historic :0 setting as an alias for the managed web display.
-[[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
+case "${VGA_DEVICE,,}" in
+  "std" | "vga" )
+    VGA_DEVICE="VGA"
+    VGA_ARG="-device" ;;
+  "vmware" | "vmware-svga" )
+    VGA_DEVICE="vmware-svga"
+    VGA_ARG="-device" ;;
+  "virtio" )
+    VGA_DEVICE="virtio-vga"
+    VGA_ARG="-device" ;;
+  "virtio-"* )
+    VGA_DEVICE="${VGA_DEVICE,,}"
+    VGA_ARG="-device" ;;
+  * )
+    VGA_ARG="-vga" ;;
+esac
+
+VGA="${VGA_DEVICE}${VGA_OPTIONS}"
+VGA_ARG+=" ${VGA}"
+
+port=$(( VNC_PORT - 5900 ))
 
 LOSSY_OPT=""
 enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 
-VGA_OPT="-vga ${VGA}"
-
-if [[ "${VGA,,}" == "std,"* ]]; then
-  VGA_OPT="-device VGA,${VGA#*,}"
-fi
+# Preserve the historic :0 setting as an alias for the managed web display.
+[[ "$DISPLAY" == ":0" ]] && DISPLAY="web"
 
 case "${DISPLAY,,}" in
 
   "vnc" )
-    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} ${VGA_ARG}" ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} ${VGA_ARG}" ;;
   "disabled" )
-    DISPLAY_OPTS="-display none ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display none ${VGA_ARG}" ;;
   "none" )
     DISPLAY_OPTS="-display none -vga none" ;;
   *)
-    DISPLAY_OPTS="-display ${DISPLAY} ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display ${DISPLAY} ${VGA_ARG}" ;;
 
 esac
 
@@ -57,12 +74,20 @@ if [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
-case "${VGA,,}" in
-  "virtio" | "virtio-vga"* | "virtio-gpu"* ) ;;
+case "${VGA_DEVICE,,}" in
+  "none" )
+    VGA_DEVICE="virtio-gpu-gl" ;;
+  "virtio-vga" )
+    VGA_DEVICE="virtio-vga-gl" ;;
+  "virtio-gpu" )
+    VGA_DEVICE="virtio-gpu-gl" ;;
+  "virtio-vga-gl" | "virtio-gpu-gl" ) ;;
   * )
     warn "GPU acceleration requires a VirtIO GPU display, ignoring GPU=Y for VGA='$VGA'."
     return 0 ;;
 esac
+
+VGA="${VGA_DEVICE}${VGA_OPTIONS}"
 
 # Return the PCI vendor for a usable DRM render node. Any malformed, missing,
 # inaccessible or disappearing node is rejected without aborting display setup.
@@ -794,54 +819,45 @@ if venusEnabled; then
 
 fi
 
-case "${VGA,,}" in
+if modernVirtioGpuGuest; then
 
-  "virtio" )
+  if hostBlobsSupported; then
+    VGA+=",hostmem=8G,blob=true"
 
-    if ! modernVirtioGpuGuest; then
-      VGA="virtio-vga-gl"
-    elif hostBlobsSupported; then
-      VGA="virtio-vga-gl,hostmem=8G,blob=true"
+    if drmNativeGpuGuest; then
+      VGA+=",drm_native_context=on"
+    fi
 
-      if drmNativeGpuGuest; then
-        VGA+=",drm_native_context=on"
-      fi
+    case "$GPU_VENDOR" in
+      "0x8086" | "0x1002" )
+        if ! mesaVulkanReady "$GPU_VENDOR"; then
+          VULKAN_STATE_REASON="$VULKAN_REASON"
+        elif ! venusGuestPatReady; then
+          VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
+        else
+          VGA+=",venus=true"
+        fi ;;
+      "0x10de" )
+        if ! nvidiaVulkanReady; then
+          VULKAN_STATE_REASON="$NVIDIA_REASON"
+        elif ! venusGuestPatReady; then
+          VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
+        else
+          VGA+=",venus=true"
+        fi ;;
+    esac
 
-      case "$GPU_VENDOR" in
-        "0x8086" | "0x1002" )
-          if ! mesaVulkanReady "$GPU_VENDOR"; then
-            VULKAN_STATE_REASON="$VULKAN_REASON"
-          elif ! venusGuestPatReady; then
-            VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
-          else
-            VGA+=",venus=true"
-          fi ;;
-        "0x10de" )
-          if ! nvidiaVulkanReady; then
-            VULKAN_STATE_REASON="$NVIDIA_REASON"
-          elif ! venusGuestPatReady; then
-            VULKAN_STATE_REASON="$VULKAN_PAT_REASON"
-          else
-            VGA+=",venus=true"
-          fi ;;
-      esac
+  else
 
-    else
+    OPENGL_46_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+    VULKAN_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+    if drmNativeGpuGuest; then
+      DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+    fi
 
-      OPENGL_46_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
-      VULKAN_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
-      if drmNativeGpuGuest; then
-        DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
-      fi
-      VGA="virtio-vga-gl"
+  fi
 
-    fi ;;
-
-  "std,"* ) VGA="VGA,${VGA#*,}" ;;
-  "vmware,"* ) VGA="vmware-svga,${VGA#*,}" ;;
-  "vmware" ) VGA="vmware-svga" ;;
-
-esac
+fi
 
 if drmNativeEnabled && ! drmNativeReady; then
   DRM_STATE_REASON="$DRM_REASON"
