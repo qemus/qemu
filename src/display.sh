@@ -22,21 +22,24 @@ VGA_DEVICE="${VGA%%,*}"
 VGA_OPTIONS="${VGA#"$VGA_DEVICE"}"
 
 case "${VGA_DEVICE,,}" in
-  "std" )
-    VGA_DEVICE="VGA" ;;
-  "vmware" )
-    VGA_DEVICE="vmware-svga" ;;
+  "std" | "vga" )
+    VGA_DEVICE="VGA"
+    VGA_ARG="-device" ;;
+  "vmware" | "vmware-svga" )
+    VGA_DEVICE="vmware-svga"
+    VGA_ARG="-device" ;;
   "virtio" )
-    VGA_DEVICE="virtio-vga" ;;
+    VGA_DEVICE="virtio-vga"
+    VGA_ARG="-device" ;;
+  "virtio-"* )
+    VGA_DEVICE="${VGA_DEVICE,,}"
+    VGA_ARG="-device" ;;
+  * )
+    VGA_ARG="-vga" ;;
 esac
 
 VGA="${VGA_DEVICE}${VGA_OPTIONS}"
-
-VGA_OPT="-vga ${VGA}"
-case "${VGA_DEVICE,,}" in
-  "vga" | "vmware-svga" | "virtio-"* )
-    VGA_OPT="-device ${VGA}" ;;
-esac
+VGA_ARG+=" ${VGA}"
 
 port=$(( VNC_PORT - 5900 ))
 
@@ -49,15 +52,15 @@ enabled "$LOSSY" && LOSSY_OPT=",lossy=on"
 case "${DISPLAY,,}" in
 
   "vnc" )
-    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display vnc=:${port}${LOSSY_OPT} ${VGA_ARG}" ;;
   "web" )
-    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display vnc=:${port},websocket=unix:${WSS_SOCKET}${LOSSY_OPT} ${VGA_ARG}" ;;
   "disabled" )
-    DISPLAY_OPTS="-display none ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display none ${VGA_ARG}" ;;
   "none" )
     DISPLAY_OPTS="-display none -vga none" ;;
   *)
-    DISPLAY_OPTS="-display ${DISPLAY} ${VGA_OPT}" ;;
+    DISPLAY_OPTS="-display ${DISPLAY} ${VGA_ARG}" ;;
 
 esac
 
