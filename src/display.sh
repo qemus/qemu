@@ -57,6 +57,13 @@ if [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
+case "${VGA,,}" in
+  "virtio" | "virtio-vga"* | "virtio-gpu"* ) ;;
+  * )
+    warn "GPU acceleration requires a VirtIO GPU display, ignoring GPU=Y for VGA='$VGA'."
+    return 0 ;;
+esac
+
 # Return the PCI vendor for a usable DRM render node. Any malformed, missing,
 # inaccessible or disappearing node is rejected without aborting display setup.
 
