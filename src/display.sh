@@ -88,6 +88,27 @@ gpuNodeVendor() {
   return 0
 }
 
+# qemu-render omits Mesa's legacy i915 Gallium driver. Reject the Gen3 Intel
+# devices that have no Crocus or Iris fallback before enabling EGL rendering.
+
+intelMesaReady() {
+
+  local node="$1"
+  local render_name="${node##*/}"
+  local device=""
+  local device_file="/sys/class/drm/${render_name}/device/device"
+
+  [ -r "$device_file" ] || return 1
+  IFS= read -r device < "$device_file" || return 1
+
+  case "${device,,}" in
+    "0x2582" | "0x258a" | "0x2592" | "0x2772" | "0x27a2" | "0x27ae" | \
+    "0x29b2" | "0x29c2" | "0x29d2" | "0xa001" | "0xa011" ) return 1 ;;
+  esac
+
+  return 0
+}
+
 # Venus requires a Vulkan userspace driver in addition to the normal EGL/GBM
 # rendering path. Keep this separate so normal VirGL/OpenGL does not require Vulkan.
 
@@ -435,7 +456,12 @@ if [ -n "$RENDERNODE" ]; then
   fi
 
   case "$GPU_VENDOR" in
-    "0x8086" | "0x1002" ) ;;
+    "0x8086" )
+      if ! intelMesaReady "$RENDERNODE"; then
+        warn "Intel GPU at $RENDERNODE is not supported by qemu-render; $fail"
+        return 0
+      fi ;;
+    "0x1002" ) ;;
     "0x10de" )
       if ! nvidiaGpuReady; then
         warn "NVIDIA GPU at $RENDERNODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
@@ -465,7 +491,12 @@ else
     fi
 
     case "$GPU_VENDOR" in
-      "0x8086" | "0x1002" )
+      "0x8086" )
+        if intelMesaReady "$node"; then
+          RENDERNODE="$node"
+          break
+        fi ;;
+      "0x1002" )
         RENDERNODE="$node"
         break ;;
       "0x10de" )
