@@ -243,7 +243,8 @@ vulkanManifestAvailable() {
 
 vulkanRuntimeReady() {
 
-  local summary details selected api type
+  local summary details selected extensions api type
+  local external_memory_fd external_memory_dma_buf
   local prime=""
   local vendor="${GPU_VENDOR,,}"
   local device="${GPU_DEVICE,,}"
@@ -365,11 +366,12 @@ vulkanRuntimeReady() {
     return 1
   fi
 
-  if ! awk -v want_vendor="$vendor" -v want_device="$device" '
+  extensions="$(awk -v want_vendor="$vendor" -v want_device="$device" '
     function finish() {
-      if (in_gpu && tolower(vendor) == want_vendor &&
-          tolower(device) == want_device && external_memory_fd) {
-        compatible = 1
+      if (!found && in_gpu && tolower(vendor) == want_vendor &&
+          tolower(device) == want_device) {
+        print external_memory_fd "|" external_memory_dma_buf
+        found = 1
       }
     }
 
@@ -379,6 +381,7 @@ vulkanRuntimeReady() {
       vendor = ""
       device = ""
       external_memory_fd = 0
+      external_memory_dma_buf = 0
       next
     }
 
@@ -401,12 +404,25 @@ vulkanRuntimeReady() {
       next
     }
 
+    in_gpu && /VK_EXT_external_memory_dma_buf/ {
+      external_memory_dma_buf = 1
+      next
+    }
+
     END {
       finish()
-      exit compatible ? 0 : 1
     }
-  ' <<< "$details"; then
+  ' <<< "$details")"
+
+  IFS='|' read -r external_memory_fd external_memory_dma_buf <<< "$extensions"
+
+  if [[ "$external_memory_fd" != "1" ]]; then
     VULKAN_REASON="the selected GPU does not support VK_KHR_external_memory_fd required by Venus"
+    return 1
+  fi
+
+  if [[ "${APP,,}" == "windows" && "$external_memory_dma_buf" != "1" ]]; then
+    VULKAN_REASON="the selected GPU does not support VK_EXT_external_memory_dma_buf required by Helios"
     return 1
   fi
 
