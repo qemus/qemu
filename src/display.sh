@@ -73,7 +73,7 @@ gpuFallbackAllowed() {
   local app="${APP:-}"
 
   case "${app,,}" in
-    "chromeos" | "chromeosflex" | "chromeos flex" ) return 0 ;;
+    "chrome"* ) return 0 ;;
   esac
 
   return 1
@@ -114,7 +114,7 @@ case "${VGA_DEVICE,,}" in
     VGA_DEVICE="virtio-vga-gl" ;;
   "virtio-gpu" )
     VGA_DEVICE="virtio-gpu-gl" ;;
-  "virtio-vga-gl" | "virtio-gpu-gl" ) ;;
+  "virtio-vga-gl"* | "virtio-gpu-gl"* ) ;;
   * )
     gpuSetupFailure "GPU acceleration requires a VirtIO GPU display, but VGA='$VGA'"
     return 0 ;;
@@ -724,13 +724,13 @@ venusGuestPatReady() {
 }
 
 GPU_VENDOR=""
+DRM_REASON=""
 NVIDIA_NODE=""
 NVIDIA_REASON=""
 VULKAN_REASON=""
 VULKAN_PAT_REASON=""
-DRM_REASON=""
-OPENGL_46_REASON=""
 VULKAN_STATE_REASON=""
+OPENGL_46_REASON=""
 DRM_STATE_REASON=""
 VIRTGPU_GUEST_PAT=""
 
