@@ -68,18 +68,42 @@ case "${DISPLAY,,}" in
 
 esac
 
+gpuFallbackAllowed() {
+
+  local app="${APP:-}"
+
+  case "${app,,}" in
+    "chromeos" | "chromeosflex" | "chromeos flex" ) return 0 ;;
+  esac
+
+  return 1
+}
+
+gpuSetupFailure() {
+
+  local reason="$1"
+
+  if gpuFallbackAllowed; then
+    warn "$reason; falling back to software rendering."
+    return 0
+  fi
+
+  error "$reason"
+  exit 87
+}
+
 enabled "$GPU" || return 0
 
 msg="Configuring display drivers..."
 enabled "$DEBUG" && echo "$msg"
 
 if [[ "$ARCH" != "amd64" ]]; then
-  warn "GPU acceleration is only supported for the AMD64 platform, ignoring GPU=Y."
+  gpuSetupFailure "GPU acceleration is only supported for the AMD64 platform"
   return 0
 fi
 
 if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
-  warn "GPU acceleration is not supported by your Windows version, ignoring GPU=Y."
+  gpuSetupFailure "GPU acceleration is not supported by your Windows version"
   return 0
 fi
 
@@ -92,7 +116,7 @@ case "${VGA_DEVICE,,}" in
     VGA_DEVICE="virtio-gpu-gl" ;;
   "virtio-vga-gl" | "virtio-gpu-gl" ) ;;
   * )
-    warn "GPU acceleration requires a VirtIO GPU display, ignoring GPU=Y for VGA='$VGA'."
+    gpuSetupFailure "GPU acceleration requires a VirtIO GPU display, but VGA='$VGA'"
     return 0 ;;
 esac
 
@@ -125,7 +149,7 @@ override_vram_size="$(( VRAM_BYTES / 1048576 ))"
 export VKR_DEVICE_MEMORY_LIMIT_BYTES override_vram_size
 
 # Return the PCI vendor for a usable DRM render node. Any malformed, missing,
-# inaccessible or disappearing node is rejected without aborting display setup.
+# inaccessible or disappearing node is rejected before hardware rendering is enabled.
 
 gpuNodeVendor() {
 
@@ -693,36 +717,35 @@ OPENGL_46_REASON=""
 VULKAN_STATE_REASON=""
 DRM_STATE_REASON=""
 VIRTGPU_GUEST_PAT=""
-fail="falling back to software rendering."
 
 if [ -n "$RENDERNODE" ]; then
 
   if ! gpuNodeVendor "$RENDERNODE"; then
-    warn "GPU render node '$RENDERNODE' is unavailable or inaccessible; $fail"
+    gpuSetupFailure "GPU render node '$RENDERNODE' is unavailable or inaccessible"
     return 0
   fi
 
   case "$GPU_VENDOR" in
     "0x8086" )
       if ! intelMesaReady "$RENDERNODE"; then
-        warn "Intel GPU at $RENDERNODE is not supported by qemu-render; $fail"
+        gpuSetupFailure "Intel GPU at $RENDERNODE is not supported by qemu-render"
         return 0
       fi ;;
     "0x1002" ) ;;
     "0x10de" )
       if ! nvidiaGpuReady; then
-        warn "NVIDIA GPU at $RENDERNODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
+        gpuSetupFailure "NVIDIA GPU at $RENDERNODE cannot be used for hardware rendering because $NVIDIA_REASON"
         return 0
       fi ;;
     * )
-      warn "unsupported GPU at $RENDERNODE; $fail"
+      gpuSetupFailure "Unsupported GPU at $RENDERNODE"
       return 0 ;;
   esac
 
 else
 
   if [ ! -d /dev/dri ]; then
-    warn "GPU acceleration was requested, but '/dev/dri' was not added to the devices section of your compose file; $fail"
+    gpuSetupFailure "GPU acceleration was requested, but '/dev/dri' was not added to the devices section of your compose file"
     return 0
   fi
 
@@ -759,11 +782,11 @@ else
   if [ -z "$RENDERNODE" ]; then
 
     if [ -n "$NVIDIA_NODE" ] && [ -n "$NVIDIA_REASON" ]; then
-      warn "NVIDIA GPU at $NVIDIA_NODE cannot be used for hardware rendering because $NVIDIA_REASON; $fail"
+      gpuSetupFailure "NVIDIA GPU at $NVIDIA_NODE cannot be used for hardware rendering because $NVIDIA_REASON"
     elif [[ "$RENDER_NODE_FOUND" != "Y" ]]; then
-      warn "/dev/dri is available, but no GPU render nodes were found; $fail"
+      gpuSetupFailure "/dev/dri is available, but no GPU render nodes were found"
     else
-      warn "no usable GPU render node found; $fail"
+      gpuSetupFailure "No usable GPU render node found"
     fi
 
     return 0
@@ -774,7 +797,7 @@ fi
 # Re-read the selected node after auto-detection so the vendor name and device
 # number below are based on the final render node and survive hotplug races.
 if ! gpuNodeVendor "$RENDERNODE"; then
-  warn "GPU render node '$RENDERNODE' became unavailable; $fail"
+  gpuSetupFailure "GPU render node '$RENDERNODE' became unavailable"
   return 0
 fi
 
@@ -828,7 +851,7 @@ if [ ! -c "$RENDERNODE" ]; then
 fi
 
 if ! gpuNodeVendor "$RENDERNODE"; then
-  warn "GPU render node '$RENDERNODE' became unavailable; $fail"
+  gpuSetupFailure "GPU render node '$RENDERNODE' became unavailable"
   return 0
 fi
 
@@ -857,6 +880,7 @@ fi
 if modernVirtioGpuGuest; then
 
   if hostBlobsSupported; then
+
     VGA+=",hostmem=$VRAM_BYTES,max_hostmem=$VRAM_BYTES,blob=true"
     VGA+=",host3d_blob_limit=$VRAM_BYTES"
 
@@ -887,12 +911,17 @@ if modernVirtioGpuGuest; then
 
     OPENGL_46_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
     VULKAN_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
+
     if drmNativeGpuGuest; then
       DRM_STATE_REASON="requires virtio-gpu host blobs (Linux 6.13+ host kernel)"
     fi
 
   fi
+fi
 
+if [[ "${APP,,}" == "windows" ]] && ! venusEnabled; then
+  error "Windows GPU acceleration requires Vulkan via Venus, but Venus could not be enabled${VULKAN_STATE_REASON:+: $VULKAN_STATE_REASON}."
+  exit 87
 fi
 
 if drmNativeEnabled && ! drmNativeReady; then
@@ -942,7 +971,6 @@ if modernVirtioGpuGuest; then
   info "OpenGL 4.3: [ ✓ ]"
   info "OpenGL 4.6: [$OPENGL_46]${OPENGL_46_REASON:+ $OPENGL_46_REASON}"
 fi
-echo
 
 DISPLAY_OPTS="-display egl-headless,rendernode=$RENDERNODE"
 DISPLAY_OPTS+=" -device $VGA"
