@@ -3,12 +3,17 @@ set -Eeuo pipefail
 
 # Docker environment variables
 
-: "${GPU:="N"}"         # GPU acceleration
-: "${VGA:="virtio"}"    # VGA adapter
-: "${DISPLAY:="web"}"   # Display type
-: "${LOSSY:="N"}"       # Lossy VNC compression
-: "${VNC_PORT:="5900"}" # VNC port
-: "${RENDERNODE:=""}"   # Render node
+: "${GPU:="N"}"            # GPU acceleration
+: "${VGA:="virtio"}"       # VGA adapter
+: "${DISPLAY:="web"}"      # Display type
+: "${LOSSY:="N"}"          # Lossy VNC compression
+: "${VNC_PORT:="5900"}".   # VNC port
+
+: "${RENDERNODE:=""}"      # Render node
+: "${HOSTMEM:="4G"}"       # VirtIO GPU host memory window
+: "${BLOB_LIMIT:="4G"}".   # VirtIO GPU host 3D blob limit
+: "${override_vram_size:="4096"}"
+: "${VKR_DEVICE_MEMORY_LIMIT_BYTES:="4294967296"}"
 
 # Sanitize variables
 VGA=$(strip "$VGA")
@@ -16,6 +21,11 @@ LOSSY=$(strip "$LOSSY")
 DISPLAY=$(strip "$DISPLAY")
 VNC_PORT=$(strip "$VNC_PORT")
 RENDERNODE=$(strip "$RENDERNODE")
+HOSTMEM=$(strip "$HOSTMEM")
+BLOB_LIMIT=$(strip "$BLOB_LIMIT")
+VKR_DEVICE_MEMORY_LIMIT_BYTES=$(strip "$VKR_DEVICE_MEMORY_LIMIT_BYTES")
+override_vram_size=$(strip "$override_vram_size")
+export VKR_DEVICE_MEMORY_LIMIT_BYTES override_vram_size
 WSS_SOCKET="${WSS_SOCKET:-$QEMU_DIR/vnc-ws.sock}"
 
 VGA_DEVICE="${VGA%%,*}"
@@ -829,7 +839,8 @@ fi
 if modernVirtioGpuGuest; then
 
   if hostBlobsSupported; then
-    VGA+=",hostmem=8G,blob=true"
+    VGA+=",hostmem=$HOSTMEM,max_hostmem=$HOSTMEM,blob=true"
+    VGA+=",host3d_blob_limit=$BLOB_LIMIT"
 
     if drmNativeGpuGuest; then
       VGA+=",drm_native_context=on"
