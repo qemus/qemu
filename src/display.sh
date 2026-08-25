@@ -76,7 +76,7 @@ if [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
-if [[ "${BOOT_MODE:-}" == "windows_legacy" ]];
+if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
   warn "GPU acceleration is not supported by your Windows version, ignoring GPU=Y."
   return 0
 fi
