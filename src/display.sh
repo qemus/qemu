@@ -3,12 +3,13 @@ set -Eeuo pipefail
 
 # Docker environment variables
 
-: "${GPU:="N"}"         # GPU acceleration
-: "${VGA:="virtio"}"    # VGA adapter
-: "${DISPLAY:="web"}"   # Display type
-: "${LOSSY:="N"}"       # Lossy VNC compression
-: "${VNC_PORT:="5900"}" # VNC port
-: "${RENDERNODE:=""}"   # Render node
+: "${GPU:="N"}"               # GPU acceleration
+: "${VGA:="virtio"}"          # VGA adapter
+: "${DISPLAY:="web"}"         # Display type
+: "${LOSSY:="N"}"             # Lossy VNC compression
+: "${VNC_PORT:="5900"}"       # VNC port
+: "${RENDERNODE:=""}"         # Render node
+: "${VRAM_SIZE:="4G"}"        # VirtIO GPU memory budget
 
 # Sanitize variables
 VGA=$(strip "$VGA")
@@ -16,6 +17,7 @@ LOSSY=$(strip "$LOSSY")
 DISPLAY=$(strip "$DISPLAY")
 VNC_PORT=$(strip "$VNC_PORT")
 RENDERNODE=$(strip "$RENDERNODE")
+VRAM_SIZE=$(strip "$VRAM_SIZE")
 WSS_SOCKET="${WSS_SOCKET:-$QEMU_DIR/vnc-ws.sock}"
 
 VGA_DEVICE="${VGA%%,*}"
@@ -95,6 +97,32 @@ case "${VGA_DEVICE,,}" in
 esac
 
 VGA="${VGA_DEVICE}${VGA_OPTIONS}"
+
+VRAM_SIZE="${VRAM_SIZE// /}"
+[ -z "$VRAM_SIZE" ] && VRAM_SIZE="4G"
+
+# Match the size conventions used by RAM_SIZE: small bare values are GiB,
+# while larger bare values remain MiB for compatibility with numeric settings.
+if [ -z "${VRAM_SIZE//[0-9. ]}" ]; then
+  [ "${VRAM_SIZE%%.*}" -lt "130" ] && VRAM_SIZE="${VRAM_SIZE}G" || VRAM_SIZE="${VRAM_SIZE}M"
+fi
+
+VRAM_SIZE=$(echo "${VRAM_SIZE^^}" | sed 's/MB/M/g;s/GB/G/g;s/TB/T/g')
+if ! VRAM_BYTES=$(numfmt --from=iec "$VRAM_SIZE" 2>/dev/null); then
+  error "Invalid VRAM_SIZE: $VRAM_SIZE"
+  exit 16
+fi
+
+# The host-visible PCI aperture must be a positive power-of-two size. Requiring
+# whole MiB also keeps the renderer's advertised VRAM value exact.
+if (( VRAM_BYTES < 1048576 || (VRAM_BYTES & (VRAM_BYTES - 1)) != 0 )); then
+  error "VRAM_SIZE must be a power-of-two size of at least 1M: $VRAM_SIZE"
+  exit 16
+fi
+
+VKR_DEVICE_MEMORY_LIMIT_BYTES="$VRAM_BYTES"
+override_vram_size="$(( VRAM_BYTES / 1048576 ))"
+export VKR_DEVICE_MEMORY_LIMIT_BYTES override_vram_size
 
 # Return the PCI vendor for a usable DRM render node. Any malformed, missing,
 # inaccessible or disappearing node is rejected without aborting display setup.
@@ -829,7 +857,8 @@ fi
 if modernVirtioGpuGuest; then
 
   if hostBlobsSupported; then
-    VGA+=",hostmem=8G,blob=true"
+    VGA+=",hostmem=$VRAM_BYTES,max_hostmem=$VRAM_BYTES,blob=true"
+    VGA+=",host3d_blob_limit=$VRAM_BYTES"
 
     if drmNativeGpuGuest; then
       VGA+=",drm_native_context=on"
