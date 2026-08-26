@@ -253,6 +253,13 @@ enableIgnoreMsrs() {
     echo 1 | tee "$MSRS" > /dev/null 2>&1 || true
   fi
 
+  result=$(<"$MSRS")
+  result="${result//[![:print:]]/}"
+
+  if [[ "$result" == "0" || "${result^^}" == "N" ]]; then
+    enabled "$DEBUG" && echo "Failed to set $MSRS to value 1"
+  fi
+
   return 0
 }
 
