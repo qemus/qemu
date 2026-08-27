@@ -88,7 +88,13 @@ isCow() {
 supportsDirect() {
   local fs="$1"
 
+  # Ecryptfs and tmpfs do not support Direct IO mode
   if [[ "${fs,,}" == "ecryptfs" || "${fs,,}" == "tmpfs" ]]; then
+    return 1
+  fi
+
+  # Bcachefs technically supports it, but ... so we disable it anyway
+  if [[ "${fs,,}" == "bcachefs" ]]; then
     return 1
   fi
 
