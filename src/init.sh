@@ -115,11 +115,6 @@ checkSockets() {
 
 checkHost() {
 
-  if [[ "${FS,,}" == "ecryptfs" || "${FS,,}" == "tmpfs" ]]; then
-    DISK_IO="threads"
-    DISK_CACHE="writeback"
-  fi
-
   if [[ "${BOOT_MODE:-}" == "windows"* ]]; then
     if [[ "${FS,,}" == "btrfs" ]]; then
       warn "you are using the BTRFS filesystem for /storage, this might introduce issues with Windows Setup!"
