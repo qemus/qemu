@@ -88,12 +88,14 @@ isCow() {
 supportsDirect() {
   local fs="$1"
 
-  # Ecryptfs and tmpfs do not support Direct IO mode
-  if [[ "${fs,,}" == "ecryptfs" || "${fs,,}" == "tmpfs" ]]; then
+  # These filesystems do not support O_DIRECT for regular files.
+  if [[ "${fs,,}" == "ecryptfs" || "${fs,,}" == "tmpfs" || "${fs,,}" == "ramfs" ||
+        "${fs,,}" == "nilfs2" || "${fs,,}" == "ubifs" || "${fs,,}" == "jffs2" ]]; then
     return 1
   fi
 
-  # Bcachefs technically supports it, but ... so we disable it anyway
+  # Bcachefs supports O_DIRECT, but its alignment requirements can exceed the
+  # 512-byte accesses used by virtual disks, causing unaligned I/O to fail.
   if [[ "${fs,,}" == "bcachefs" ]]; then
     return 1
   fi
@@ -503,7 +505,7 @@ checkFS () {
   # Filesystems without O_DIRECT support require threaded I/O and writeback
   # caching; native AIO with cache=none would fail at runtime.
   if ! supportsDirect "$fs"; then
-    warn "the filesystem of $base is $fs, which does not support O_DIRECT mode, adjusting settings..."
+    warn "the filesystem of $base is $fs, disabling direct I/O and using threaded I/O for compatibility..."
   fi
 
   if isCow "$fs"; then
