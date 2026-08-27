@@ -75,8 +75,19 @@ getSize() {
   esac
 }
 
+getFileSystem() {
+  local file="$1"
+  local target="$file"
+
+  [ -e "$target" ] || target=$(dirname "$target")
+  stat -f -c %T "$target"
+}
+
 isCow() {
-  local fs="$1"
+  local file="$1"
+  local fs
+
+  fs=$(getFileSystem "$file") || return 1
 
   if [[ "${fs,,}" == "btrfs" ]]; then
     return 0
@@ -86,13 +97,38 @@ isCow() {
 }
 
 supportsDirect() {
-  local fs="$1"
+  local file="$1"
+  local fs
 
-  if [[ "${fs,,}" == "ecryptfs" || "${fs,,}" == "tmpfs" ]]; then
+  fs=$(getFileSystem "$file") || return 1
+
+  # These filesystems do not support O_DIRECT for regular files.
+  if [[ "${fs,,}" == "ecryptfs" || "${fs,,}" == "tmpfs" || "${fs,,}" == "ramfs" ||
+        "${fs,,}" == "nilfs2" || "${fs,,}" == "ubifs" || "${fs,,}" == "jffs2" ]]; then
+    return 1
+  fi
+
+  # Bcachefs supports O_DIRECT, but its alignment requirements can exceed the
+  # 512-byte accesses used by virtual disks, causing unaligned I/O to fail.
+  if [[ "${fs,,}" == "bcachefs" ]]; then
     return 1
   fi
 
   return 0
+}
+
+needsCow() {
+  local file="$1"
+  local fs
+
+  fs=$(getFileSystem "$file") || return 1
+
+  if [[ "${fs,,}" == "bcachefs" ]]; then
+    warn "COW (copy on write) is not disabled for image file $file, performance may suffer until support for $fs is fully implemented!"
+    return 0
+  fi
+
+  return 1
 }
 
 validDiskType() {
@@ -128,13 +164,13 @@ allocateRaw() {
 
 getDiskOptions() {
 
-  local fs="$1"
+  local diskFile="$1"
   local diskFmt="$2"
   local diskParam="$DISK_ALLOC"
 
   # qcow2 on a copy-on-write filesystem would otherwise add a second COW layer;
   # request NOCOW for the image when the backend supports it.
-  isCow "$fs" && diskParam+=",nocow=on"
+  isCow "$diskFile" && diskParam+=",nocow=on"
 
   if [[ "${diskFmt,,}" != "raw" ]]; then
     [ -n "$DISK_FLAGS" ] && diskParam+=",$DISK_FLAGS"
@@ -280,7 +316,7 @@ createDisk() {
 
       # The NOCOW attribute must be applied before allocating a raw file; setting
       # it after blocks exist would not disable COW for those blocks.
-      if isCow "$fs"; then
+      if isCow "$diskFile"; then
         if ! touch "$diskFile"; then
           error "$failure" && exit 77
         fi
@@ -295,7 +331,7 @@ createDisk() {
     qcow2)
 
       local diskParam
-      diskParam=$(getDiskOptions "$fs" "$diskFmt")
+      diskParam=$(getDiskOptions "$diskFile" "$diskFmt")
 
       if ! qemu-img create -f "$diskFmt" -o "$diskParam" -- "$diskFile" "$dataSize" ; then
         rm -f "$diskFile"
@@ -304,7 +340,7 @@ createDisk() {
       ;;
   esac
 
-  if isCow "$fs"; then
+  if isCow "$diskFile"; then
     attributes=$(lsattr "$diskFile")
     if [[ "$attributes" != *"C"* ]]; then
       error "Failed to disable COW for $diskDesc image $diskFile on ${fs^^} filesystem (returned $attributes)"
@@ -416,7 +452,7 @@ convertDisk() {
 
   local convertFlags="-p"
   local diskParam
-  diskParam=$(getDiskOptions "$fs" "$destinationFmt")
+  diskParam=$(getDiskOptions "$tmpFile" "$destinationFmt")
 
   if [[ "$destinationFmt" != "raw" ]]; then
     if disabled "$ALLOCATE"; then
@@ -460,7 +496,7 @@ convertDisk() {
     exit 79
   fi
 
-  if isCow "$fs"; then
+  if isCow "$destinationFile"; then
     attributes=$(lsattr "$destinationFile")
     if [[ "$attributes" != *"C"* ]]; then
       error "Failed to disable COW for $diskDesc image $destinationFile on ${fs^^} filesystems (returned $attributes)"
@@ -494,13 +530,7 @@ checkFS () {
     warn "the filesystem of $base is FUSE, this extra layer will negatively affect performance!"
   fi
 
-  # Filesystems without O_DIRECT support require threaded I/O and writeback
-  # caching; native AIO with cache=none would fail at runtime.
-  if ! supportsDirect "$fs"; then
-    warn "the filesystem of $base is $fs, which does not support O_DIRECT mode, adjusting settings..."
-  fi
-
-  if isCow "$fs"; then
+  if isCow "$diskFile"; then
     if [ -f "$diskFile" ]; then
       attributes=$(lsattr "$diskFile")
       if [[ "$attributes" != *"C"* ]]; then
@@ -531,7 +561,7 @@ checkNoCow () {
     return 0
   fi
 
-  if isCow "$fs"; then
+  if isCow "$file"; then
     attributes=$(lsattr "$file" 2>/dev/null || :)
     if [[ "$attributes" != *"C"* ]]; then
       warn "COW (copy on write) is not disabled for $desc image file $file, this is recommended on ${fs^^} filesystems!"
@@ -548,10 +578,30 @@ createDevice () {
   local diskIndex="$3"
   local diskAddress="$4"
   local diskFmt="$5"
-  local diskIo="$6"
-  local diskCache="$7"
-  local diskSerial="$8"
-  local diskSectors="$9"
+  local diskSerial="$6"
+  local diskSectors="$7"
+  local diskId="${8:-data$diskIndex}"
+
+  local diskIo="$DISK_IO"
+  local diskCache="$DISK_CACHE"
+
+  if [ -f "$diskFile" ]; then
+    local fs base
+
+    fs=$(getFileSystem "$diskFile") || {
+      error "Failed to determine filesystem type of \"$diskFile\" !"
+      return 1
+    }
+
+    if ! supportsDirect "$diskFile"; then
+      base=$(baseDir "$(dirname "$diskFile")")
+      warn "the filesystem of $base is $fs, disabling direct I/O and using threaded I/O for compatibility..."
+      diskIo="threads"
+      diskCache="writeback"
+    fi
+
+    needsCow "$diskFile" || :
+  fi
 
   local bus
   bus=$(getPciBus)
@@ -560,7 +610,6 @@ createDevice () {
   [ -n "$DISK_OPTIONS" ] && options=",${DISK_OPTIONS#,}"
 
   local bootIndex=""
-  local diskId="${10:-data$diskIndex}"
   [ -n "$diskIndex" ] && bootIndex=",bootindex=$diskIndex"
   local result=" -drive file=$diskFile,id=$diskId,format=$diskFmt,cache=$diskCache,aio=$diskIo,discard=$DISK_DISCARD,detect-zeroes=on"
 
@@ -634,8 +683,22 @@ addMedia () {
 
     *".img" | *".raw" )
 
+      needsCow "$mediaFile" || :
+
       result=" -drive file=$mediaFile,id=$mediaId,format=raw,cache=unsafe,media=disk,if=none \
       -device usb-storage,drive=${mediaId}${bootIndex},removable=on"
+
+      echo "$result"
+      return 0
+      ;;
+
+    *".dmg" )
+
+      local bus
+      bus=$(getPciBus)
+
+      result=" -drive file=$mediaFile,id=$mediaId,format=dmg,cache=unsafe,readonly=on,if=none \
+      -device virtio-blk-pci,drive=${mediaId},bus=$bus${address}${IOTHREAD_OPT}${bootIndex}"
 
       echo "$result"
       return 0
@@ -726,8 +789,6 @@ addDisk () {
   local diskIndex="$5"
   local diskAddress="$6"
   local diskFmt="$7"
-  local diskIo="$8"
-  local diskCache="$9"
 
   local fs dir used space
   local diskExt dataSize
@@ -750,11 +811,6 @@ addDisk () {
   fi
 
   checkFS "$fs" "$diskFile" "$diskDesc" || exit $?
-
-  if ! supportsDirect "$fs"; then
-    diskIo="threads"
-    diskCache="writeback"
-  fi
 
   if [ ! -f "$diskFile" ] || [ ! -s "$diskFile" ]; then
 
@@ -839,7 +895,7 @@ addDisk () {
     fi
   fi
 
-  DISK_OPTS+=$(createDevice "$diskFile" "$diskType" "$diskIndex" "$diskAddress" "$diskFmt" "$diskIo" "$diskCache" "" "")
+  DISK_OPTS+=$(createDevice "$diskFile" "$diskType" "$diskIndex" "$diskAddress" "$diskFmt" "" "")
 
   return 0
 }
@@ -853,8 +909,6 @@ addImage () {
   local diskAddress="$5"
 
   local fs diskFmt
-  local diskIo="$DISK_IO"
-  local diskCache="$DISK_CACHE"
 
   [ -z "$diskFile" ] && return 0
   [ ! -f "$diskFile" ] && error "Image $diskFile cannot be found! Please add it to the 'volumes' section of your compose file." && exit 55
@@ -876,12 +930,7 @@ addImage () {
 
   checkFS "$fs" "$diskFile" "$diskDesc" || exit $?
 
-  if ! supportsDirect "$fs"; then
-    diskIo="threads"
-    diskCache="writeback"
-  fi
-
-  DISK_OPTS+=$(createDevice "$diskFile" "$diskType" "$diskIndex" "$diskAddress" "$diskFmt" "$diskIo" "$diskCache" "" "")
+  DISK_OPTS+=$(createDevice "$diskFile" "$diskType" "$diskIndex" "$diskAddress" "$diskFmt" "" "")
 
   return 0
 }
@@ -922,7 +971,7 @@ addDevice () {
     fi
   fi
 
-  DISK_OPTS+=$(createDevice "$diskDev" "$diskType" "$diskIndex" "$diskAddress" "raw" "$DISK_IO" "$DISK_CACHE" "" "$sectors")
+  DISK_OPTS+=$(createDevice "$diskDev" "$diskType" "$diskIndex" "$diskAddress" "raw" "" "$sectors")
 
   return 0
 }
@@ -1036,9 +1085,9 @@ if [ -s "$BOOT" ]; then
           DISK_OPTS+=$(addMedia "$BOOT" "$MEDIA_TYPE" "boot" "$BOOT_INDEX" "0x5")
         fi ;;
     *".img" | *".raw" )
-        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "$DISK_IO" "$DISK_CACHE" "" "" "boot") ;;
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "raw" "" "" "boot") ;;
     *".qcow2" )
-        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "qcow2" "$DISK_IO" "$DISK_CACHE" "" "" "boot") ;;
+        DISK_OPTS+=$(createDevice "$BOOT" "$DISK_TYPE" "$BOOT_INDEX" "0x5" "qcow2" "" "" "boot") ;;
     * )
         error "Invalid BOOT image specified, extension \".${BOOT/*./}\" is not recognized!" && exit 80 ;;
   esac
@@ -1193,7 +1242,7 @@ for (( i=0; i<6-DISK_OFFSET; i++ )); do
   elif [ -n "${DISK_IMAGES[i]}" ]; then
     addImage "${DISK_IMAGES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" || exit $?
   else
-    addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" "$DISK_FMT" "$DISK_IO" "$DISK_CACHE" || exit $?
+    addDisk "${DISK_FILES[i]}" "$DISK_TYPE" "${DISK_DESCS[i]}" "${DISK_SIZES[i]}" "${DISK_INDEXES[i]}" "${DISK_ADDRESSES[i + DISK_OFFSET]}" "$DISK_FMT" || exit $?
   fi
 
 done
@@ -1201,6 +1250,7 @@ done
 DISK_OPTS+=$(addMedia "/start.iso" "$FALLBACK" "rescue" "1" "" "$STORAGE/start.iso")
 DISK_OPTS+=$(addMedia "/mount.iso" "$FALLBACK" "drivers" "" "" "/drivers.iso" "$STORAGE/drivers.iso")
 DISK_OPTS+=$(addMedia "/setup.img" "usb" "setup" "" "" "$STORAGE/setup.img" "$STORAGE/windows.setup.img")
+DISK_OPTS+=$(addMedia "/setup.dmg" "blk" "install" "" "" "$STORAGE/setup.dmg")
 
 finishDisks
 
