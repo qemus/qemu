@@ -568,6 +568,7 @@ getReservedPorts() {
   local list=""
   local mode="${1:-tcp}"
   local display="${DISPLAY:-}"
+  local port
 
   # Reserve the DNS port while the internal dnsmasq resolver is active.
   if ! enabled "${DNSMASQ_DISABLE:-}" && ! isNAT; then
@@ -583,6 +584,12 @@ getReservedPorts() {
   if ! disabled "${WEB:-}" && [ -n "${WEB_PORT:-}" ]; then
     list+="$WEB_PORT/tcp,"
   fi
+
+  # Reserve ports the user specified for monitoring.
+  for port in "${SERIAL:-}" "${MONITOR:-}" "${QMP:-}" "${QGA:-}"; do
+    port=$(strip "$port")
+    [[ "$port" =~ ^[0-9]+$ ]] && list+="$port/tcp,"
+  done
 
   normalizePorts "$list" "$mode"
   return $?
