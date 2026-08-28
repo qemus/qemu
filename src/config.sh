@@ -91,14 +91,23 @@ normalizePort() {
 
 configureSerial() {
 
-  # Interactive graceful shutdown needs a socket-backed serial relay; otherwise
-  # QEMU may own the terminal directly through the configured SERIAL backend.
+  SERIAL=$(normalizePort "$SERIAL" "telnet")
+  SERIAL=$(normalizeSocket "$SERIAL")
+
+  # The interactive console owns stdio, so use the socket relay
+  # and keep any non-stdio SERIAL as an additional serial port.
   if enabled "${SHUTDOWN:-}" && interactive; then
-    SERIAL_OPTS="-chardev socket,id=console0,path=$CONSOLE_SOCKET,reconnect-ms=1000"
+
+    SERIAL_OPTS=""
+
+    if [[ "${SERIAL,,}" != "stdio" && "${SERIAL,,}" != "mon:stdio" ]]; then
+      SERIAL_OPTS="-serial $SERIAL"
+    fi
+
+    SERIAL_OPTS+="${SERIAL_OPTS:+ }-chardev socket,id=console0,path=$CONSOLE_SOCKET,reconnect-ms=1000"
     SERIAL_OPTS+=" -serial chardev:console0"
+
   else
-    SERIAL=$(normalizePort "$SERIAL" "telnet")
-    SERIAL=$(normalizeSocket "$SERIAL")
     SERIAL_OPTS="-serial $SERIAL"
   fi
 
