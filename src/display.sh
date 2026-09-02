@@ -102,11 +102,6 @@ if [[ "$ARCH" != "amd64" ]]; then
   return 0
 fi
 
-if [[ "${BOOT_MODE:-}" == "windows_legacy" ]]; then
-  gpuSetupFailure "GPU acceleration is not supported by your Windows version"
-  return 0
-fi
-
 case "${VGA_DEVICE,,}" in
   "none" )
     VGA_DEVICE="virtio-gpu-gl" ;;
@@ -243,8 +238,7 @@ vulkanManifestAvailable() {
 
 vulkanRuntimeReady() {
 
-  local summary details selected extensions api type
-  local external_memory_fd external_memory_dma_buf
+  local summary details selected api type
   local prime=""
   local vendor="${GPU_VENDOR,,}"
   local device="${GPU_DEVICE,,}"
@@ -366,11 +360,11 @@ vulkanRuntimeReady() {
     return 1
   fi
 
-  extensions="$(awk -v want_vendor="$vendor" -v want_device="$device" '
+  if ! awk -v want_vendor="$vendor" -v want_device="$device" '
     function finish() {
       if (!found && in_gpu && tolower(vendor) == want_vendor &&
           tolower(device) == want_device) {
-        print external_memory_fd "|" external_memory_dma_buf
+        compatible = external_memory_fd
         found = 1
       }
     }
@@ -381,7 +375,6 @@ vulkanRuntimeReady() {
       vendor = ""
       device = ""
       external_memory_fd = 0
-      external_memory_dma_buf = 0
       next
     }
 
@@ -404,25 +397,12 @@ vulkanRuntimeReady() {
       next
     }
 
-    in_gpu && /VK_EXT_external_memory_dma_buf/ {
-      external_memory_dma_buf = 1
-      next
-    }
-
     END {
       finish()
+      exit compatible ? 0 : 1
     }
-  ' <<< "$details")"
-
-  IFS='|' read -r external_memory_fd external_memory_dma_buf <<< "$extensions"
-
-  if [[ "$external_memory_fd" != "1" ]]; then
+  ' <<< "$details"; then
     VULKAN_REASON="the selected GPU does not support VK_KHR_external_memory_fd required by Venus"
-    return 1
-  fi
-
-  if [[ "${APP,,}" == "windows" && "$external_memory_dma_buf" != "1" ]]; then
-    VULKAN_REASON="the selected GPU does not support VK_EXT_external_memory_dma_buf required by Helios"
     return 1
   fi
 
@@ -637,11 +617,6 @@ hostBlobsSupported() {
 drmNativeReady() {
 
   DRM_REASON=""
-
-  if [[ "${APP,,}" == "windows" ]]; then
-    DRM_REASON="DRM native contexts require a Linux guest"
-    return 1
-  fi
 
   if ! hostBlobsSupported; then
     DRM_REASON="Linux 6.13 or newer is required for DRM native contexts"
@@ -898,7 +873,6 @@ if modernVirtioGpuGuest; then
   if hostBlobsSupported; then
 
     VGA+=",hostmem=$VRAM_BYTES,max_hostmem=$VRAM_BYTES,blob=true"
-    VGA+=",host3d_blob_limit=$VRAM_BYTES"
 
     if drmNativeGpuGuest; then
       VGA+=",drm_native_context=on"
@@ -933,11 +907,6 @@ if modernVirtioGpuGuest; then
     fi
 
   fi
-fi
-
-if [[ "${APP,,}" == "windows" ]] && ! venusEnabled; then
-  error "Windows GPU acceleration requires Vulkan via Venus, but Venus could not be enabled${VULKAN_STATE_REASON:+: $VULKAN_STATE_REASON}."
-  exit 87
 fi
 
 if drmNativeEnabled && ! drmNativeReady; then
