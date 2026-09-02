@@ -362,9 +362,10 @@ vulkanRuntimeReady() {
 
   if ! awk -v want_vendor="$vendor" -v want_device="$device" '
     function finish() {
-      if (in_gpu && tolower(vendor) == want_vendor &&
-          tolower(device) == want_device && external_memory_fd) {
-        compatible = 1
+      if (!found && in_gpu && tolower(vendor) == want_vendor &&
+          tolower(device) == want_device) {
+        compatible = external_memory_fd
+        found = 1
       }
     }
 
