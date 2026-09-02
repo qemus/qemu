@@ -487,7 +487,11 @@ nvidiaVulkanReady() {
     return 1
   fi
 
-  [[ "$NVIDIA_DRIVER_VERSION" =~ ^([0-9]+)\.([0-9]+) ]] || return 1
+  if ! [[ "$NVIDIA_DRIVER_VERSION" =~ ^([0-9]+)\.([0-9]+) ]]; then
+    NVIDIA_REASON="the NVIDIA driver version '$NVIDIA_DRIVER_VERSION' could not be parsed"
+    return 1
+  fi
+
   major="${BASH_REMATCH[1]}"
   minor="${BASH_REMATCH[2]}"
 
@@ -619,7 +623,7 @@ drmNativeReady() {
   DRM_REASON=""
 
   if ! hostBlobsSupported; then
-    DRM_REASON="Linux 6.13 or newer is required for DRM native contexts"
+    DRM_REASON="Linux 6.13 or newer is required for vDRM"
     return 1
   fi
 
@@ -640,7 +644,7 @@ drmNativeReady() {
         return 1
       fi ;;
     * )
-      DRM_REASON="no native DRM renderer is available for this GPU"
+      DRM_REASON="no vDRM renderer is available for this GPU"
       return 1 ;;
   esac
 
@@ -951,7 +955,7 @@ info
 if modernVirtioGpuGuest; then
   info "Vulkan:     [$VULKAN_STATE]${VULKAN_STATE_REASON:+ $VULKAN_STATE_REASON}"
   if drmNativeGpuGuest; then
-    info "DRM Native: [$DRM_STATE]${DRM_STATE_REASON:+ $DRM_STATE_REASON}"
+    info "vDRM:       [$DRM_STATE]${DRM_STATE_REASON:+ $DRM_STATE_REASON}"
   fi
   info "OpenGL 4.3: [ ✓ ]"
   info "OpenGL 4.6: [$OPENGL_46]${OPENGL_46_REASON:+ $OPENGL_46_REASON}"
