@@ -487,7 +487,11 @@ nvidiaVulkanReady() {
     return 1
   fi
 
-  [[ "$NVIDIA_DRIVER_VERSION" =~ ^([0-9]+)\.([0-9]+) ]] || return 1
+  if ! [[ "$NVIDIA_DRIVER_VERSION" =~ ^([0-9]+)\.([0-9]+) ]]; then
+    NVIDIA_REASON="the NVIDIA driver version '$NVIDIA_DRIVER_VERSION' could not be parsed"
+    return 1
+  fi
+
   major="${BASH_REMATCH[1]}"
   minor="${BASH_REMATCH[2]}"
 
