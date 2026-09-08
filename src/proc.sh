@@ -100,8 +100,8 @@ configureKvmCpuModel() {
 
 configureKvmInvariantTsc() {
 
-  # TSC scaling support does not prove the host TSC is stable. Only expose
-  # invariant TSC when Linux is actively using TSC; otherwise fail closed.
+  # Only expose invariant TSC when the host reports a constant, nonstop TSC
+  # and Linux is actively using TSC as its clocksource; otherwise fail closed.
   if isTscClocksource && hasFlag "constant_tsc" && hasFlag "nonstop_tsc"; then
     CPU_FEATURES+=",+invtsc"
   else
