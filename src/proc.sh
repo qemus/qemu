@@ -100,11 +100,9 @@ configureKvmCpuModel() {
 
 configureKvmInvariantTsc() {
 
-  local scaling="$1"
-
   # TSC scaling support does not prove the host TSC is stable. Only expose
   # invariant TSC when Linux is actively using TSC; otherwise fail closed.
-  if enabled "$scaling" && isTscClocksource; then
+  if isTscClocksource && hasFlag "constant_tsc" && hasFlag "nonstop_tsc"; then
     CPU_FEATURES+=",+invtsc"
   else
     CPU_FEATURES+=",-invtsc"
@@ -115,14 +113,6 @@ configureKvmInvariantTsc() {
 
 configureKvmAmdFeatures() {
 
-  local scaling="N"
-
-  # AMD processor
-  if hasFlag "tsc_scale"; then
-    scaling="Y"
-  fi
-  configureKvmInvariantTsc "$scaling"
-
   if isWindowsBoot; then
     CPU_FEATURES+=",arch_capabilities=off"
   fi
@@ -132,15 +122,8 @@ configureKvmAmdFeatures() {
 
 configureKvmIntelFeatures() {
 
-  local scaling="N"
-
   # Intel processor
   vmx=$(sed -ne '/^vmx flags/s/^.*: //p' /proc/cpuinfo)
-
-  if grep -qw "tsc_scaling" <<< "$vmx"; then
-    scaling="Y"
-  fi
-  configureKvmInvariantTsc "$scaling"
 
   return 0
 }
@@ -184,6 +167,7 @@ configureHyperVFeatures() {
 configureKvm() {
 
   configureKvmCpuModel
+  configureKvmInvariantTsc
 
   if isAmdCpu; then
     configureKvmAmdFeatures
